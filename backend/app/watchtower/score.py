@@ -199,8 +199,9 @@ def compute_night_score(
     zone = astro.tz(lat, lon)
     times: list[datetime] = forecast["time"]
     hours: list[HourScore] = []
+    earliest = max(sunset - timedelta(minutes=30), ref - timedelta(minutes=45))  # past hours are not actionable
     for i, t in enumerate(times):
-        if t < sunset - timedelta(minutes=30) or t > sunrise + timedelta(minutes=30):
+        if t < earliest or t > sunrise + timedelta(minutes=30):
             continue
         sun_alt = astro.sun_alt(t, obs)
         m_alt = astro.moon_alt(t, obs)
