@@ -212,3 +212,23 @@
 dialog.hud-dialog[open] { margin: auto; max-height: calc(100dvh - 32px); overflow: auto; }
 dialog.dir-dialog { max-width: min(860px, calc(100vw - 32px)); }
 dialog.city-dialog { max-width: min(560px, calc(100vw - 32px)); }
+
+.compass.compact .compass-read { gap: 6px; padding: 2px 8px; }
+.compass.compact .compass-read .clock { font-size: 16px; }
+.compass.compact .compass-read .koku { font-size: 12px; }
+.compass.compact .compass-read .date, .compass.compact .compass-read .live { font-size: 0; gap: 0; }
+.compass.compact .compass-now { min-height: 30px; padding: 0 10px; }
+
+/* ---------- Lite: time band ---------- */
+.band { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); width: min(560px, calc(100vw - 32px)); padding: 8px 12px 6px; display: grid; gap: 4px; }
+.band-read { display: flex; align-items: center; gap: 10px; justify-content: center; }
+.band-read .clock { font-family: var(--font-display); font-size: 18px; color: var(--kinu); }
+.band-read .koku { font-family: var(--font-jp); color: var(--gold-soft); }
+.band-read .live { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: .2em; }
+.band-now { min-height: 32px; padding: 0 12px; font-size: 11px; }
+.band-track { position: relative; height: 44px; overflow: hidden; touch-action: pan-y; cursor: grab; mask-image: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent); }
+.band-tick { position: absolute; left: 50%; top: 0; bottom: 0; width: 0; }
+.band-tick i { position: absolute; top: 0; left: 0; width: 1px; height: 8px; background: var(--card-line); }
+.band-tick i.major { height: 14px; background: var(--gold-soft); }
+.band-tick .k { position: absolute; top: 16px; left: 0; transform: translateX(-50%); font-size: 14px; color: var(--kinu); }
+.band-notch { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--crimson-bright); box-shadow: 0 0 8px var(--crimson-bright); }

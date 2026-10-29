@@ -51,14 +51,16 @@ function moonPath(r: number, ageDays: number) {
   return `M0 ${-r}A${r} ${r} 0 0 ${outer} 0 ${r}A${f1(a)} ${r} 0 0 ${term} 0 ${-r}Z`;
 }
 
-function useRadius() {
-  const get = () => Math.round(Math.min(window.innerHeight * 0.4, 340, window.innerWidth * 0.46));
+/** min(40vh, 340px) in the sky; compact at the dome so the dome and its "Enter your sky" CTA stay clear. */
+function useRadius(compact: boolean) {
+  const get = () => Math.round(compact ? Math.min(window.innerHeight * 0.15, 150) : Math.min(window.innerHeight * 0.4, 340, window.innerWidth * 0.46));
   const [r, setR] = useState(get);
   useEffect(() => {
     const on = () => setR(get());
+    on();
     window.addEventListener('resize', on);
     return () => window.removeEventListener('resize', on);
-  }, []);
+  }, [compact]); // eslint-disable-line react-hooks/exhaustive-deps
   return r;
 }
 
@@ -68,14 +70,14 @@ interface Mark {
   label: string;
 }
 
-export default function TimeCompass({ folded }: { folded: boolean }) {
+export default function TimeCompass({ folded, compact = false }: { folded: boolean; compact?: boolean }) {
   const offset = useApp((s) => s.offsetMs);
   const place = useApp((s) => s.place) ?? DEFAULT_PLACE;
   const tz = useApp((s) => s.tz);
   const reduced = useApp((s) => s.reducedMotion);
   const score = useTonight((s) => s.score.data);
   const passes = useTonight((s) => s.passes.data);
-  const R = useRadius();
+  const R = useRadius(compact);
   const [now, setNow] = useState(() => Date.now());
   const [open, setOpen] = useState(false); // unfolded on a module page
   useEffect(() => {
@@ -274,7 +276,7 @@ export default function TimeCompass({ folded }: { folded: boolean }) {
   const glyph = (h: number, r: number) => pt(h, r);
 
   return (
-    <div className="compass compass-enter" style={{ width: W, height: Hh }}>
+    <div className={`compass compass-enter ${compact ? 'compact' : ''}`} style={{ width: W, height: Hh, transition: 'width 600ms var(--ease-katana), height 600ms var(--ease-katana)' }}>
       {folded && (
         <button className="tw-icon-btn" style={{ position: 'absolute', right: PAD, top: -6, zIndex: 2 }} onClick={() => setOpen(false)} aria-label="Fold the time compass">
           ▾
@@ -330,7 +332,7 @@ export default function TimeCompass({ folded }: { folded: boolean }) {
                 </text>
               );
             })}
-            {[0, 6, 12, 18].map((h) => {
+            {R >= 200 && [0, 6, 12, 18].map((h) => {
               const [x, y] = pt(h, r0 - 14);
               return (
                 <text key={h} x={f1(x)} y={f1(y)} transform={`rotate(${h * 15} ${f1(x)} ${f1(y)})`} textAnchor="middle" dominantBaseline="central" fontFamily="var(--font-ui)" fontSize={11} fill="var(--washi-3)" letterSpacing=".08em">
@@ -347,11 +349,11 @@ export default function TimeCompass({ folded }: { folded: boolean }) {
               </g>
             )}
             {/* sun and moon glyphs */}
-            {(() => {
+            {R >= 200 && (() => {
               const [x, y] = glyph(noon, rm - 16);
               return <circle cx={f1(x)} cy={f1(y)} r={7} fill="var(--crimson-bright)" style={{ filter: 'drop-shadow(0 0 6px var(--crimson-bright))' }} />;
             })()}
-            {(() => {
+            {R >= 200 && (() => {
               const [x, y] = glyph(midnight, rm - 16);
               return (
                 <g transform={`translate(${f1(x)} ${f1(y)})`}>

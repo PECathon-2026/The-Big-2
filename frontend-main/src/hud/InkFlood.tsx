@@ -98,13 +98,21 @@ function InkLayers() {
             resolve();
           }
         };
-        const step = (now: number) => {
+        // rAF stalls in background tabs: finish on a timer so a transition can never hang
+        const guard = window.setTimeout(() => {
           if (done) return;
+          draw(1, ms / 1000);
+          done = true;
+          resolve();
+        }, ms + 250);
+        const step = (now: number) => {
+          if (done) return window.clearTimeout(guard);
           const k = Math.min(1, (now - t0) / ms);
           draw(k, (now - t0) / 1000);
           if (k < 1) raf = requestAnimationFrame(step);
           else {
             done = true;
+            window.clearTimeout(guard);
             resolve();
           }
         };

@@ -63,6 +63,8 @@ function setTarget(s: Partial<CamState>, instant = false) {
 function settle(maxMs = 2200): Promise<void> {
   return new Promise((resolve) => {
     const t0 = performance.now();
+    // rAF stalls in background tabs: never let a transition hang on it
+    window.setTimeout(resolve, maxMs + 100);
     const tick = () => {
       const c = rig.cur;
       const t = rig.tgt;
@@ -76,6 +78,7 @@ function settle(maxMs = 2200): Promise<void> {
 
 const wait = (ms: number) => new Promise<void>((r) => window.setTimeout(r, ms));
 const frames = (n = 2) => new Promise<void>((r) => {
+  window.setTimeout(r, 120 + n * 30);
   const step = () => (--n <= 0 ? r() : requestAnimationFrame(step));
   requestAnimationFrame(step);
 });

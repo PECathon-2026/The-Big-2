@@ -18,6 +18,7 @@ import LocationChip from './LocationChip';
 import CitySearch from './CitySearch';
 import Countdown from './Countdown';
 import TimeCompass from './TimeCompass';
+import TimeBand from './TimeBand';
 import InfoCard from './InfoCard';
 import SkyCursor from './SkyCursor';
 import { goHome, stepChapter } from './nav';
@@ -34,6 +35,7 @@ function isTyping(el: EventTarget | null) {
 
 export default function HudRoot() {
   const phase = useApp((s) => s.phase);
+  const lite = useApp((s) => s.lite);
   const nav = useNavigate();
   const { pathname } = useLocation();
   const [card, setCard] = useState<{ obj: SkyObject; x: number; y: number } | null>(null);
@@ -159,7 +161,7 @@ export default function HudRoot() {
               </Button>
             </div>
             <ChapterRail />
-            <TimeCompass folded={onPage} />
+            {lite && !onPage ? <TimeBand /> : <TimeCompass folded={onPage} compact={phase === 'dome'} />}
             <SoundToggle />
           </div>
           {card && !onPage && <InfoCard obj={card.obj} x={card.x} y={card.y} onClose={() => (app().select(null), setCard(null))} />}
