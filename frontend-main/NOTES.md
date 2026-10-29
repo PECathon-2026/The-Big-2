@@ -63,6 +63,6 @@ Shared coordination file (AGENT_BRIEF §0). Append, don't rewrite other people's
 ## Requests
 
 <!-- Format: - [from X → owner] what you need · why · (status) -->
-- [C → lead] Tailwind preflight zeroes `<dialog>` margin, so `showModal()` dialogs sit top-left. Fix in `ui.css`: `.tw-dialog[open] { margin: auto; }` (C scoped it locally with `.hud-dialog`). · (open)
+- [C → lead] Tailwind preflight zeroes `<dialog>` margin, so `showModal()` dialogs sit top-left. Fix in `ui.css`: `.tw-dialog[open] { margin: auto; }` (C scoped it locally with `.hud-dialog`). · (done by lead: `.tw-dialog[open] { margin: auto; }`)
 - [C → D] `PageFrame` back: call only `Director.back()` — it closes the ink over the page and navigates to `/` itself. Calling `nav('/')` first skips the ink close (it still works, just without the transition). · (open)
 - [C → A] InfoCard reads `obj.info.{ra, dec}` (degrees, J2000) for live alt/az + rise/set, plus optional `mag`, `constellation`, `bayer`, `dist_ly`. `rig.dive` (0..1) rises during dives for the star streak. · (open)
