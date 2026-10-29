@@ -15,7 +15,7 @@ export function savedEndpoint(): string | null {
   }
 }
 
-function urlBase64ToUint8Array(b64: string): Uint8Array {
+function urlBase64ToUint8Array(b64: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - (b64.length % 4)) % 4);
   const base64 = (b64 + padding).replace(/-/g, '+').replace(/_/g, '/');
   const raw = atob(base64);
