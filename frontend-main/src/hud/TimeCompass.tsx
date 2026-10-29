@@ -70,7 +70,11 @@ interface Mark {
   label: string;
 }
 
-export default function TimeCompass({ folded, compact = false }: { folded: boolean; compact?: boolean }) {
+/**
+ * `docked` (phase sky): the dial rests small and sunk — radius ≈ min(26vh, 230px), upper ~60 % showing —
+ * and eases to full size on hover / focus / drag (CSS transform transition, so it is interruptible).
+ */
+export default function TimeCompass({ folded, compact = false, docked = false }: { folded: boolean; compact?: boolean; docked?: boolean }) {
   const offset = useApp((s) => s.offsetMs);
   const place = useApp((s) => s.place) ?? DEFAULT_PLACE;
   const tz = useApp((s) => s.tz);
@@ -80,6 +84,7 @@ export default function TimeCompass({ folded, compact = false }: { folded: boole
   const R = useRadius(compact);
   const [now, setNow] = useState(() => Date.now());
   const [open, setOpen] = useState(false); // unfolded on a module page
+  const [engaged, setEngaged] = useState(false); // dragging or coasting: stay full size
   useEffect(() => {
     const h = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(h);
@@ -169,6 +174,7 @@ export default function TimeCompass({ folded, compact = false }: { folded: boole
     stopMotion();
     const { a } = angleOf(e);
     drag.current = { a, t: performance.now(), v: 0, id: e.pointerId };
+    setEngaged(true);
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
   };
   const onMove = (e: React.PointerEvent) => {
@@ -191,7 +197,7 @@ export default function TimeCompass({ folded, compact = false }: { folded: boole
     const d = drag.current;
     if (!d || d.id !== e.pointerId) return;
     drag.current = null;
-    if (reduced || performance.now() - d.t > 80 || Math.abs(d.v) < 20) return;
+    if (reduced || performance.now() - d.t > 80 || Math.abs(d.v) < 20) return setEngaged(false);
     let v = d.v;
     let last = performance.now();
     const step = (t: number) => {
@@ -202,6 +208,7 @@ export default function TimeCompass({ folded, compact = false }: { folded: boole
       const next = cur + v * dt;
       setOff(next);
       if (Math.abs(v) > 4 && Math.abs(next) < OFFSET_LIMIT_MS) inertia.current = requestAnimationFrame(step);
+      else setEngaged(false);
     };
     inertia.current = requestAnimationFrame(step);
   };
@@ -266,6 +273,10 @@ export default function TimeCompass({ folded, compact = false }: { folded: boole
   }
 
   const W = 2 * (R + PAD);
+  // resting size in the sky: radius min(26vh, 230px), sunk so ~60 % of the half-disc shows
+  const restR = Math.min(window.innerHeight * 0.26, 230);
+  const restK = Math.min(1, restR / R);
+  const restSink = restR * 0.4;
   const Hh = R + PAD;
   const dayH0 = night.sunrise ?? 6;
   const dayH1 = night.sunset ?? 18;
@@ -277,6 +288,7 @@ export default function TimeCompass({ folded, compact = false }: { folded: boole
 
   return (
     <div className={`compass compass-enter ${compact ? 'compact' : ''}`} style={{ width: W, height: Hh, transition: 'width 600ms var(--ease-katana), height 600ms var(--ease-katana)' }}>
+      <div className={`compass-body ${docked ? 'docked' : ''} ${engaged ? 'engaged' : ''}`} style={{ ['--rest-k' as string]: restK.toFixed(3), ['--rest-sink' as string]: `${restSink.toFixed(0)}px` }}>
       {folded && (
         <button className="tw-icon-btn" style={{ position: 'absolute', right: PAD, top: -6, zIndex: 2 }} onClick={() => setOpen(false)} aria-label="Fold the time compass">
           ▾
@@ -396,7 +408,7 @@ export default function TimeCompass({ folded, compact = false }: { folded: boole
           <path d={`M-7 ${-r1 - 12}L7 ${-r1 - 12}L0 ${-r1 - 1}Z`} fill="var(--crimson-bright)" style={{ filter: 'drop-shadow(0 0 6px var(--crimson-bright))' }} />
         </g>
       </svg>
-      <div className="compass-read" style={{ bottom: R * 0.4 }}>
+      <div className="compass-read" style={{ bottom: R * (docked ? 0.56 : 0.4) }}>
         {live ? (
           <span className="live">
             <span className="beacon" aria-hidden="true" />
@@ -414,6 +426,7 @@ export default function TimeCompass({ folded, compact = false }: { folded: boole
       <button className="tw-btn primary compass-now" style={{ left: '50%', bottom: R * 0.14, transform: 'translateX(-50%)' }} onClick={toNow} disabled={live} aria-label="Return the sky to now">
         Now
       </button>
+      </div>
     </div>
   );
 }

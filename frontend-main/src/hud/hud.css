@@ -237,3 +237,12 @@ dialog.city-dialog { max-width: min(560px, calc(100vw - 32px)); }
 .hud-wordmark, .rail-item, .rail-roman { text-shadow: 0 0 14px rgba(7, 9, 12, .85), 0 1px 3px rgba(7, 9, 12, .9); }
 .rail-item .line { box-shadow: 0 0 6px rgba(7, 9, 12, .7); }
 .rail-item.active .line { box-shadow: 0 0 8px rgba(232, 198, 106, .5), 0 0 6px rgba(7, 9, 12, .7); }
+
+/* Docked compass (phase sky): rests small and sunk, rises to full size on hover / focus / drag. */
+.compass { pointer-events: none; }
+.compass .dial, .compass button { pointer-events: auto; }
+.compass-body { position: absolute; inset: 0; transform-origin: 50% 100%; transition: transform 520ms var(--ease-katana) 220ms; }
+.compass-body.docked { transform: translateY(var(--rest-sink)) scale(var(--rest-k)); }
+.compass-body.docked:hover, .compass-body.docked:focus-within, .compass-body.docked.engaged { transform: none; transition-delay: 0ms; }
+.compass-body.docked:not(:hover):not(:focus-within):not(.engaged) .compass-now { opacity: 0; pointer-events: none; }
+.compass-body .compass-now { transition: opacity 260ms var(--ease-katana); }

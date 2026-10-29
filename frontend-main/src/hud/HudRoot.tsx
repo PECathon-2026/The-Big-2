@@ -161,7 +161,7 @@ export default function HudRoot() {
               </Button>
             </div>
             <ChapterRail />
-            {lite && !onPage ? <TimeBand /> : <TimeCompass folded={onPage} compact={phase === 'dome'} />}
+            {lite && !onPage ? <TimeBand /> : <TimeCompass folded={onPage} compact={phase === 'dome'} docked={phase === 'sky'} />}
             <SoundToggle />
           </div>
           {card && !onPage && <InfoCard obj={card.obj} x={card.x} y={card.y} onClose={() => (app().select(null), setCard(null))} />}
