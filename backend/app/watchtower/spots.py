@@ -15,8 +15,10 @@ from .score import NightScore, compute_night_score
 
 OVERPASS_SERVERS = [
     "https://overpass-api.de/api/interpreter",
-    "https://overpass.kumi.systems/api/interpreter",
 ]
+
+# Pre-warmed at startup so the demo never waits on Overpass.
+DEMO_CITIES = [(12.97, 77.59), (35.01, 135.77), (28.61, 77.21), (19.08, 72.88)]
 
 KIND_GLYPH = {
     "peak": ("mountain", "山"),
@@ -37,15 +39,17 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 def _query(lat: float, lon: float, radius_m: int) -> str:
+    # Node-only query: way/area lookups (lakes, reserves) take over a minute on the public Overpass servers.
+    # Places of worship are dense (thousands within 60 km of an Indian city), so only hilltop ones with an
+    # elevation tag are requested, within a tighter radius.
+    worship_m = min(radius_m, 25_000)
     return f"""[out:json][timeout:40];
 (
   node["natural"="peak"](around:{radius_m},{lat},{lon});
   node["tourism"="viewpoint"](around:{radius_m},{lat},{lon});
-  nwr["amenity"="place_of_worship"]["name"](around:{radius_m},{lat},{lon});
-  nwr["natural"="water"]["name"]["water"~"lake|reservoir"](around:{radius_m},{lat},{lon});
-  nwr["leisure"="nature_reserve"]["name"](around:{radius_m},{lat},{lon});
+  node["amenity"="place_of_worship"]["name"]["ele"](around:{worship_m},{lat},{lon});
 );
-out center 400;"""
+out 300;"""
 
 
 def _kind(tags: dict[str, str]) -> str:
@@ -66,7 +70,9 @@ async def overpass(lat: float, lon: float, radius_km: float) -> tuple[list[dict[
     last: Exception | None = None
     for url in OVERPASS_SERVERS:
         try:
-            f = await fetch("overpass", url, method="POST", data={"data": q}, ttl=24 * 3600, retries=1)
+            # The public Overpass servers queue requests; a cold query can take a minute. Results are cached for
+            # a day per rounded location, and main.py pre-warms the demo cities at startup.
+            f = await fetch("overpass", url, method="POST", data={"data": q}, ttl=24 * 3600, retries=0, timeout=150)
             els = f.data.get("elements", [])
             out = []
             for e in els:
@@ -130,21 +136,28 @@ class SpotsResult(BaseModel):
     formula: str
 
 
+def _proxy(c: dict[str, Any]) -> float:
+    """Pre-weather promise of a spot: high, named, natural, not too far. Used only to pick which candidates to score."""
+    ele = c.get("ele") or 0.0
+    named = 0.0 if c["name"].startswith("Unnamed") else 10.0
+    natural = 8.0 if c["kind"] in ("peak", "viewpoint") else 0.0
+    return ele * 0.05 + named + natural - c["distance_km"] * 0.25
+
+
 def _select_candidates(cands: list[dict[str, Any]], lat: float, lon: float, limit: int) -> list[dict[str, Any]]:
-    """Diversify: prefer peaks/viewpoints, then one of each other kind, spread over distance."""
+    """Pick the most promising candidates with spatial diversity: at most 4 per 15 km distance band,
+    none closer than 3 km to another pick, none inside the first 2 km (that is the city itself)."""
     for c in cands:
         c["distance_km"] = haversine_km(lat, lon, c["lat"], c["lon"])
-    pri = {"peak": 0, "viewpoint": 1, "lake": 2, "park": 3, "shrine": 4, "temple": 5}
-    cands.sort(key=lambda c: (pri.get(c["kind"], 9), c["distance_km"]))
+    cands.sort(key=_proxy, reverse=True)
     chosen: list[dict[str, Any]] = []
     for c in cands:
         if c["distance_km"] < 2.0:
             continue
         if any(haversine_km(c["lat"], c["lon"], d["lat"], d["lon"]) < 3.0 for d in chosen):
             continue
-        same_kind = sum(1 for d in chosen if d["kind"] == c["kind"])
-        cap = 8 if c["kind"] in ("peak", "viewpoint") else 3
-        if same_kind >= cap:
+        band = int(c["distance_km"] // 15)
+        if sum(1 for d in chosen if int(d["distance_km"] // 15) == band) >= 4:
             continue
         chosen.append(c)
         if len(chosen) >= limit:

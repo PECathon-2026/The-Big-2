@@ -24,6 +24,23 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+async def prewarm():
+    """Warm the slow caches (Overpass spots for the demo cities) in the background; failures are harmless."""
+    import asyncio
+
+    from .watchtower import spots
+
+    async def warm():
+        for lat, lon in spots.DEMO_CITIES:
+            try:
+                await spots.overpass(lat, lon, 60.0)
+            except Exception:  # noqa: BLE001
+                pass
+
+    asyncio.create_task(warm())
+
+
 @app.exception_handler(ProviderError)
 async def provider_error_handler(_, exc: ProviderError):
     return JSONResponse(status_code=502, content={"error": "provider_unavailable", "source": exc.source, "detail": exc.message})

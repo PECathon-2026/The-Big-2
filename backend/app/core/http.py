@@ -53,6 +53,7 @@ async def fetch(
     binary: bool = False,
     cache_name: str | None = None,
     retries: int = 2,
+    timeout: float | None = None,
 ) -> Fetched:
     """Fetch with cache. Order: fresh cache → live call (retries) → stale cache → demo replay → ProviderError."""
     c = cache(cache_name or source)
@@ -64,10 +65,11 @@ async def fetch(
     last_err: Exception | None = None
     for attempt in range(retries + 1):
         try:
+            kw = {"timeout": timeout} if timeout else {}
             if method == "GET":
-                r = await client().get(url, params=params, headers=headers)
+                r = await client().get(url, params=params, headers=headers, **kw)
             else:
-                r = await client().post(url, params=params, data=data, headers=headers)
+                r = await client().post(url, params=params, data=data, headers=headers, **kw)
             if r.status_code == 429 or r.status_code >= 500:
                 raise ProviderError(source, f"HTTP {r.status_code}")
             r.raise_for_status()
@@ -76,7 +78,7 @@ async def fetch(
             replay_record(key, value)
             return Fetched(_decode(value, binary), Provenance(source=source, url=url, fetched_at=datetime.now(timezone.utc)))
         except Exception as e:  # noqa: BLE001
-            last_err = e
+            last_err = e if str(e) else RuntimeError(type(e).__name__)
             if attempt < retries:
                 await asyncio.sleep(0.6 * (attempt + 1))
 
