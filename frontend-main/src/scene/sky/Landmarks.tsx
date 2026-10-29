@@ -3,7 +3,7 @@
  * ink-wash flanks), a five-storey pagoda and one cherry tree (crimson + pink blossom points on black
  * branches). Cheap: a handful of meshes with basic/shader materials. They stand inside the same world,
  * so from inside the sky they sit on the horizon; the pagoda is clickable (→ /watchtower).
- * Hidden during the intro, which has its own close-up centrepiece (B).
+ * Hidden during the intro, which has its own close-up centrepiece (B). (Moved from the retired dome.)
  */
 import { useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -14,7 +14,7 @@ import { DEFAULT_PLACE } from '@/data/location';
 import { rng } from '@/scene/noise';
 import { skyClock } from '@/scene/skyClock';
 import { useApp } from '@/state/store';
-import { landmarks, tokColor } from '@/scene/sky/shared';
+import { landmarks, tokColor } from './shared';
 
 const fujiVS = /* glsl */ `
   varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
@@ -30,7 +30,7 @@ const fujiFS = /* glsl */ `
     float line = 0.8 - 0.12 * gully;
     float snow = smoothstep(line - 0.02, line + 0.02, y);
     vec3 ink = mix(uInk, uHaze, uHazeK * (0.4 + 0.6 * y));
-    vec3 col = mix(ink, uSnow * uSnowK, snow * 0.9);
+    vec3 col = mix(ink, uSnow * uSnowK * (0.55 + 0.45 * y), snow * 0.85);
     gl_FragColor = vec4(col, 1.0);
     #include <colorspace_fragment>
   }`;
@@ -180,7 +180,7 @@ export default function Landmarks() {
     return [Math.sin(a) * dist, 0, -Math.cos(a) * dist];
   };
   const fujiPos = at(84, 0);
-  const pgPos = at(28, -8);
+  const pgPos = at(40, -8);
   const treePos = at(44, 12);
   pagodaAt.set(pgPos[0], 6, pgPos[2]);
 
@@ -191,8 +191,10 @@ export default function Landmarks() {
     const u = built.fujiMat.uniforms;
     (u.uHaze.value as THREE.Color).setRGB(...skyClock.palette.horizonRgb, THREE.SRGBColorSpace);
     u.uHazeK.value = 0.25 + 0.4 * skyClock.palette.daylight;
+    // lacquer reads as a dark silhouette at night, crimson by day
+    tokColor('--crimson-deep', built.body.color).multiplyScalar(0.45 + 0.55 * skyClock.palette.daylight);
     // moonlit snow at night, bright by day
-    u.uSnowK.value = 0.45 + 0.25 * skyClock.moon.illumination * Math.max(0, skyClock.moon.dir[1]) + 0.4 * skyClock.palette.daylight;
+    u.uSnowK.value = 0.3 + 0.25 * skyClock.moon.illumination * Math.max(0, skyClock.moon.dir[1]) + 0.4 * skyClock.palette.daylight;
   });
 
   return (
@@ -202,7 +204,6 @@ export default function Landmarks() {
         object={built.pg}
         position={[pgPos[0], -0.4, pgPos[2]]}
         rotation-y={-az * DEG}
-        scale={1.3}
         ref={(o: THREE.Object3D | null) => {
           if (o) landmarks.set('pagoda', o);
           else landmarks.delete('pagoda');

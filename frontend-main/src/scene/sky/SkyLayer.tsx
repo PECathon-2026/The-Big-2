@@ -16,6 +16,7 @@ import Objects from './Objects';
 import OverlayPainter from './OverlayPainter';
 import Picking from './Picking';
 import Post from './Post';
+import Landmarks from './Landmarks';
 import { useCatalog } from './shared';
 
 export default function SkyLayer() {
@@ -30,6 +31,7 @@ export default function SkyLayer() {
         <MoonAndSun />
       </Suspense>
       <Horizon />
+      <Landmarks />
       <Meteors />
       {cat && (
         <>

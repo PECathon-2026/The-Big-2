@@ -5,6 +5,7 @@
  */
 import { useEffect, useRef } from 'react';
 import { overlay } from './shared';
+import ArrivalHints from './ArrivalHints';
 
 export default function SkyOverlay() {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -23,10 +24,13 @@ export default function SkyOverlay() {
     };
   }, []);
   return (
+    <>
     <canvas
       ref={ref}
       aria-hidden="true"
       style={{ position: 'fixed', inset: 0, width: '100vw', height: '100vh', zIndex: 10, pointerEvents: 'none' }}
     />
+    <ArrivalHints />
+    </>
   );
 }

@@ -85,10 +85,12 @@ export default function Objects({ cat }: { cat: Catalog }) {
         illumination: Math.round(skyClock.moon.illumination * 100),
         age_days: fmt1(skyClock.moon.ageDays),
         phase: tonight.moon.data?.phase_name ?? null,
+        ra: fmt1(skyClock.moon.ra),
+        dec: fmt1(skyClock.moon.dec),
       },
     });
     const sd = skyClock.sun.dir;
-    obj({ kind: 'sun', id: 'sun', name: 'Sun', jp: '太陽', route: '/watchtower', world: [sd[0] * SUN_DIST, sd[1] * SUN_DIST, sd[2] * SUN_DIST], info: { altitude: fmt1(skyClock.sun.alt) } });
+    obj({ kind: 'sun', id: 'sun', name: 'Sun', jp: '太陽', route: '/watchtower', world: [sd[0] * SUN_DIST, sd[1] * SUN_DIST, sd[2] * SUN_DIST], info: { altitude: fmt1(skyClock.sun.alt), ra: fmt1(skyClock.sun.ra), dec: fmt1(skyClock.sun.dec) } });
     for (const p of skyClock.planets) {
       obj({
         kind: 'planet',
@@ -162,7 +164,7 @@ export default function Objects({ cat }: { cat: Catalog }) {
       if (!o) continue;
       o.getWorldPosition(v3);
       if (id === 'ridges') v3.set(0, 8, -95); // the ridge line due north
-      obj({ kind: 'landmark', id, name, jp, route: '/watchtower', world: [v3.x, v3.y + (id === 'torii' ? 4 : 0), v3.z] });
+      obj({ kind: 'landmark', id, name, jp, route: '/watchtower', world: [v3.x, v3.y + (id === 'torii' ? 4 : id === 'pagoda' ? 9 : 0), v3.z] });
     }
 
     publish();

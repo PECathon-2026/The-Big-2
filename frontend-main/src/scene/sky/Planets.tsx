@@ -35,6 +35,8 @@ export default function Planets() {
         uTwinkle: { value: 0 }, // planets don't twinkle
         uField: { value: 0 },
         uOutside: { value: 0 },
+        uIntroP: { value: 1 },
+        uIntroMagMax: { value: 5 },
       },
       transparent: true,
       depthWrite: false,

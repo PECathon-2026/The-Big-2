@@ -14,7 +14,7 @@ import { skyClock } from '@/scene/skyClock';
 import { tier } from '@/scene/quality';
 import { app } from '@/state/store';
 import { constellationGeom } from './constellations';
-import { domeHotspots, eqToWorld, hoverRef, live, outside, overlay, P, project, refreshProjector, tokA } from './shared';
+import { hintSpots, eqToWorld, hoverRef, live, outside, overlay, P, project, refreshProjector, tokA } from './shared';
 import { moonDraw } from './Moon';
 import { issArcAt, issPointAt, METEOR_SCALE, showerRateAt, skyData } from './skyData';
 import { meteorStats } from './Meteors';
@@ -34,6 +34,11 @@ const COMPASS: [string, string, number][] = [
   ['南', 'S', 180],
   ['西', 'W', 270],
 ];
+
+/** Intro progress for the stroke reveal (1 outside the intro). */
+let strokeP = 1;
+/** When constellation ci finishes drawing in the intro: staggered over 0.85…0.90 (starts 0.03 earlier). */
+const conEnd = (ci: number) => 0.85 + 0.05 * ((ci * 0.61803398875) % 1);
 
 /** The bottom-centre band the time compass (C) occupies: keep labels out of it. */
 const inBand = (x: number, y: number, W: number, H: number) => y > H * 0.72 && Math.abs(x - W / 2) < W * 0.27;
@@ -67,14 +72,18 @@ export default function OverlayPainter({ cat }: { cat: Catalog }) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
     refreshProjector(camera, W, H, frame++);
-    positionHotspots(phase === 'dome');
+    positionHints(phase === 'sky', W, H);
     if (phase === 'gate' || phase === 'loading' || phase === 'module') return;
 
     const out = outside();
     const inside = 1 - out;
     // constellations ink themselves in during the intro (82–90%), then stay
-    const reveal = phase === 'intro' ? THREE.MathUtils.smoothstep(s.introProgress, 0.82, 0.9) : 1;
-    const labelsOn = phase === 'sky' || phase === 'diving' ? 1 : phase === 'intro' ? reveal : 0;
+    // intro 82–90 %: each constellation's strokes draw in (staggered), names follow; complete at 0.90
+    const introP = phase === 'intro' ? s.introProgress : 1;
+    strokeP = introP;
+    const reveal = introP >= 0.82 ? 1 : 0;
+    const labelsOn = phase === 'sky' || phase === 'diving' ? 1 : 0;
+    const namesOn = phase === 'intro' ? (introP >= 0.82 ? 1 : 0) : labelsOn;
     const night = 0.25 + 0.75 * skyClock.palette.starFade;
     const e = skyClock.eqMatrix.elements;
     const zoom = Math.min(2, 62 / Math.max(12, camera.fov));
@@ -122,7 +131,7 @@ export default function OverlayPainter({ cat }: { cat: Catalog }) {
       }
 
       /* names (rank filter by zoom) */
-      if (labelsOn > 0.01 && inside > 0.5) {
+      if (namesOn > 0.01 && inside > 0.5) {
         const maxRank = camera.fov < 36 ? 3 : camera.fov < 66 ? 2 : 1;
         ctx.textAlign = 'center';
         for (let ci = 0; ci < geo.names.length; ci++) {
@@ -133,7 +142,9 @@ export default function OverlayPainter({ cat }: { cat: Catalog }) {
           eqToWorld(e, c[ci * 3], c[ci * 3 + 1], c[ci * 3 + 2], tmp, 0, R);
           if (tmp[1] < 6 || !project(tmp[0], tmp[1], tmp[2])) continue;
           if (P.x < -80 || P.x > W + 80 || P.y < -40 || P.y > H + 40 || inBand(P.x, P.y, W, H)) continue;
-          const a = labelsOn * night * (hovered ? 1 : n.rank === 1 ? 0.85 : 0.6);
+          const nameIn = strokeP >= 0.9 ? 1 : THREE.MathUtils.smoothstep(strokeP, conEnd(ci) - 0.012, conEnd(ci));
+          const a = namesOn * nameIn * night * (hovered ? 1 : n.rank === 1 ? 0.85 : 0.6);
+          if (a < 0.01) continue;
           ctx.fillStyle = tokA(hovered ? '--gold-bright' : '--gold', 0.85 * a);
           ctx.font = F.jp(hovered ? 17 : 14);
           ctx.fillText(n.ja, P.x, P.y - 6);
@@ -184,7 +195,7 @@ export default function OverlayPainter({ cat }: { cat: Catalog }) {
       const r = moonDraw.radius * pxPerUnit(P.depth, camera, H);
       const kanji = String(moon.info?.kanji ?? ''), romaji = String(moon.info?.romaji ?? '');
       ctx.textAlign = 'left';
-      ctx.fillStyle = tokA('--moon-warm', 0.9 * Math.max(labelsOn, phase === 'intro' ? reveal : 0));
+      ctx.fillStyle = tokA('--moon-warm', 0.9 * labelsOn);
       ctx.font = F.jp(15);
       ctx.fillText(`${kanji} · ${romaji}`, P.x + r + 12, P.y + 5);
     }
@@ -292,7 +303,7 @@ export default function OverlayPainter({ cat }: { cat: Catalog }) {
     }
 
     /* ---------- compass kanji on the horizon ---------- */
-    if (inside > 0.5) {
+    if (inside > 0.5 && phase !== 'intro') {
       ctx.textAlign = 'center';
       for (const [j, l, az] of COMPASS) {
         if (!project(Math.sin(az * DEG) * R, 0.8, -Math.cos(az * DEG) * R)) continue;
@@ -365,33 +376,47 @@ export default function OverlayPainter({ cat }: { cat: Catalog }) {
 
   function strokeFigures(ctx: CanvasRenderingContext2D, only: number, skipId: string | null, W: number, H: number) {
     const scr = geo.scr;
+    const partial = strokeP < 0.9;
     for (let p = 0; p < geo.polyCount; p++) {
       const ci = geo.polyCon[p];
       if (only >= 0 && ci !== only) continue;
       if (skipId && geo.names[ci].id === skipId) continue;
       const st = geo.polyStart[p];
-      for (let k = 0; k < geo.polyLen[p] - 1; k++) {
+      const nSeg = geo.polyLen[p] - 1;
+      // stroke reveal: how many segments of this polyline are drawn (the last one partially)
+      let drawn = nSeg;
+      if (partial) {
+        const e1 = conEnd(ci);
+        drawn = nSeg * THREE.MathUtils.smoothstep(strokeP, e1 - 0.03, e1);
+        if (drawn <= 0) continue;
+      }
+      for (let k = 0; k < nSeg && k < drawn; k++) {
         const a = (st + k) * 3, b = a + 3;
         if (!scr[a + 2] || !scr[b + 2]) continue;
-        const ax = scr[a], ay = scr[a + 1], bx = scr[b], by = scr[b + 1];
+        const ax = scr[a], ay = scr[a + 1];
+        let bx = scr[b], by = scr[b + 1];
         if ((ax < -300 && bx < -300) || (ax > W + 300 && bx > W + 300) || (ay < -300 && by < -300) || (ay > H + 300 && by > H + 300)) continue;
+        const f = drawn - k;
+        if (f < 1) {
+          bx = ax + (bx - ax) * f;
+          by = ay + (by - ay) * f;
+        }
         ctx.moveTo(ax, ay);
         ctx.lineTo(bx, by);
       }
     }
   }
 
-  function positionHotspots(on: boolean) {
-    for (const { el, anchor } of domeHotspots.values()) {
+  function positionHints(on: boolean, W: number, H: number) {
+    for (const { el, anchor } of hintSpots.values()) {
       const o = live.get(anchor);
-      const ok = on && o && o.world[1] > -2 && project(o.world[0], o.world[1], o.world[2]);
+      // only anchors that are up and on screen, and never under the compass band
+      const ok = on && o && (o.kind === 'landmark' || o.world[1] > 1) && project(o.world[0], o.world[1], o.world[2]) && P.x > 30 && P.x < W - 30 && P.y > 30 && P.y < H - 30 && !inBand(P.x, P.y, W, H);
       if (!ok) {
-        if (el.style.opacity !== '0') el.style.opacity = '0';
-        el.style.pointerEvents = 'none';
+        if (el.style.visibility !== 'hidden') el.style.visibility = 'hidden';
         continue;
       }
-      el.style.opacity = '1';
-      el.style.pointerEvents = 'auto';
+      el.style.visibility = 'visible';
       el.style.transform = `translate3d(${P.x.toFixed(1)}px, ${P.y.toFixed(1)}px, 0)`;
     }
   }

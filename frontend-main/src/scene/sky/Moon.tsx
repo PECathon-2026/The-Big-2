@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { DEG, R } from '@/astro/coords';
 import { skyClock } from '@/scene/skyClock';
 import { outside, tokColor } from './shared';
+import { app } from '@/state/store';
 
 export const MOON_DIST = R * 0.92;
 export const MOON_SCALE = 3; // × real angular size
@@ -154,7 +155,8 @@ export default function MoonAndSun() {
     h.scale.setScalar(moonDraw.radius * (7 + 6 * ill));
     halos.moon.opacity = (0.25 + 0.75 * ill) * (0.35 + 0.65 * night) * THREE.MathUtils.smoothstep(md[1], -0.01, 0.05);
     // the Sun only when above the horizon, and never seen from outside the dome (the dome holds the night)
-    const sunVis = sd[1] > -0.012 && out < 0.98;
+    // during the intro B draws the real-azimuth ink sun itself
+    const sunVis = sd[1] > -0.012 && out < 0.98 && app().phase !== 'intro';
     s.visible = sunVis;
     sg.visible = sunVis;
     const low = 1 - THREE.MathUtils.smoothstep(sd[1], 0.0, 0.3);

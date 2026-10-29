@@ -141,8 +141,8 @@ export const hoverRef: { obj: SkyObject | null; since: number; con: string | nul
 /** Shared overlay canvas (created by SkyOverlay, painted inside the R3F frame loop). */
 export const overlay: { canvas: HTMLCanvasElement | null } = { canvas: null };
 
-/** Dome hotspot DOM nodes registered by DomeOverlay; positioned each frame by the canvas loop. */
-export const domeHotspots = new Map<string, { el: HTMLElement; anchor: string }>();
+/** First-arrival hint DOM nodes (ArrivalHints); positioned each frame by the canvas loop. */
+export const hintSpots = new Map<string, { el: HTMLElement; anchor: string }>();
 
 /** Landmark meshes for raycast picking (torii, pagoda, ridges, fuji, sakura). */
 export const landmarks = new Map<string, THREE.Object3D>();

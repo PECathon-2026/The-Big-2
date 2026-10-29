@@ -13,8 +13,10 @@ import { skyClock } from '@/scene/skyClock';
 import { rig } from '@/scene/Director';
 import { app } from '@/state/store';
 import { outside } from './shared';
+import { INTRO_REVEAL_GLSL, intro, introRevealProgress } from '@/scene/intro/introBus';
 
 export const starVS = /* glsl */ `
+  ${INTRO_REVEAL_GLSL}
   attribute float aSize; attribute vec3 aColor; attribute float aTw; attribute float aMag;
   uniform float uTime; uniform float uDpr; uniform float uFade; uniform float uLimMag; uniform float uScale;
   uniform float uTwinkle; uniform float uField; uniform float uOutside;
@@ -28,7 +30,8 @@ export const starVS = /* glsl */ `
     float tw = 1.0 + uTwinkle * (0.10 + 0.22 * horizon) * sin(uTime * (1.7 + aTw * 2.3) + aTw * 31.0) * sin(uTime * (0.9 + aTw) + aTw * 7.0);
     float lim = smoothstep(uLimMag + 0.5, uLimMag - 0.5, aMag);
     float bright = clamp(1.35 - aMag * 0.12, 0.55, 1.0);
-    vAlpha = ext * lim * uFade * bright * tw;
+    // petal → star handoff (B): each star appears exactly as its petal lands; 1 outside the intro
+    vAlpha = ext * lim * uFade * bright * tw * introReveal(aMag);
     vec3 c = mix(aColor, aColor * vec3(1.0, 0.86, 0.72), horizon * horizon * (1.0 - uOutside));
     vColor = mix(c, vec3(dot(c, vec3(0.33)) * 1.3, 0.05, 0.03), uField);
     vCore = clamp((2.0 - aMag) * 0.35, 0.0, 1.0);
@@ -94,6 +97,8 @@ export default function Stars({ cat }: { cat: Catalog }) {
         uTwinkle: { value: 1 },
         uField: { value: 0 },
         uOutside: { value: 0 },
+        uIntroP: { value: 1 },
+        uIntroMagMax: { value: 5 },
       },
       transparent: true,
       depthWrite: false,
@@ -118,6 +123,8 @@ export default function Stars({ cat }: { cat: Catalog }) {
     u.uFade.value = THREE.MathUtils.lerp(skyClock.palette.starFade, Math.max(skyClock.palette.starFade, 0.85), out);
     u.uLimMag.value = THREE.MathUtils.lerp(skyClock.palette.limitingMag, Math.max(skyClock.palette.limitingMag, 5.6), out);
     u.uField.value = s.field ? 1 : 0;
+    u.uIntroP.value = introRevealProgress();
+    u.uIntroMagMax.value = intro.magMax;
     // keep stars readable when the camera pulls out to the dome; slightly larger when zoomed in
     const dist = Math.hypot(rig.cur.pos[0], rig.cur.pos[1], rig.cur.pos[2]);
     u.uScale.value = THREE.MathUtils.clamp(1 - dist / 700, 0.55, 1) * (62 / Math.max(12, rig.cur.fov)) ** 0.3;

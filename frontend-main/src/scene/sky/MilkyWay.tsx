@@ -197,6 +197,8 @@ function MilkyWayInner({ raster }: { raster: Raster }) {
         uTwinkle: { value: 0.6 },
         uField: { value: 0 },
         uOutside: { value: 0 },
+        uIntroP: { value: 1 },
+        uIntroMagMax: { value: 5 },
       },
       transparent: true,
       depthWrite: false,
