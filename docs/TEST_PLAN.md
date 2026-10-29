@@ -92,44 +92,34 @@ Start the backend from `backend/` with `uvicorn app.main:app --port 8000`, then 
 
 ---
 
-## Part B — agentic testing plan
+## Part B — automated testing plan (token-efficient)
 
-Goal: agents try to break the backend the way a skeptical judge would, with no human in the loop, and report only
-verified failures with a reproduction. They write new tests, never fixes.
+Principle: anything deterministic is a **script**, written once and run for free with `pytest`. Agents are used
+only where judgment is needed, and then the cheapest model that can read a web page (Haiku), one at a time.
+Fable reviews failures, never the whole codebase.
 
-### B1. Property and contract sweep (fast, run on every change)
-- Walk every route in `app.main` (56 handlers). For each: a valid call gives 200 with the Envelope shape; missing or invalid params give 422; out-of-range lat/lon give 422; absurd `days`, `radius`, `limit` are capped or 422.
-- Assert invariants per module: scores in 0–100 with contributions summing; times monotonic (sunset, dusk, dawn, sunrise); altitudes within ±90; illumination 0–1; rates non-negative; no NaN or Infinity anywhere in the JSON (recursive scan).
-- Deliverable: `tests/test_contract.py` using `hypothesis` over lat, lon and time, kept in the repo.
+### B1. Scripts, written in the normal confirm-and-commit cycle (one file per step)
+| File | What it checks | Run with |
+|---|---|---|
+| `tests/test_contract.py` | Every route in `app.main` (56 handlers): valid call gives 200 with the Envelope shape; missing or invalid params give 422; out-of-range lat/lon give 422; absurd `days`/`radius`/`limit` are capped or 422. `hypothesis` generates lat, lon and time. Invariants: scores 0–100 with contributions summing, times monotonic (sunset, dusk, dawn, sunrise), altitudes within ±90, illumination 0–1, rates non-negative, no NaN or Infinity anywhere (recursive scan). | `pytest tests/test_contract.py` |
+| `tests/test_chaos.py` | A fixture monkeypatches `core.http.fetch` to return, per upstream (Open-Meteo, GIBS, Overpass, CelesTrak, Launch Library, ALeRCE, SDSS, SIMBAD, SWPC, SkyView): timeout, 429, 500, HTML instead of JSON, truncated JSON, empty list, Overpass `remark`-only. Expected: stale cache, then replay, then 502 `provider_unavailable`, provenance truthful. Fails if any endpoint answers 200 with zero-filled or fabricated data and no note. Corrupted files in `data/cache` and `data/replay` are ignored and rebuilt. | `pytest tests/test_chaos.py` |
+| `tests/test_lens_redteam.py` | Synthetic fields with known truth: false positives below the stated rate, flux conservation within 2 %, re-blur SSIM above threshold, no structure above noise where truth is empty. Adversarial inputs: pure noise, saturated frame, hot pixels, JPEG block artefacts, extreme aspect ratios, 1×1 and very large images, 16-bit FITS, colour and mono, broken WCS header. Ten concurrent jobs; restart mid-run marks the right jobs failed. | `pytest tests/test_lens_redteam.py` |
+| `tests/test_state_machines.py` | Fuzzed sequences of observe, schedule, unsubscribe, restart against a model of expected state with SQLite as oracle: no points for impossible claims, ledger never loses rows, each alert fires exactly once, past-due alerts across a restart deliver once or are marked missed. | `pytest tests/test_state_machines.py` |
+| `scripts/soak.py` | Hits the demo-city routes at demo rate plus bursts of about 20 requests per second for 30 minutes with `httpx`; prints p95 per route (flag above 2 s), counts 429s from Overpass and elevation (must be 0), samples process memory (must stay flat). | `python scripts/soak.py` |
+| `scripts/check_frontend_contract.py` | Loads `/openapi.json` and parses `frontend-basic/src/api.ts` and frontend-main's copy: every path the UI calls exists, every field it reads exists with the right type. Catches the horizon, spectra and aurora gap. | `python scripts/check_frontend_contract.py` |
 
-### B2. Astronomy ground truth
-- Pull reference values from independent sources (timeanddate for rise/set, NASA for eclipses and phases, heavens-above for ISS passes, Stellarium Web for planet alt/az) for 6 locations across both hemispheres, 3 dates each, and compare within tolerances: rise/set ±2 min, alt/az ±0.5°, phase ±1 %.
-- Deviations beyond tolerance are bugs, reported in a table.
+Order of writing: contract, chaos, Lens red team (most likely to find real bugs), then state machines, soak, frontend contract.
+Each file is one feature in the cycle: build, explain, you run it, confirm, commit.
 
-### B3. Chaos and provider failure
-- Monkeypatch each upstream (Open-Meteo, GIBS, Overpass, CelesTrak, Launch Library, ALeRCE, SDSS, SIMBAD, SWPC, SkyView) to return: timeout, 429, 500, HTML instead of JSON, truncated JSON, an empty list, an Overpass reply with only a `remark`.
-- Expected each time: stale cache, then replay, then 502 `provider_unavailable`, with provenance telling the truth. Fail if any endpoint answers 200 with zero-filled or fabricated data and no note.
-- Also: a corrupted file in `data/cache` or `data/replay` is ignored and rebuilt without a crash.
+### B2. Two cheap agents, sequential, Haiku
+- **Ground truth.** Input: six locations across both hemispheres, three dates each, the three reference sites (timeanddate for rise/set, heavens-above for ISS passes, Stellarium Web for planet alt/az) and our endpoints. Output: one table of ours vs reference with tolerances (rise/set ±2 min, alt/az ±0.5°, phase ±1 %) and a list of rows outside tolerance. No code reading.
+- **Fresh clone.** Clone into an empty directory, follow `README.md` and `docs/DEPLOY.md` literally, start with `TSUKUYOMI_REPLAY_MODE=first` and no network, run `pytest`, open the test UI. Output: every step that needed knowledge not in the docs.
 
-### B4. Lens honesty red team
-- Generate synthetic fields with known truth (stars, galaxies, noise, blur kernels), run the full pipeline and check: no detections where nothing was injected beyond the stated false-positive rate; flux conservation within 2 %; SSIM of the re-blurred result against the input above threshold; and the key one, no structure above noise in regions that were empty in truth.
-- Adversarial inputs: pure noise, saturated frame, hot pixels, heavy JPEG block artefacts, extreme aspect ratios, a 1×1 and a 20000×20000 image, 16-bit FITS, colour and mono, FITS with a broken WCS header.
-- Concurrency: 10 jobs at once all finish and none corrupts another; a restart mid-run marks the right jobs failed.
+### B3. Fable reviews failures only
+Every red test, soak outlier, contract mismatch or Haiku finding comes to this session as a short list with a curl
+reproduction. Fixes go through the normal feature-by-feature cycle, one commit each.
 
-### B5. Honor and alerts state machine
-- Fuzz sequences of observe, schedule, unsubscribe and restart against a model of expected state with SQLite as the oracle. Points are never awarded for impossible claims, the ledger never loses rows, each alert fires exactly once, and alerts past due across a restart are delivered once or marked missed, never twice.
-
-### B6. Load and demo-day soak
-- Hit the demo-city endpoints at a 10-minute demo's rate plus a fast-clicking judge (about 20 requests per second in bursts). Measure p95 latency per route with a warm cache and flag anything above 2 s. Confirm Overpass and elevation never return 429 during the run. Memory stays flat over 30 minutes.
-
-### B7. Frontend contract
-- Diff `frontend-basic/src/api.ts` and frontend-main's copy against the live `/openapi.json`: every field the UI reads exists with the right type and every endpoint the UI calls exists. This catches the horizon, spectra and aurora gap in the teammate's copy.
-
-### B8. Fresh clone
-- Clone into a clean directory without the venv and caches, follow `README.md` and `docs/DEPLOY.md` literally, start with `TSUKUYOMI_REPLAY_MODE=first` and no network, run `pytest`, open the test UI. Anything that needs tribal knowledge is a documentation bug.
-
-### How to run it
-Order: B1, B3, B4 first (most likely to find real bugs), then B2, B5, B6, B7, B8. Each agent gets one dimension,
-read-only access except for new tests under `backend/tests/`, and must deliver confirmed failures with a curl
-reproduction and a one-line fix proposal, no fixes applied. Fixes then go through the normal feature-by-feature
-cycle so every change is explained, tested by you and committed on its own.
+### Cost
+Writing the six scripts is one session of output here; running them is free forever. The two Haiku runs are a
+fraction of one Fable agent. Total is well under a tenth of eight parallel Fable agents, and the deterministic parts
+cannot hallucinate a pass.
