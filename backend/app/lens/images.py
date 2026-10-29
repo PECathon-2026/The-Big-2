@@ -54,7 +54,13 @@ def _stretch_fn(mode: str):
 
 
 def _limits(sub: np.ndarray, sigma: float) -> tuple[float, float]:
-    lo = -1.0 * sigma
+    """Display range for a background-subtracted frame.
+
+    The lower limit must not sit at -1σ for images whose 'background' is the object itself (a press JPEG of a
+    galaxy): dust lanes are legitimately below the fitted background and would clip to black. Use the darker of
+    -1σ and the 0.2th percentile so every real pixel keeps some tone.
+    """
+    lo = min(-1.0 * sigma, float(np.percentile(sub, 0.2)))
     hi = float(np.percentile(sub, 99.5))
     hi = max(hi, lo + 10.0 * sigma, lo + 1e-6)
     return lo, hi
@@ -75,8 +81,10 @@ def render_luminance(sub: np.ndarray, a: JobArrays, stretch: str) -> np.ndarray:
     s = f(v)
     if a.rgb is None:
         return (s * 255.0 + 0.5).astype(np.uint8)
-    v0 = np.clip((a.sub.astype(np.float64) - lo) / (hi - lo), 1e-4, None)
-    ratio = (s / v0)[..., None]
+    # colour: keep the original chroma, scale each pixel by (stretched / original) luminance; cap the gain so
+    # near-black pixels cannot blow up into saturated colour noise
+    v0 = np.clip((a.sub.astype(np.float64) - lo) / (hi - lo), 1e-3, None)
+    ratio = np.clip(s / v0, 0.0, 4.0)[..., None]
     out = np.clip(a.rgb.astype(np.float64) / 255.0 * ratio, 0.0, 1.0)
     return (out * 255.0 + 0.5).astype(np.uint8)
 

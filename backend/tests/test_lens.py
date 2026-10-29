@@ -133,3 +133,21 @@ def test_unknown_job_and_bad_upload(client: TestClient):
     assert r.status_code == 202
     body = _wait(client, r.json()["job_id"])
     assert body["status"] == "failed" and body["error"]
+
+
+def test_press_jpeg_display_keeps_dust_lanes(client: TestClient):
+    """A galaxy press JPEG: pixels darker than the fitted 'background' (dust lanes) must not clip to black."""
+    import io
+
+    import numpy as np
+    from PIL import Image
+
+    if client.get("/api/lens/samples/heic1502a").status_code != 200:
+        pytest.skip("real sample not downloaded in this environment")
+    r = client.post("/api/lens/jobs", data={"sample_id": "heic1502a", "denoise_strength": 0.5, "deblur_iterations": 0, "detect_sigma": 3.0})
+    job = _wait(client, r.json()["job_id"], timeout=90)
+    assert job["status"] == "done", job.get("error")
+    png = client.get(f"/api/lens/jobs/{job['job_id']}/image/original", params={"stretch": "linear"}).content
+    im = np.array(Image.open(io.BytesIO(png)))
+    black = float((im.max(axis=2) == 0).mean())
+    assert black < 0.01, f"{black:.1%} of the display is pure black"
