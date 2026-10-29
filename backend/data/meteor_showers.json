@@ -1,0 +1,18 @@
+{
+  "source": "IMO Working List of Visual Meteor Showers (major showers, standard values); radiant at peak, drift ignored",
+  "showers": [
+    {"code": "QUA", "name": "Quadrantids", "jp": "しぶんぎ座流星群", "start": "12-28", "end": "01-12", "peak": "01-03", "ra": 230.0, "dec": 49.0, "zhr": 110, "r": 2.1, "velocity_kms": 41},
+    {"code": "LYR", "name": "Lyrids", "jp": "こと座流星群", "start": "04-14", "end": "04-30", "peak": "04-22", "ra": 271.0, "dec": 34.0, "zhr": 18, "r": 2.1, "velocity_kms": 49},
+    {"code": "ETA", "name": "eta Aquariids", "jp": "みずがめ座η流星群", "start": "04-19", "end": "05-28", "peak": "05-06", "ra": 338.0, "dec": -1.0, "zhr": 50, "r": 2.4, "velocity_kms": 66},
+    {"code": "SDA", "name": "Southern delta Aquariids", "jp": "みずがめ座δ南流星群", "start": "07-12", "end": "08-23", "peak": "07-30", "ra": 340.0, "dec": -16.0, "zhr": 25, "r": 3.2, "velocity_kms": 41},
+    {"code": "CAP", "name": "alpha Capricornids", "jp": "やぎ座α流星群", "start": "07-03", "end": "08-15", "peak": "07-30", "ra": 307.0, "dec": -10.0, "zhr": 5, "r": 2.5, "velocity_kms": 23},
+    {"code": "PER", "name": "Perseids", "jp": "ペルセウス座流星群", "start": "07-17", "end": "08-24", "peak": "08-12", "ra": 48.0, "dec": 58.0, "zhr": 100, "r": 2.2, "velocity_kms": 59},
+    {"code": "DRA", "name": "Draconids", "jp": "りゅう座流星群", "start": "10-06", "end": "10-10", "peak": "10-08", "ra": 262.0, "dec": 54.0, "zhr": 10, "r": 2.6, "velocity_kms": 20},
+    {"code": "STA", "name": "Southern Taurids", "jp": "おうし座南流星群", "start": "09-10", "end": "11-20", "peak": "10-10", "ra": 32.0, "dec": 9.0, "zhr": 5, "r": 2.3, "velocity_kms": 27},
+    {"code": "ORI", "name": "Orionids", "jp": "オリオン座流星群", "start": "10-02", "end": "11-07", "peak": "10-21", "ra": 95.0, "dec": 16.0, "zhr": 20, "r": 2.5, "velocity_kms": 66},
+    {"code": "NTA", "name": "Northern Taurids", "jp": "おうし座北流星群", "start": "10-20", "end": "12-10", "peak": "11-12", "ra": 58.0, "dec": 22.0, "zhr": 5, "r": 2.3, "velocity_kms": 29},
+    {"code": "LEO", "name": "Leonids", "jp": "しし座流星群", "start": "11-06", "end": "11-30", "peak": "11-17", "ra": 152.0, "dec": 22.0, "zhr": 10, "r": 2.5, "velocity_kms": 71},
+    {"code": "GEM", "name": "Geminids", "jp": "ふたご座流星群", "start": "12-04", "end": "12-20", "peak": "12-14", "ra": 112.0, "dec": 33.0, "zhr": 150, "r": 2.6, "velocity_kms": 35},
+    {"code": "URS", "name": "Ursids", "jp": "こぐま座流星群", "start": "12-17", "end": "12-26", "peak": "12-22", "ra": 217.0, "dec": 76.0, "zhr": 10, "r": 3.0, "velocity_kms": 33}
+  ]
+}
