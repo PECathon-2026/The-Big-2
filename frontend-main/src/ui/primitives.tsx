@@ -35,7 +35,8 @@ export function Hairline({ className = '' }: { className?: string }) {
   return <hr className={`tw-hairline ${className}`} />;
 }
 
-export type ButtonVariant = 'primary' | 'secondary' | 'commit';
+/** gold = solid gold CTA · primary = gold outline · secondary = text + hairline · commit = crimson */
+export type ButtonVariant = 'gold' | 'primary' | 'secondary' | 'commit';
 
 export const Button = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant }>(function Button(
   { variant = 'primary', className = '', type = 'button', ...rest },
@@ -44,8 +45,21 @@ export const Button = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLBut
   return <button ref={ref} type={type} className={`tw-btn ${variant} ${className}`} {...rest} />;
 });
 
-/** Glass panel. `spotlight` adds a gold spotlight following the pointer. Sets data-cursor="off". */
-export function Card({ children, spotlight = false, className = '', ...rest }: HTMLAttributes<HTMLDivElement> & { spotlight?: boolean }) {
+export interface CardProps extends HTMLAttributes<HTMLDivElement> {
+  /** crimson + gold spotlight following the pointer */
+  spotlight?: boolean;
+  /** translucent blurred body instead of solid #0B0B0B (for cards floating directly over the sky) */
+  glassy?: boolean;
+  /** PECFEST header row: crimson seal + Cinzel brand text on the left */
+  brand?: { kanji: string; text: string };
+  /** header tag on the right, e.g. "№ 01" */
+  tag?: ReactNode;
+  /** hide the inner gold frame + corner brackets (dense lists) */
+  plain?: boolean;
+}
+
+/** PECFEST developer card (pecfest.in/developer): #0B0B0B, 20px radius, gold inner frame + corner brackets. */
+export function Card({ children, spotlight = false, glassy = false, brand, tag, plain = false, className = '', ...rest }: CardProps) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = ref.current;
@@ -59,11 +73,46 @@ export function Card({ children, spotlight = false, className = '', ...rest }: H
     return () => el.removeEventListener('pointermove', move);
   }, [spotlight]);
   return (
-    <div ref={ref} data-cursor="off" className={`glass tw-card ${spotlight ? 'spotlight' : ''} ${className}`} {...rest}>
-      {children}
+    <div ref={ref} data-cursor="off" className={`tw-card ${glassy ? 'glassy' : ''} ${spotlight ? 'spotlight' : ''} ${className}`} {...rest}>
+      {!plain && (
+        <>
+          <span className="tw-card-frame" aria-hidden="true" />
+          <span className="tw-card-corner tl" aria-hidden="true" />
+          <span className="tw-card-corner tr" aria-hidden="true" />
+          <span className="tw-card-corner bl" aria-hidden="true" />
+          <span className="tw-card-corner br" aria-hidden="true" />
+        </>
+      )}
+      <div className="tw-card-content">
+        {(brand || tag) && (
+          <div className="tw-card-head">
+            {brand ? (
+              <span className="tw-card-brand">
+                <span className="tw-card-brand-kanji" lang="ja">
+                  {brand.kanji}
+                </span>
+                {brand.text}
+              </span>
+            ) : (
+              <span />
+            )}
+            {tag && <span className="tw-tag num">{tag}</span>}
+          </div>
+        )}
+        {children}
+      </div>
     </div>
   );
 }
+
+/** Small dark tag with gold hairline (PECFEST role tag / № box). */
+export function Tag({ children, num = false, className = '' }: { children: ReactNode; num?: boolean; className?: string }) {
+  return <span className={`tw-tag ${num ? 'num' : ''} ${className}`}>{children}</span>;
+}
+
+/** Gold gradient divider and crimson brush underline from the PECFEST card. */
+export const Divider = () => <span className="tw-divider" aria-hidden="true" />;
+export const BrushLine = () => <span className="tw-brush" aria-hidden="true" />;
 
 export type ChipVariant = 'live' | 'mock' | 'stale' | 'provenance' | 'plain';
 

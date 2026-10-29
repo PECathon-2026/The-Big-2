@@ -36,6 +36,11 @@ Shared coordination file (AGENT_BRIEF §0). Append, don't rewrite other people's
   - D: `modules/<name>/index.tsx` (default export page), `modules/_ui/`
 - **Phases:** `gate → loading → intro → dome → sky ⇄ diving → module`. App syncs `module` with the route. The canvas wrapper dims (brightness .35, blur 6px) in `module`, and the frameloop switches to `demand` there.
 
+## Decisions log
+
+- **Palette changed by the product owner → "Crimson Sakura Night".** It takes PECFEST colours with high inspiration from pecfest.in/developer cards, plus sakura pink, traditional Japanese colours and a celestial layer. See the override box at the top of AGENT_BRIEF §5.1 and `src/styles/tokens.css`. Use `<Card brand tag>`, `<Button variant="gold|primary|secondary|commit">`, `<Tag>`, `<Divider/>`, `<BrushLine/>` from `@/ui`.
+- **Web Push exists in the backend now** (`/api/alerts/*`). `src/data/push.ts` (`ensureSubscribed`, `unsubscribe`) and `public/sw.js` are copied from frontend-basic. "Remind me" on /scroll (D) should use `POST /api/alerts/schedule-event` after `ensureSubscribed()`. The PWA plugin (Phase 3) must keep `/sw.js` push handling: the lead will use injectManifest or import it.
+
 ## Status
 
 - **Lead · Phase 0 done:** foundation committed. The flow runs gate (stub) → intro (stub, Skip) → dome (real stars, Moon, glass rim) → sky (drag/zoom) → module stubs. The Watchtower stub shows the real verdict and score with an ⓘ trace.

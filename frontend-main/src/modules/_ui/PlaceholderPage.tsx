@@ -7,7 +7,7 @@ import { Button, Eyebrow, Title } from '@/ui';
 export default function PlaceholderPage({ eyebrow, title, children }: { eyebrow: string; title: ReactNode; children?: ReactNode }) {
   const nav = useNavigate();
   return (
-    <main data-cursor="off" style={{ position: 'fixed', inset: 0, zIndex: 40, overflow: 'auto', padding: '96px max(24px, 8vw) 64px' }} className="reveal-ink">
+    <main data-cursor="off" style={{ position: 'fixed', inset: 0, zIndex: 40, overflow: 'auto', padding: '96px max(24px, 8vw) 64px', background: 'var(--ambient)' }} className="reveal-ink pecfest-rails">
       <Button
         variant="secondary"
         onClick={() => {

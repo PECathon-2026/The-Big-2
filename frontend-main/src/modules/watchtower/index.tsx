@@ -8,7 +8,7 @@ export default function Watchtower() {
   const v = score.data?.verdict;
   return (
     <PlaceholderPage eyebrow="二 · 見張り · THE WATCHTOWER" title={<>Where and <em>whether</em>.</>}>
-      <Card style={{ maxWidth: 520 }}>
+      <Card spotlight brand={{ kanji: '見', text: 'Watchtower' }} tag="№ 01" style={{ maxWidth: 520 }}>
         {score.status === 'loading' && !v && <p>Reading tonight's forecast…</p>}
         {score.error && !v && <p>Forecast unavailable: {score.error}</p>}
         {v && (

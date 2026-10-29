@@ -12,7 +12,7 @@ const rimVS = /* glsl */ `
   void main(){ vec4 w = modelMatrix * vec4(position,1.0); vN = normalize(mat3(modelMatrix) * normal); vV = normalize(cameraPosition - w.xyz); gl_Position = projectionMatrix * viewMatrix * w; }`;
 const rimFS = /* glsl */ `
   uniform float uOpacity; varying vec3 vN; varying vec3 vV;
-  void main(){ float f = pow(1.0 - abs(dot(vN, vV)), 3.0); vec3 c = mix(vec3(0.85,0.87,0.92), vec3(0.81,0.66,0.31), f); gl_FragColor = vec4(c, f * 0.55 * uOpacity); }`;
+  void main(){ float f = pow(1.0 - abs(dot(vN, vV)), 3.0); vec3 c = mix(vec3(0.85,0.87,0.90), vec3(0.77,0.60,0.27), f); gl_FragColor = vec4(c, f * 0.55 * uOpacity); }`;
 
 export default function DomeLayer() {
   const mat = useRef<THREE.ShaderMaterial>(null);

@@ -168,6 +168,33 @@ Open `http://localhost:8000/docs` to try the endpoints.
 
 ### 5.1 Colour tokens (`src/styles/tokens.css`)
 
+> **PRODUCT-OWNER OVERRIDE (supersedes the "Moonlit shrine" palette below and the §3 Palette row).**
+> The palette is now **"Crimson Sakura Night"**: PECFEST colours with high inspiration from **pecfest.in/developer**, plus cherry-blossom pink, traditional Japanese colours and a celestial layer. `src/styles/tokens.css` is the source of truth. **Read it and use its variables; never hard-code hex.**
+>
+> - **Surfaces:** page `--page-bg #07090C` with `--ambient` (gold `.12` + crimson `.08` radial glow) and `.pecfest-rails` (gold vertical hairlines). Cards use `--card-black #0B0B0B`.
+> - **Cards = the PECFEST developer card** (`<Card>` in `src/ui` does it all):
+>   - 20 px radius and `--card-shadow`
+>   - a 1 px `--card-line` inner frame inset 9 px (14 px radius) with solid `--card-gold #C49A45` corner brackets
+>   - an optional header: a crimson `--shu #C62920` kanji seal + Cinzel brand text, and a `№ 01` tag
+>   - names in Shippori 600, `--kinu #E8D9B5`, under a crimson brush line (`<BrushLine/>`)
+>   - gold gradient `<Divider/>`, `<Tag>` role tags, `.tw-icon-btn` square icon buttons
+> - **Buttons are square** (radius 0):
+>   - `gold`: solid `--gold-button #C8AA6D` with dark ink. Use it for main CTAs.
+>   - `primary`: gold outline
+>   - `secondary`: text plus a hairline
+>   - `commit`: crimson
+>   - Pills are only for the sound toggle and chips.
+> - **Crimson is the PECFEST signature** (`--crimson #A70D16`, `--crimson-bright #D81E28`, `--crimson-deep #61070D`, `--shu`). It is used for live/now, seals, torii, commits, brush underlines and ambient glow, and is no longer restricted to the intro frame. `--vermilion*` and `--urushi*` remain as aliases.
+> - **Gold is hierarchy** (pecfest `#C99A3A`, bright `#E8C66A`, dark `#73501D`, accent word `#E2C17F`).
+> - **Sakura:**
+>   - `--sakura #F4C6CF`, `--sakura-deep`, `--nadeshiko #EEBBCB` and `--kobai #E16B8C` (pink accents, hover glows on pink surfaces)
+>   - `--beni-zakura #B3141E`: crimson blossoms on black branches, as in the pecfest card art. Use it for petals and tree blossoms mixed with pink.
+> - **Celestial layer:** `--murasaki #6A4C9C` (constellation hover, ecliptic, zodiac), `--fuji #8F7FC1` (wisteria), `--nebula #2C1B4E` (Milky Way / panel washes), `--starlight #A9C1F0` (cool star glints), `--moon #D9DDE6` (data numerals).
+> - **Text:** `--washi #EFE4CD`, `--ivory #F2E9D5`, `--washi-2/3`, `--jade-fog #829B91` (quiet labels).
+> - **Sky by Sun altitude** (`astro/skyColor.ts`): night `#08070F/#120E22` → nautical `#140F2E/#3B1A35` → civil `#2A2150/#9E3329` → golden `#7E6A92/#D3572E` → day `#C9C4CC/#EADBC8`. Dusk runs through the PECFEST rising-sun reds into a murasaki night.
+>
+> The original block follows for history only.
+
 ```css
 :root {
   /* night surfaces (~90% of pixels) */

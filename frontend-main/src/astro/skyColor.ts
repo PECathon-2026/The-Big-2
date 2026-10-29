@@ -1,11 +1,14 @@
-/** Sky colour from the Sun's real altitude (AGENT_BRIEF §5.1). */
+/**
+ * Sky colour from the Sun's real altitude (AGENT_BRIEF §5.1, "Crimson Sakura Night" palette).
+ * Dusk runs through the PECFEST rising-sun reds into a murasaki-violet night.
+ */
 
 const STOPS: { alt: number; zenith: [number, number, number]; horizon: [number, number, number] }[] = [
-  { alt: -18, zenith: hex('#07070B'), horizon: hex('#0E1222') },
-  { alt: -12, zenith: hex('#121735'), horizon: hex('#2B2140') },
-  { alt: -6, zenith: hex('#2A2F55'), horizon: hex('#B4553A') },
-  { alt: 0, zenith: hex('#8C7E98'), horizon: hex('#E2A06A') },
-  { alt: 6, zenith: hex('#C9CCD0'), horizon: hex('#E6DCC6') },
+  { alt: -18, zenith: hex('#08070F'), horizon: hex('#120E22') }, // astronomical night: violet-black
+  { alt: -12, zenith: hex('#140F2E'), horizon: hex('#3B1A35') }, // nautical dusk: nebula over crimson-violet
+  { alt: -6, zenith: hex('#2A2150'), horizon: hex('#9E3329') }, // civil dusk: murasaki over pecfest sun-2
+  { alt: 0, zenith: hex('#7E6A92'), horizon: hex('#D3572E') }, // golden hour: wisteria over pecfest sun-1
+  { alt: 6, zenith: hex('#C9C4CC'), horizon: hex('#EADBC8') }, // day: ink-wash washi
 ];
 
 function hex(h: string): [number, number, number] {
@@ -24,7 +27,7 @@ const toHex = (c: [number, number, number]) =>
 export interface SkyPalette {
   zenith: string;
   horizon: string;
-  /** linear 0..1 RGB, handy for three.js Color.setRGB */
+  /** 0..1 sRGB, for three.js Color.setRGB(..., SRGBColorSpace) */
   zenithRgb: [number, number, number];
   horizonRgb: [number, number, number];
   /** 1 = full night stars, 0 = stars hidden */

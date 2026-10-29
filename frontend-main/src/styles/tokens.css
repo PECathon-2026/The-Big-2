@@ -1,46 +1,88 @@
-/* Design tokens — AGENT_BRIEF §5.1 and §5.3. These variables are the source of truth;
-   Tailwind's @theme (globals.css) maps onto them. */
+/* Design tokens — "Crimson Sakura Night" (product-owner override of AGENT_BRIEF §5.1, see NOTES.md).
+   PECFEST colours (sampled from pecfest.in's own CSS variables) + cherry blossom + traditional
+   Japanese colours + a celestial layer. These variables are the source of truth; Tailwind's @theme
+   (globals.css) maps onto them. Old token names are kept as aliases so nothing breaks. */
 :root {
-  /* night surfaces (~90% of pixels) */
-  --sumi: #07070B;
-  --ink: #121219;
-  --night: #0B1222;
-  --indigo: #101B2B;
-  --lacquer: rgba(10, 12, 22, .66);
+  /* night surfaces (~85% of pixels) — PECFEST sumi/indigo with a faint violet night */
+  --sumi: #090A0C;          /* pecfest --color-sumi */
+  --ink: #141416;           /* pecfest --color-ink */
+  --night: #0B0A18;         /* sky field: indigo shading into murasaki */
+  --indigo-deep: #07101B;   /* pecfest --color-indigo-deep */
+  --indigo: #101B2B;        /* pecfest --color-indigo: panels, dialogs */
+  --forest-black: #111916;  /* pecfest forest sections */
+  --page-bg: #07090C;       /* pecfest /developer page root */
+  --header-bg: rgba(11, 21, 28, .91); /* pecfest navbar */
+  --lacquer: rgba(11, 11, 11, .72);   /* glass over the sky (+ blur 12px) */
+  --card-fill: rgba(22, 28, 35, .6);  /* pecfest .card (light variant) */
+
+  /* PECFEST developer-card system (pecfest.in/developer .jp-card-*) */
+  --card-black: #0B0B0B;              /* card body */
+  --card-gold: #C49A45;               /* corner brackets, role text */
+  --card-line: rgba(196, 154, 69, .35); /* inner frame, tags, icon buttons */
+  --card-line-soft: rgba(196, 154, 69, .2);
+  --kinu: #E8D9B5;                    /* 絹 silk parchment: card names, numerals */
+  --shu: #C62920;                     /* 朱 seal crimson */
+  --gold-button: #C8AA6D;             /* solid gold button */
+  --gold-button-ink: #161612;
+  --card-shadow: 0 18px 40px -10px rgba(0, 0, 0, .9), 0 2px 6px 0 rgba(0, 0, 0, .6), inset 0 0 0 1px rgba(196, 154, 69, .1);
+  --tag-shadow: 0 2px 6px 0 rgba(0, 0, 0, .7);
+  --ambient: radial-gradient(circle at 50% 25%, rgba(201, 154, 58, .12) 0, rgba(140, 32, 24, .08) 40%, rgba(7, 10, 14, .98) 75%);
+
+  /* crimson = PECFEST's signature: live / now, seals, torii, commits, hot accents */
+  --crimson: #A70D16;        /* pecfest --color-crimson */
+  --crimson-deep: #61070D;   /* pecfest --color-crimson-deep */
+  --crimson-bright: #D81E28; /* pecfest --color-crimson-bright */
+  --beni: #C8372D;           /* 紅 beni — ink red for brush marks */
+
+  /* rising sun (pecfest sun gradient) */
+  --sun-1: #D3572E;
+  --sun-2: #9E3329;
+  --sun-3: #762922;
+  --akane: #A84C37;          /* 茜 madder: dusk, warm hairlines (pecfest accent rgb 168,76,55) */
+
+  /* cherry blossom */
+  --beni-zakura: #B3141E;    /* 紅桜 crimson blossom (pecfest card art: red sakura on black branches) */
+  --sakura: #F4C6CF;         /* 桜 petals */
+  --sakura-deep: #E79AB0;
+  --nadeshiko: #EEBBCB;      /* 撫子 soft pink highlight */
+  --kobai: #E16B8C;          /* 紅梅 plum-blossom pink: hover glows, focus on pink surfaces */
+  --sakura-washi: #F3E4E2;   /* gate paper */
 
   /* paper / text */
-  --washi: #EDE6D6;
-  --washi-2: #D6CAB0;
-  --washi-3: #BDB094;
-  --paper-ink: #1B1A20;
-  --mist: #8B94A7;
+  --washi: #EFE4CD;          /* pecfest --color-washi: primary text */
+  --ivory: #F2E9D5;          /* headings */
+  --washi-2: #D9CCB0;        /* secondary text */
+  --washi-3: #A79B85;        /* tertiary text */
+  --paper-ink: #1B1A20;      /* text on washi paper */
+  --jade-fog: #829B91;       /* pecfest quiet labels */
+  --mist: #8E9AB3;           /* ISS, galaxies, quiet celestial labels */
 
-  /* moonlight */
-  --moon: #D9DEE8;
-  --moon-warm: #F3EAD6;
+  /* gold = hierarchy (pecfest) */
+  --gold: #C99A3A;           /* pecfest --color-gold */
+  --gold-bright: #E8C66A;    /* focus ring, hover, cursor core */
+  --gold-dark: #73501D;      /* gradient start */
+  --gold-soft: #C4AA7C;      /* muted borders */
+  --gold-accent: #E2C17F;    /* the italic accent word */
+  --line: rgba(184, 154, 91, .25);
+  --line-hover: rgba(212, 175, 100, .6);
 
-  /* gold = hierarchy */
-  --gold: #CFA84F;
-  --gold-bright: #E8C66A;
-  --gold-soft: #C4AA7C;
-  --gold-accent: #E2C17F;
-  --line: rgba(207, 168, 79, .22);
-  --line-hover: rgba(232, 198, 106, .55);
+  /* celestial layer (astrology / night-sky colours) */
+  --murasaki: #6A4C9C;       /* 紫 astral violet: constellations-by-hover, zodiac/ecliptic */
+  --nebula: #2C1B4E;         /* deep nebula wash behind panels and the Milky Way */
+  --fuji: #8F7FC1;           /* 藤 wisteria: secondary celestial accents */
+  --starlight: #A9C1F0;      /* blue-white star glints, planets' cool rim */
+  --moon: #D9DDE6;           /* moon silver: data numerals */
+  --moon-warm: #F3EAD6;      /* the Moon itself, star cores */
 
-  /* vermilion = alive / now */
-  --vermilion: #C8372D;
-  --vermilion-deep: #B4282D;
+  /* legacy aliases (brief §5.1 names) */
+  --vermilion: var(--crimson-bright);
+  --vermilion-deep: var(--crimson);
+  --urushi: var(--crimson-deep);
+  --urushi-deep: #3A0509;
 
-  /* intro only */
-  --urushi: #6B0F14;
-  --urushi-deep: #3E080B;
-  --sakura: #F4C6CF;
-  --sakura-deep: #E79AB0;
-  --sakura-washi: #F3E4E2;
-
-  /* sky colour, written every frame-ish by the scene from the Sun's real altitude (astro/skyColor.ts) */
-  --sky-zenith: #07070B;
-  --sky-horizon: #0E1222;
+  /* sky colour, written by the scene from the Sun's real altitude (astro/skyColor.ts) */
+  --sky-zenith: #08070F;
+  --sky-horizon: #120E22;
 
   /* motion */
   --ease-katana: cubic-bezier(.16, 1, .3, 1);
@@ -79,7 +121,14 @@
   --lacquer: rgba(20, 0, 0, .8);
   --washi: #FF3B30; --washi-2: #C42A22; --washi-3: #8A1C17; --mist: #7A1A14;
   --moon: #FF3B30; --moon-warm: #FF3B30; --gold: #E0352B; --gold-bright: #FF3B30;
-  --gold-soft: #8A1C17; --gold-accent: #FF3B30; --vermilion: #FF3B30; --line: rgba(255, 59, 48, .25);
+  --gold-soft: #8A1C17; --gold-accent: #FF3B30; --gold-dark: #5A1410; --line: rgba(255, 59, 48, .25);
   --line-hover: rgba(255, 59, 48, .55);
+  --crimson: #FF3B30; --crimson-bright: #FF3B30; --crimson-deep: #3A0000; --beni: #FF3B30;
+  --sakura: #C42A22; --sakura-deep: #8A1C17; --nadeshiko: #C42A22; --kobai: #FF3B30;
+  --murasaki: #8A1C17; --nebula: #1A0000; --fuji: #8A1C17; --starlight: #FF3B30;
+  --ivory: #FF3B30; --jade-fog: #7A1A14; --card-fill: rgba(20, 0, 0, .8);
+  --page-bg: #000; --card-black: #000; --card-gold: #C42A22; --card-line: rgba(255, 59, 48, .3);
+  --card-line-soft: rgba(255, 59, 48, .18); --kinu: #FF3B30; --shu: #FF3B30; --gold-button: #8A1C17;
+  --gold-button-ink: #000; --beni-zakura: #C42A22; --lacquer: rgba(10, 0, 0, .85);
   --paper-ink: #FF3B30;
 }

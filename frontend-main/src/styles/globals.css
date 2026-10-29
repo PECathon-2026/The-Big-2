@@ -29,6 +29,28 @@
   --color-sakura: var(--sakura);
   --color-sakura-deep: var(--sakura-deep);
   --color-sakura-washi: var(--sakura-washi);
+  --color-crimson: var(--crimson);
+  --color-crimson-deep: var(--crimson-deep);
+  --color-crimson-bright: var(--crimson-bright);
+  --color-beni: var(--beni);
+  --color-beni-zakura: var(--beni-zakura);
+  --color-akane: var(--akane);
+  --color-nadeshiko: var(--nadeshiko);
+  --color-kobai: var(--kobai);
+  --color-ivory: var(--ivory);
+  --color-jade-fog: var(--jade-fog);
+  --color-gold-dark: var(--gold-dark);
+  --color-murasaki: var(--murasaki);
+  --color-nebula: var(--nebula);
+  --color-fuji: var(--fuji);
+  --color-starlight: var(--starlight);
+  --color-page-bg: var(--page-bg);
+  --color-card-black: var(--card-black);
+  --color-card-gold: var(--card-gold);
+  --color-card-line: var(--card-line);
+  --color-kinu: var(--kinu);
+  --color-shu: var(--shu);
+  --color-gold-button: var(--gold-button);
 
   --font-display: var(--font-display);
   --font-ui: var(--font-ui);
@@ -59,13 +81,13 @@ body,
 }
 
 html {
-  background: var(--sumi);
+  background: var(--page-bg);
   color-scheme: dark;
   -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--sumi);
+  background: var(--page-bg);
   color: var(--washi);
   font-family: var(--font-ui);
   font-size: 15px;
@@ -76,7 +98,7 @@ body {
 }
 
 ::selection {
-  background: var(--vermilion);
+  background: var(--crimson);
   color: var(--washi);
 }
 
@@ -143,15 +165,32 @@ a {
   border: 0;
 }
 
-/* Glass panel over the sky (§5.4): lacquer fill, blur, hairline with a gilded top edge. */
+/* Glass panel over the sky (§5.4): near-black lacquer, blur, gold hairline (pecfest card line). */
 .glass {
   background: var(--lacquer);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
-  border: 1px solid var(--line);
-  border-top-color: rgba(232, 198, 106, .34);
+  border: 1px solid var(--card-line);
   border-radius: var(--r-card);
+  box-shadow: var(--tag-shadow);
 }
+
+/* PECFEST page ambience (pecfest.in/developer): gold + crimson radial glow over #07090C, gold side rails. */
+.pecfest-ambience {
+  background: var(--ambient), var(--page-bg);
+}
+.pecfest-rails::before,
+.pecfest-rails::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  pointer-events: none;
+  background: linear-gradient(transparent 0, rgba(201, 154, 58, .14) 20%, rgba(201, 154, 58, .14) 80%, transparent);
+}
+.pecfest-rails::before { left: max(16px, 3vw); }
+.pecfest-rails::after { right: max(16px, 3vw); }
 
 /* Washi paper sheet for long content. */
 .washi-sheet {

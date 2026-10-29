@@ -15,8 +15,8 @@ export default function DomeOverlay() {
   };
   return (
     <div style={{ position: 'fixed', left: '50%', bottom: '18vh', transform: 'translateX(-50%)', zIndex: 10 }}>
-      <Button onClick={enter}>
-        Enter your <em className="accent" style={{ textTransform: 'none', fontSize: 16 }}>sky</em> ↘
+      <Button variant="gold" onClick={enter}>
+        Enter your <em className="accent" style={{ textTransform: 'none', fontSize: 16, color: 'var(--gold-button-ink)', textShadow: 'none' }}>sky</em> ↘
       </Button>
     </div>
   );

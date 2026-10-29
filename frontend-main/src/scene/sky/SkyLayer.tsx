@@ -123,7 +123,7 @@ function MoonAndSun() {
       <ambientLight intensity={0.04} />
       <mesh ref={sun}>
         <circleGeometry args={[2.6, 48]} />
-        <meshBasicMaterial color="#C8372D" side={THREE.DoubleSide} />
+        <meshBasicMaterial color="#D3572E" side={THREE.DoubleSide} />
       </mesh>
     </>
   );

@@ -17,7 +17,7 @@ import IntroLayer from './intro/IntroLayer';
 
 const clear = new THREE.Color();
 const zen = new THREE.Color();
-const space = new THREE.Color('#05050A');
+const space = new THREE.Color('#07090C') // pecfest page bg;
 
 /** Eases the camera toward rig.tgt every frame (time-based damping, always interruptible). */
 function CameraRig() {
