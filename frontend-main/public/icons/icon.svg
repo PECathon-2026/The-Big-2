@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="38%" r="70%">
+      <stop offset="0" stop-color="#C99A3A" stop-opacity=".22"/>
+      <stop offset=".45" stop-color="#8C2018" stop-opacity=".14"/>
+      <stop offset="1" stop-color="#07090C" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="6"/></filter>
+  </defs>
+  <rect width="512" height="512" fill="#07090C"/>
+  <rect width="512" height="512" fill="url(#glow)"/>
+  <!-- maskable safe zone: everything important inside the central 80% -->
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#C49A45" stroke-width="2" opacity=".55"/>
+  <g filter="url(#rough)">
+    <rect x="156" y="156" width="200" height="200" rx="16" fill="#C62920"/>
+    <text x="256" y="260" fill="#E8D9B5" font-family="'Shippori Mincho','Yu Mincho','MS Mincho',serif" font-weight="700" font-size="84" text-anchor="middle" dominant-baseline="central" writing-mode="vertical-rl">月読</text>
+  </g>
+</svg>
