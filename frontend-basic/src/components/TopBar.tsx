@@ -8,6 +8,7 @@ const TABS: { to: string; en: string; jp: string }[] = [
   { to: '/scroll', en: 'Scroll', jp: '絵巻' },
   { to: '/lens', en: 'Lens', jp: '鏡' },
   { to: '/transients', en: 'Transients', jp: '変光' },
+  { to: '/planner', en: 'Planner', jp: '策' },
   { to: '/science', en: 'Science', jp: '理' },
 ];
 
