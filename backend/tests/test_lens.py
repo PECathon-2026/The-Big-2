@@ -116,6 +116,8 @@ def test_full_pipeline_on_synthetic_sample(client: TestClient):
     print(f"benchmark ({time.time() - t1:.1f} s) {b}")
     assert b["injected"] >= 30
     assert b["recovery_rate"] > 0.8
+    assert b["baseline_detections"] > 0 and 0 <= b["recovered_before_restoration"] <= b["injected"]
+    assert h["flux_conservation"]["n_sources"] >= 5 and "n_saturated_excluded" in h["flux_conservation"]
     assert b["position_error_rms_px"] is not None and b["position_error_rms_px"] < 1.0
 
     # endpoints that need a WCS answer 404 honestly
