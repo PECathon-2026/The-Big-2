@@ -1,0 +1,831 @@
+<title>Tsukuyomi Concept Stages</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+/* Layout: a slim fixed bar with three tabs; one full-viewport stage below it. Each concept is its own self-contained stage. */
+:root{
+  --ink:#07070b; --ink-2:#121219; --ink-3:#1b1c27;
+  --paper:#e9e0cc; --paper-2:#d6cab0; --paper-3:#bdb094;
+  --vermilion:#b4282d; --gold:#cfa84f; --moon:#f3ead6; --mist:#8b94a7;
+  --fg:var(--paper);
+  --font-display:'Shippori Mincho','Noto Serif JP',Georgia,serif;
+  --font-body:'Cormorant Garamond',Georgia,'Times New Roman',serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--font-body);overflow:hidden;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* ---------- top bar ---------- */
+.bar{position:fixed;top:0;left:0;right:0;height:54px;z-index:50;display:flex;align-items:center;gap:8px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:linear-gradient(to bottom,rgba(7,7,11,.92),rgba(7,7,11,.72));backdrop-filter:blur(8px);border-bottom:1px solid rgba(233,224,204,.08)}
+.bar .brand{font-family:var(--font-display);font-size:15px;letter-spacing:.14em;color:var(--paper-2);margin-right:10px;white-space:nowrap}
+.bar .brand em{font-style:normal;color:var(--vermilion)}
+.tabs{display:flex;gap:2px;min-width:0;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{display:flex;align-items:baseline;gap:8px;padding:8px 12px;border-bottom:2px solid transparent;color:var(--paper-3);white-space:nowrap;font-size:15px;letter-spacing:.04em;transition:color .2s}
+.tab .num{font-family:var(--font-display);font-size:13px}
+.tab:hover{color:var(--paper)}
+.tab.active{color:var(--paper);border-bottom-color:var(--vermilion)}
+.bar .hint{margin-left:auto;font-size:13px;color:var(--mist);font-style:italic;white-space:nowrap}
+@media (max-width:640px){.bar .hint{display:none}.tab{padding:8px 9px;font-size:14px}}
+
+.stage{position:fixed;top:54px;left:0;right:0;bottom:0}
+.concept{position:absolute;inset:0;overflow:hidden}
+
+/* shared ink card */
+.card{position:absolute;background:rgba(10,10,16,.72);border:1px solid rgba(233,224,204,.14);backdrop-filter:blur(6px);
+  padding:12px 14px;color:var(--paper);font-size:15px;line-height:1.35;max-width:min(320px,calc(100vw - 32px));box-sizing:border-box}
+.card h3{margin:0 0 4px;font-family:var(--font-display);font-weight:500;font-size:14px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+.card .big{font-family:var(--font-display);font-size:34px;line-height:1;color:var(--moon);font-variant-numeric:tabular-nums}
+.card .sub{color:var(--paper-3);font-size:14px}
+.card .jp{font-family:var(--font-display);color:var(--paper-2)}
+
+/* ================= CONCEPT 1: LIVING SKY ================= */
+#c-dome canvas.gl,#c-dome canvas.ov{position:absolute;inset:0;width:100%;height:100%}
+#c-dome canvas.ov{pointer-events:none}
+#c-dome .drag{cursor:grab}
+#c-dome .drag.dragging{cursor:grabbing}
+.dome-ctl{position:absolute;top:14px;left:max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:8px}
+.dome-ctl select,.dome-ctl input[type=range]{accent-color:var(--vermilion)}
+.dome-ctl select{background:var(--ink-2);color:var(--paper);border:1px solid rgba(233,224,204,.18);padding:4px 6px;font:inherit;font-size:14px}
+.dome-ctl label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--paper-3);letter-spacing:.06em}
+.dome-ctl input[type=range]{width:200px}
+.stations{position:absolute;left:50%;bottom:max(18px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:6px;
+  background:rgba(10,10,16,.72);border:1px solid rgba(233,224,204,.14);padding:6px;backdrop-filter:blur(6px);max-width:calc(100vw - 32px)}
+.stations button{padding:8px 14px;font-size:15px;letter-spacing:.06em;color:var(--paper-3);display:flex;flex-direction:column;align-items:center;gap:2px;transition:color .2s,background .2s}
+.stations button .jp{font-family:var(--font-display);font-size:12px;color:var(--mist)}
+.stations button:hover{color:var(--paper)}
+.stations button.active{color:var(--moon);background:rgba(180,40,45,.22);box-shadow:inset 0 -2px 0 var(--vermilion)}
+.stations button.active .jp{color:var(--gold)}
+#dome-card{right:max(16px,env(safe-area-inset-right,0px));bottom:max(90px,calc(env(safe-area-inset-bottom,0px) + 90px));transition:opacity .4s,transform .4s}
+#dome-card.hide{opacity:0;transform:translateY(8px);pointer-events:none}
+.reticle{position:absolute;left:50%;top:50%;width:min(62vmin,520px);height:min(62vmin,520px);transform:translate(-50%,-50%);border-radius:50%;
+  border:1px solid rgba(207,168,79,.55);box-shadow:0 0 0 9999px rgba(4,4,8,.55),inset 0 0 60px rgba(207,168,79,.08);pointer-events:none;opacity:0;transition:opacity .5s}
+.reticle::before,.reticle::after{content:"";position:absolute;background:rgba(207,168,79,.35)}
+.reticle::before{left:50%;top:-18px;width:1px;height:36px}
+.reticle::after{top:50%;left:-18px;height:1px;width:36px}
+.reticle.on{opacity:1}
+.eventstrip{position:absolute;left:50%;top:14px;transform:translateX(-50%);display:flex;gap:10px;max-width:calc(100vw - 32px);overflow-x:auto;padding-bottom:4px;transition:opacity .4s;scrollbar-width:none}
+.eventstrip.hide{opacity:0;pointer-events:none}
+.eventstrip .ev{flex:0 0 auto;background:rgba(10,10,16,.72);border:1px solid rgba(233,224,204,.14);padding:8px 12px;min-width:150px;backdrop-filter:blur(6px)}
+.eventstrip .ev b{display:block;font-family:var(--font-display);font-weight:500;font-size:13px;color:var(--gold);letter-spacing:.1em}
+.eventstrip .ev span{font-size:14px;color:var(--paper-2)}
+@media (max-width:640px){.dome-ctl input[type=range]{width:150px}.eventstrip{top:auto;bottom:84px}#dome-card{bottom:150px}}
+
+/* ================= CONCEPT 2: SUMI-E DUSK ================= */
+.dusk-scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:rgba(233,224,204,.25) transparent}
+.dusk-track{height:620%;position:relative}
+.dusk-sticky{position:sticky;top:0;height:calc(100vh - 54px);overflow:hidden}
+.dusk-sticky canvas{position:absolute;inset:0;width:100%;height:100%}
+.dusk-title{position:absolute;left:max(24px,env(safe-area-inset-left,0px));top:12%;transition:opacity .5s,transform .5s}
+.dusk-title .jp{font-family:var(--font-display);font-size:clamp(34px,7vw,88px);line-height:1;color:#1d1c22;letter-spacing:.08em;font-weight:500}
+.dusk-title .en{font-size:clamp(16px,2.2vw,24px);letter-spacing:.42em;text-transform:uppercase;color:#4a4653;margin-top:12px}
+.dusk-title.gone{opacity:0;transform:translateY(-20px)}
+.dusk-cap{position:absolute;left:max(24px,env(safe-area-inset-left,0px));bottom:16%;max-width:min(520px,calc(100vw - 48px));opacity:0;transform:translateY(14px);transition:opacity .7s,transform .7s;pointer-events:none}
+.dusk-cap.on{opacity:1;transform:none}
+.dusk-cap .k{font-family:var(--font-display);font-size:clamp(22px,3.6vw,40px);color:var(--moon);line-height:1.15;font-weight:500;text-wrap:balance;text-shadow:0 1px 18px rgba(0,0,0,.6),0 0 2px rgba(0,0,0,.5)}
+.dusk-cap .t{font-size:clamp(16px,1.8vw,21px);color:var(--paper-2);margin-top:8px;font-style:italic;text-shadow:0 1px 12px rgba(0,0,0,.6)}
+.dusk-clock{position:absolute;right:max(20px,env(safe-area-inset-right,0px));top:18px;text-align:right;mix-blend-mode:difference;color:#fff}
+.dusk-clock .h{font-family:var(--font-display);font-size:30px;letter-spacing:.08em;font-variant-numeric:tabular-nums;line-height:1}
+.dusk-clock .j{font-family:var(--font-display);font-size:15px;letter-spacing:.3em;margin-top:6px;opacity:.8}
+.dusk-hintscroll{position:absolute;left:50%;bottom:max(20px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);font-size:14px;letter-spacing:.3em;text-transform:uppercase;color:#4a4653;transition:opacity .4s}
+.dusk-hintscroll::after{content:"";display:block;width:1px;height:34px;margin:8px auto 0;background:currentColor;animation:drop 1.8s ease-in-out infinite}
+@keyframes drop{0%{transform:scaleY(0);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}51%{transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
+.dusk-cta{position:absolute;left:50%;bottom:14%;transform:translate(-50%,16px);opacity:0;transition:opacity .8s,transform .8s;text-align:center}
+.dusk-cta.on{opacity:1;transform:translate(-50%,0)}
+.dusk-cta button{font-family:var(--font-display);font-size:18px;letter-spacing:.34em;padding:14px 30px 14px 36px;color:var(--moon);border:1px solid rgba(207,168,79,.5);background:rgba(7,7,11,.4);transition:background .3s,border-color .3s}
+.dusk-cta button:hover{background:rgba(180,40,45,.25);border-color:var(--gold)}
+.dusk-cta .s{margin-top:10px;font-size:14px;color:var(--mist);letter-spacing:.12em}
+@media (prefers-reduced-motion:reduce){.dusk-hintscroll::after{animation:none}}
+
+/* ================= CONCEPT 3: INK & PAPER ================= */
+#c-ink{background:
+  radial-gradient(ellipse at 30% 0%,rgba(207,168,79,.05),transparent 50%),
+  var(--ink)}
+.ink-wrap{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding-block:26px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.paper{position:relative;margin:0 auto;max-width:1080px;background:var(--paper);color:#1b1a20;box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 1px rgba(0,0,0,.4);overflow:hidden}
+.paper::before{content:"";position:absolute;inset:0;background-image:var(--grain);opacity:.32;mix-blend-mode:multiply;pointer-events:none;z-index:1}
+.paper>*{position:relative;z-index:2}
+.ph{display:flex;align-items:center;gap:22px;padding:26px 30px 10px;flex-wrap:wrap}
+.enso{width:84px;height:84px;flex:0 0 auto}
+.enso path{fill:none;stroke:#141318;stroke-width:9;stroke-linecap:round;stroke-dasharray:420;stroke-dashoffset:420;filter:url(#brush)}
+.enso.play path{animation:enso 1.6s cubic-bezier(.6,.05,.3,1) forwards}
+@keyframes enso{to{stroke-dashoffset:26}}
+.ph h1{margin:0;font-family:var(--font-display);font-weight:500;font-size:clamp(26px,4vw,44px);letter-spacing:.06em;line-height:1}
+.ph h1 span{display:inline-block;opacity:0;filter:blur(6px);transform:translateY(4px);animation:inkin .9s ease forwards}
+@keyframes inkin{to{opacity:1;filter:blur(0);transform:none}}
+.ph .sub{font-size:16px;color:#5a5664;margin-top:6px;letter-spacing:.08em}
+.ph .sub b{font-family:var(--font-display);font-weight:500;color:var(--vermilion)}
+.ph .right{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.pbtn{font-family:var(--font-display);font-size:14px;letter-spacing:.14em;padding:9px 14px;border:1px solid #1b1a20;color:#1b1a20;transition:background .2s,color .2s}
+.pbtn:hover{background:#1b1a20;color:var(--paper)}
+.pbtn.on{background:var(--vermilion);border-color:var(--vermilion);color:#fff}
+.ptabs{display:flex;gap:0;padding:0 30px;border-bottom:1px solid rgba(27,26,32,.25);margin-top:10px}
+.ptab{padding:12px 18px;font-size:17px;letter-spacing:.06em;color:#5a5664;display:flex;gap:10px;align-items:baseline;border-bottom:2px solid transparent;margin-bottom:-1px}
+.ptab .jp{font-family:var(--font-display);font-size:14px}
+.ptab.active{color:#1b1a20;border-bottom-color:var(--vermilion)}
+.pbody{position:relative;min-height:420px}
+.pane{padding:26px 30px 30px;display:none}
+.pane.active{display:block}
+.inkfx{position:absolute;inset:0;pointer-events:none;z-index:5}
+.lantern-dark{position:absolute;inset:0;z-index:4;pointer-events:none;background:rgba(5,5,9,.94);opacity:0;transition:opacity .4s;
+  -webkit-mask-image:radial-gradient(circle 190px at var(--lx,50%) var(--ly,50%),transparent 0,transparent 35%,rgba(0,0,0,.6) 70%,#000 100%);
+  mask-image:radial-gradient(circle 190px at var(--lx,50%) var(--ly,50%),transparent 0,transparent 35%,rgba(0,0,0,.6) 70%,#000 100%)}
+.lantern-dark.on{opacity:1}
+.lantern{position:absolute;z-index:6;width:26px;height:36px;left:var(--lx,50%);top:var(--ly,50%);transform:translate(-50%,-120%) rotate(var(--sw,0deg));pointer-events:none;opacity:0;transition:opacity .3s}
+.lantern.on{opacity:1}
+.lantern::before{content:"";position:absolute;inset:4px 0 4px 0;border-radius:10px;background:radial-gradient(ellipse at 50% 40%,#ffd98a,#d9472f 70%,#8a1d1d);box-shadow:0 0 30px 10px rgba(255,190,110,.45)}
+.lantern::after{content:"";position:absolute;left:4px;right:4px;top:0;height:4px;background:#1b1a20;border-radius:2px;box-shadow:0 32px 0 #1b1a20}
+.lantern i{position:absolute;left:12px;top:-14px;width:2px;height:14px;background:#1b1a20}
+
+/* watchtower pane */
+.wt{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:28px;align-items:start}
+@media (max-width:760px){.wt{grid-template-columns:1fr}}
+.gauge{position:relative;width:100%;max-width:360px;aspect-ratio:1/1;margin:0 auto}
+.gauge svg{width:100%;height:100%;display:block}
+.gauge .track{fill:none;stroke:rgba(27,26,32,.12);stroke-width:14;stroke-linecap:round}
+.gauge .val{fill:none;stroke:#1b1a20;stroke-width:14;stroke-linecap:round;stroke-dasharray:600;stroke-dashoffset:600;filter:url(#brush);transition:stroke-dashoffset 1.6s cubic-bezier(.5,0,.2,1)}
+.gauge .val.gold{stroke:var(--gold)}
+.gauge .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.gauge .n{font-family:var(--font-display);font-size:clamp(48px,9vw,84px);line-height:1;font-variant-numeric:tabular-nums;color:#1b1a20}
+.gauge .l{font-size:14px;letter-spacing:.3em;text-transform:uppercase;color:#5a5664;margin-top:6px}
+.gauge .jp{font-family:var(--font-display);color:var(--vermilion);font-size:16px;letter-spacing:.2em;margin-top:4px}
+.wtlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0}
+.wtlist li{display:grid;grid-template-columns:1fr auto;gap:8px 14px;padding:12px 0;border-bottom:1px solid rgba(27,26,32,.15);align-items:baseline}
+.wtlist .n{font-family:var(--font-display);font-size:18px;color:#1b1a20}
+.wtlist .jp{font-size:13px;color:#5a5664;letter-spacing:.1em}
+.wtlist .s{font-family:var(--font-display);font-size:22px;color:var(--vermilion);font-variant-numeric:tabular-nums}
+.wtlist .d{grid-column:1/-1;font-size:15px;color:#5a5664;font-style:italic}
+.wt h2,.sc h2,.lens h2{font-family:var(--font-display);font-weight:500;font-size:14px;letter-spacing:.3em;text-transform:uppercase;color:#5a5664;margin:0 0 14px}
+.stamps{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;min-height:64px}
+.stamps .hint{font-size:15px;color:#5a5664;font-style:italic}
+.hanko{width:56px;height:56px;display:block;animation:stamp .55s cubic-bezier(.3,1.4,.4,1) both}
+@keyframes stamp{0%{transform:scale(1.7) rotate(-8deg);opacity:0}55%{transform:scale(.94) rotate(var(--r));opacity:1}100%{transform:scale(1) rotate(var(--r))}}
+.honor{font-family:var(--font-display);color:var(--vermilion);font-size:16px;letter-spacing:.1em}
+.honor b{font-size:22px;font-weight:500;font-variant-numeric:tabular-nums}
+
+/* scroll pane */
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;max-width:620px}
+.cal .dh{font-family:var(--font-display);font-size:13px;text-align:center;color:#5a5664;letter-spacing:.2em;padding-bottom:4px}
+.cal .cd{aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:1px solid rgba(27,26,32,.14);font-size:13px;color:#5a5664;font-variant-numeric:tabular-nums;position:relative;transition:background .2s}
+.cal .cd:hover{background:rgba(27,26,32,.06)}
+.cal .cd canvas{width:22px;height:22px}
+.cal .cd.today{border-color:var(--vermilion);box-shadow:inset 0 0 0 1px var(--vermilion)}
+.cal .cd .dot{position:absolute;right:5px;top:5px;width:6px;height:6px;border-radius:50%}
+.cal .cd .dot.g{background:var(--gold)}.cal .cd .dot.m{background:var(--mist)}
+.sc{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:28px}
+@media (max-width:760px){.sc{grid-template-columns:1fr}}
+.moonname{border-left:3px solid var(--vermilion);padding:4px 0 4px 16px}
+.moonname .jp{font-family:var(--font-display);font-size:clamp(34px,5vw,56px);line-height:1;color:#1b1a20}
+.moonname .ro{font-size:18px;letter-spacing:.3em;text-transform:uppercase;color:#5a5664;margin-top:8px}
+.moonname p{font-size:17px;line-height:1.5;color:#3a3744;margin:12px 0 0;max-width:38ch}
+.alert{margin-top:22px;padding:14px 16px;border:1px solid rgba(27,26,32,.25);display:flex;gap:14px;align-items:center}
+.alert .m{width:28px;height:28px;flex:0 0 auto}
+.alert b{font-family:var(--font-display);font-weight:500;font-size:17px;color:#1b1a20;display:block}
+.alert span{font-size:14px;color:#5a5664}
+
+/* lens pane */
+.lens{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:28px}
+@media (max-width:860px){.lens{grid-template-columns:1fr}}
+.cmp{position:relative;width:100%;aspect-ratio:16/10;background:#000;overflow:hidden;user-select:none;touch-action:none;cursor:col-resize}
+.cmp canvas{position:absolute;inset:0;width:100%;height:100%}
+.cmp .after{clip-path:inset(0 0 0 var(--cx,50%))}
+.cmp .dets{position:absolute;inset:0;clip-path:inset(0 0 0 var(--cx,50%));pointer-events:none}
+.det{position:absolute;border:1px solid rgba(207,168,79,.8);border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 12px rgba(207,168,79,.35)}
+.det span{position:absolute;left:calc(100% + 8px);top:50%;transform:translateY(-50%);white-space:nowrap;font-size:12px;letter-spacing:.08em;color:var(--moon);background:rgba(7,7,11,.6);padding:2px 6px}
+.det.gal{border-radius:50%/40%;border-color:rgba(139,148,167,.9)}
+.det.flip span{left:auto;right:calc(100% + 8px)}
+.blade{position:absolute;top:0;bottom:0;left:var(--cx,50%);width:0;pointer-events:none}
+.blade::before{content:"";position:absolute;top:-10px;bottom:28px;left:-1px;width:2px;background:linear-gradient(to bottom,rgba(255,255,255,0),#fff 10%,var(--moon) 60%,var(--gold) 100%);box-shadow:0 0 10px rgba(255,240,200,.7),0 0 2px #fff}
+.blade::after{content:"";position:absolute;top:-10px;bottom:28px;left:1px;width:3px;background:linear-gradient(to right,rgba(207,168,79,.5),transparent)}
+.tsuka{position:absolute;bottom:0;left:-7px;width:14px;height:36px;background:repeating-linear-gradient(135deg,#1b1a20 0 5px,#3a3744 5px 10px);border-top:3px solid var(--gold);border-radius:2px}
+.cmp.slash .blade::before{animation:slash .45s ease-out}
+@keyframes slash{0%{box-shadow:0 0 40px 10px rgba(255,240,200,.9),0 0 2px #fff;width:6px}100%{box-shadow:0 0 10px rgba(255,240,200,.7),0 0 2px #fff;width:2px}}
+.cmp .lab{position:absolute;top:10px;font-family:var(--font-display);font-size:12px;letter-spacing:.26em;text-transform:uppercase;color:var(--moon);background:rgba(7,7,11,.55);padding:4px 8px;pointer-events:none}
+.cmp .lab.b{left:10px}.cmp .lab.a{right:10px;color:var(--gold)}
+.lens .side p{font-size:16px;line-height:1.5;color:#3a3744;margin:0 0 14px}
+.lacq{position:relative;background:#0a0a0f;height:150px;overflow:hidden;border:1px solid rgba(27,26,32,.4)}
+.lacq canvas{position:absolute;inset:0;width:100%;height:100%}
+.lacq .t{position:absolute;left:14px;bottom:10px;font-family:var(--font-display);font-size:13px;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);transition:opacity .5s}
+.lens .side .pbtn{margin-top:12px}
+.lens .metrics{margin-top:14px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.lens .metrics div{border-top:2px solid #1b1a20;padding-top:6px}
+.lens .metrics b{display:block;font-family:var(--font-display);font-weight:500;font-size:22px;font-variant-numeric:tabular-nums}
+.lens .metrics span{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#5a5664}
+
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="brush" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="3" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="rough" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="3" seed="7" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="4" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+</svg>
+
+<nav class="bar" aria-label="Concepts">
+  <div class="brand">月読 <em>·</em> TSUKUYOMI</div>
+  <div class="tabs" role="tablist">
+    <button class="tab active" role="tab" data-c="dome"><span class="num">一</span>Living Sky</button>
+    <button class="tab" role="tab" data-c="dusk"><span class="num">二</span>Sumi-e Dusk</button>
+    <button class="tab" role="tab" data-c="ink"><span class="num">三</span>Ink &amp; Paper</button>
+  </div>
+  <div class="hint" id="hint">drag to look around · pick a station below</div>
+</nav>
+
+<div class="stage">
+
+  <!-- ============ CONCEPT 1 ============ -->
+  <section class="concept" id="c-dome" data-c="dome">
+    <canvas class="gl drag"></canvas>
+    <canvas class="ov"></canvas>
+    <div class="reticle" id="reticle"></div>
+    <div class="dome-ctl">
+      <label>Observer
+        <select id="site">
+          <option value="12.97,77.59,Bengaluru">Bengaluru</option>
+          <option value="35.01,135.77,Kyoto">Kyoto</option>
+          <option value="28.61,77.21,Delhi">Delhi</option>
+          <option value="19.08,72.88,Mumbai">Mumbai</option>
+        </select>
+      </label>
+      <label><span id="timelab">Tonight · —</span>
+        <input type="range" id="dome-time" min="-12" max="12" step="0.25" value="0">
+      </label>
+    </div>
+    <div class="eventstrip hide" id="estrip">
+      <div class="ev"><b>Orionids · 流星群</b><span>peak tonight · ZHR 20</span></div>
+      <div class="ev"><b>ISS · 宇宙ステーション</b><span>pass 20:41 · max 62° · 4 min</span></div>
+      <div class="ev"><b>Moon · 月</b><span id="ev-moon">—</span></div>
+      <div class="ev"><b>Launch · 打上げ</b><span>Falcon 9 · Nov 2 · 03:14 IST</span></div>
+    </div>
+    <div class="card hide" id="dome-card">
+      <h3>Night Honor · 夜の誉</h3>
+      <div class="big" id="honor">82</div>
+      <div class="sub">Best window tonight <b style="color:var(--moon)">23:40 → 01:40</b>, after moonset.<br>Low cloud 8% · humidity 61% · Bortle 4</div>
+    </div>
+    <div class="stations">
+      <button data-st="free" class="active">Free <span class="jp">自由</span></button>
+      <button data-st="watch">Watchtower <span class="jp">見張り</span></button>
+      <button data-st="scroll">Scroll <span class="jp">巻物</span></button>
+      <button data-st="lens">Lens <span class="jp">鏡</span></button>
+    </div>
+  </section>
+
+  <!-- ============ CONCEPT 2 ============ -->
+  <section class="concept" id="c-dusk" data-c="dusk" hidden>
+    <div class="dusk-scroll" id="dusk-scroll">
+      <div class="dusk-track">
+        <div class="dusk-sticky" id="dusk-sticky">
+          <canvas id="dusk-cv"></canvas>
+          <div class="dusk-title" id="dusk-title">
+            <div class="jp">月読の見張り</div>
+            <div class="en">Tsukuyomi Watch</div>
+          </div>
+          <div class="dusk-clock"><div class="h" id="dusk-h">17:30</div><div class="j" id="dusk-j">酉の刻</div></div>
+          <div class="dusk-cap day" data-from="0.14" data-to="0.36"><div class="k">The sun sets. The ink begins to bleed.</div><div class="t">Scroll depth is time of night. Nothing here is a page; it is one evening.</div></div>
+          <div class="dusk-cap" data-from="0.42" data-to="0.66"><div class="k">Stars ignite, one by one.</div><div class="t">Each one is a real star in the sky, brightest first, the way your eyes would find them.</div></div>
+          <div class="dusk-cap" data-from="0.70" data-to="0.90"><div class="k" id="dusk-moonk">The Moon rises.</div><div class="t" id="dusk-moont">Tonight's phase, drawn live.</div></div>
+          <div class="dusk-cta" id="dusk-cta"><button>ENTER THE NIGHT</button><div class="s">the Watchtower · the Scroll · the Lens</div></div>
+          <div class="dusk-hintscroll" id="dusk-hint">Scroll into the night</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CONCEPT 3 ============ -->
+  <section class="concept" id="c-ink" data-c="ink" hidden>
+    <div class="ink-wrap">
+      <div class="paper" id="paper">
+        <div class="lantern-dark" id="ldark"></div>
+        <div class="lantern" id="lantern"><i></i></div>
+        <canvas class="inkfx" id="inkfx"></canvas>
+        <header class="ph">
+          <svg class="enso play" id="enso" viewBox="0 0 100 100" aria-hidden="true"><path d="M58 14 C 30 10, 10 32, 14 56 C 18 80, 46 94, 70 84 C 92 74, 94 44, 76 28 C 68 20, 58 18, 52 20"/></svg>
+          <div>
+            <h1 id="ink-title">Dojo Dashboard</h1>
+            <div class="sub">Night of <b id="ink-date">—</b> · <b id="ink-season">霜降</b> frost descends</div>
+          </div>
+          <div class="right">
+            <button class="pbtn" id="btn-lantern">提灯 Lantern</button>
+            <button class="pbtn" id="btn-enso">Replay brush</button>
+          </div>
+        </header>
+        <div class="ptabs" role="tablist">
+          <button class="ptab active" data-p="watch"><span class="jp">見張り</span>Watchtower</button>
+          <button class="ptab" data-p="scroll"><span class="jp">巻物</span>Scroll</button>
+          <button class="ptab" data-p="lens"><span class="jp">鏡</span>Lens</button>
+        </div>
+        <div class="pbody">
+          <div class="pane active" data-p="watch">
+            <div class="wt">
+              <div>
+                <h2>Night Honor · 夜の誉</h2>
+                <div class="gauge">
+                  <svg viewBox="0 0 200 200"><path class="track" d="M40 150 A 75 75 0 1 1 160 150"/><path class="val" id="gval" d="M40 150 A 75 75 0 1 1 160 150"/></svg>
+                  <div class="c"><div class="n" id="gnum">0</div><div class="l">of 100</div><div class="jp">今夜は晴れ</div></div>
+                </div>
+              </div>
+              <div>
+                <h2>Nearby Watchtowers</h2>
+                <ul class="wtlist">
+                  <li><span class="n">Nandi Hills <span class="jp">· 山</span></span><span class="s">88</span><span class="d">52 km · Bortle 3 · clear after 23:00</span></li>
+                  <li><span class="n">Savandurga <span class="jp">· 岩</span></span><span class="s">81</span><span class="d">46 km · Bortle 4 · haze until 22:00</span></li>
+                  <li><span class="n">Hesaraghatta Lake <span class="jp">· 湖</span></span><span class="s">64</span><span class="d">24 km · Bortle 5 · humid</span></li>
+                </ul>
+                <div class="stamps" id="stamps">
+                  <button class="pbtn" id="btn-stamp">Log tonight's watch</button>
+                  <span class="hint">stamps a hanko · earns Honor</span>
+                </div>
+                <div class="honor" id="honorpts" hidden>Honor <b>0</b> · 足軽 Ashigaru</div>
+              </div>
+            </div>
+          </div>
+          <div class="pane" data-p="scroll">
+            <div class="sc">
+              <div>
+                <h2>Lunar Calendar · 旧暦</h2>
+                <div class="cal" id="cal"></div>
+              </div>
+              <div>
+                <h2>Tonight's Moon</h2>
+                <div class="moonname"><div class="jp" id="mn-jp">十六夜</div><div class="ro" id="mn-ro">Izayoi</div><p id="mn-p">The hesitant moon. Rises a little later than the full moon, as if reluctant to leave the mountain.</p></div>
+                <div class="alert"><canvas class="m" id="alert-moon"></canvas><div><b id="alert-t">The Moon rises tonight at 20:14</b><span>push alert · also on your calendar</span></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="pane" data-p="lens">
+            <div class="lens">
+              <div>
+                <h2>Spirit Lens · before / after</h2>
+                <div class="cmp" id="cmp">
+                  <canvas id="cv-before"></canvas>
+                  <canvas id="cv-after" class="after"></canvas>
+                  <div class="dets" id="dets"></div>
+                  <div class="lab b">Original</div><div class="lab a">Restored</div>
+                  <div class="blade"><div class="tsuka"></div></div>
+                </div>
+                <div class="metrics"><div><b>0.983</b><span>SSIM</span></div><div><b>+6.1 dB</b><span>PSNR gain</span></div><div><b>0</b><span>invented pixels</span></div></div>
+              </div>
+              <div class="side">
+                <p>Drag the blade. The cut reveals the restored image; detections appear only on the restored side.</p>
+                <div class="lacq" id="lacq"><canvas id="kcv"></canvas><div class="t" id="ktxt">Restoring · 修復中</div></div>
+                <button class="pbtn" id="btn-kin">Simulate loading (kintsugi)</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ===================== shared helpers ===================== */
+const TK = (() => {
+  const SYN = 29.530588853;
+  const jd = d => d / 86400000 + 2440587.5;
+  const moonAge = d => (((jd(d) - 2451550.26) % SYN) + SYN) % SYN;
+  const litFrac = age => (1 - Math.cos(2 * Math.PI * age / SYN)) / 2;
+  const MOON_NAMES = [
+    [1,'朔','Saku','The dark moon. The night belongs to the stars alone.'],
+    [2,'二日月','Futsukazuki','A thread of light low in the west after sunset.'],
+    [3,'三日月','Mikazuki','The blade moon. Thin, bright, and gone early.'],
+    [7,'上弦の月','Jōgen no Tsuki','First quarter. Half the moon stands guard until midnight.'],
+    [10,'十日夜','Tōkanya','The tenth night. The moon lingers well past midnight.'],
+    [13,'十三夜','Jūsanya','The thirteenth night, honoured second only to the full moon.'],
+    [14,'小望月','Komochizuki','The little waiting moon, one night before full.'],
+    [15,'十五夜','Jūgoya','The full moon. Brightest night; the faintest stars retreat.'],
+    [16,'十六夜','Izayoi','The hesitant moon. It rises a little later, as if reluctant to leave the mountain.'],
+    [17,'立待月','Tachimachizuki','The standing-and-waiting moon: wait on your feet, it comes soon.'],
+    [18,'居待月','Imachizuki','The sitting-and-waiting moon: sit, it is later still.'],
+    [19,'寝待月','Nemachizuki','The lying-and-waiting moon: lie down, it will wake you.'],
+    [20,'更待月','Fukemachizuki','The late-night moon. The best dark hours come before it.'],
+    [23,'下弦の月','Kagen no Tsuki','Last quarter. Dark evenings, moonlit dawns.'],
+    [26,'有明月','Ariakezuki','The daybreak moon, pale in the morning sky.'],
+    [29,'三十日月','Misokazuki','The last sliver. Tomorrow, darkness returns.']
+  ];
+  function moonName(age){ const day = Math.floor(age) + 1; let pick = MOON_NAMES[0]; for (const m of MOON_NAMES) if (day >= m[0]) pick = m; return {day, jp: pick[1], ro: pick[2], text: pick[3]}; }
+  // draw a phase-correct moon into ctx at x,y radius r (offscreen compose)
+  const off = document.createElement('canvas'); const octx = off.getContext('2d');
+  function drawMoon(ctx, x, y, r, age, opts = {}){
+    const phi = 2 * Math.PI * age / SYN, waxing = age < SYN / 2;
+    const S = Math.ceil(r * 2 + 4); off.width = S; off.height = S; const c = S / 2;
+    octx.clearRect(0, 0, S, S);
+    octx.fillStyle = opts.color || '#f3ead6';
+    octx.beginPath(); octx.arc(c, c, r, -Math.PI / 2, Math.PI / 2, !waxing); octx.fill();
+    const a = Math.abs(r * Math.cos(phi));
+    octx.beginPath(); octx.ellipse(c, c, Math.max(a, 0.01), r, 0, 0, Math.PI * 2);
+    if (Math.cos(phi) < 0) { octx.fill(); } else { octx.globalCompositeOperation = 'destination-out'; octx.fill(); octx.globalCompositeOperation = 'source-over'; }
+    if (opts.earthshine) { octx.globalCompositeOperation = 'destination-over'; octx.fillStyle = opts.earthshine; octx.beginPath(); octx.arc(c, c, r, 0, Math.PI * 2); octx.fill(); octx.globalCompositeOperation = 'source-over'; }
+    ctx.drawImage(off, x - c, y - c);
+  }
+  // 1D/2D value noise
+  const perm = new Uint8Array(512); { const p = []; for (let i = 0; i < 256; i++) p[i] = i; let s = 1337; for (let i = 255; i > 0; i--) { s = (s * 16807) % 2147483647; const j = s % (i + 1); [p[i], p[j]] = [p[j], p[i]]; } for (let i = 0; i < 512; i++) perm[i] = p[i & 255]; }
+  const fade = t => t * t * (3 - 2 * t);
+  function n1(x){ const i = Math.floor(x), f = x - i; const a = perm[i & 255] / 255, b = perm[(i + 1) & 255] / 255; return a + (b - a) * fade(f); }
+  function n2(x, y){ const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi; const h = (a, b) => perm[(perm[a & 255] + b) & 255] / 255; const u = fade(xf), v = fade(yf); return (h(xi, yi) * (1 - u) + h(xi + 1, yi) * u) * (1 - v) + (h(xi, yi + 1) * (1 - u) + h(xi + 1, yi + 1) * u) * v; }
+  function fbm2(x, y, o = 4){ let s = 0, a = .5, f = 1, m = 0; for (let i = 0; i < o; i++) { s += a * n2(x * f, y * f); m += a; a *= .5; f *= 2; } return s / m; }
+  function fbm1(x, o = 4){ let s = 0, a = .5, f = 1, m = 0; for (let i = 0; i < o; i++) { s += a * n1(x * f); m += a; a *= .5; f *= 2; } return s / m; }
+  // grain texture as data URL
+  function grain(size = 160){ const c = document.createElement('canvas'); c.width = c.height = size; const g = c.getContext('2d'); const im = g.createImageData(size, size); for (let i = 0; i < im.data.length; i += 4) { const v = 200 + Math.random() * 55; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; } g.putImageData(im, 0, 0); return c.toDataURL(); }
+  // sun ecliptic longitude (deg) and RA/Dec
+  const D = Math.PI / 180;
+  function sunLon(d){ const n = jd(d) - 2451545; const L = (280.460 + 0.9856474 * n) % 360; const g = (357.528 + 0.9856003 * n) * D; return ((L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) % 360 + 360) % 360; }
+  function eclToEq(lon, lat = 0){ const e = 23.439 * D, l = lon * D, b = lat * D; const ra = Math.atan2(Math.cos(e) * Math.sin(l) * Math.cos(b) - Math.sin(e) * Math.sin(b), Math.cos(l) * Math.cos(b)); const dec = Math.asin(Math.sin(e) * Math.sin(l) * Math.cos(b) + Math.cos(e) * Math.sin(b)); return { ra: ((ra / D) % 360 + 360) % 360, dec: dec / D }; }
+  function gmst(d){ const J = jd(d); const T = (J - 2451545) / 36525; return (((280.46061837 + 360.98564736629 * (J - 2451545) + 0.000387933 * T * T) % 360) + 360) % 360; }
+  return { SYN, jd, moonAge, litFrac, moonName, drawMoon, n1, n2, fbm1, fbm2, grain, sunLon, eclToEq, gmst, D };
+})();
+document.documentElement.style.setProperty('--grain', `url(${TK.grain()})`);
+
+/* ===================== tab switching ===================== */
+const Stages = {};
+let current = null;
+function show(id){
+  if (current === id) return;
+  document.querySelectorAll('.concept').forEach(s => { const on = s.dataset.c === id; s.hidden = !on; });
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.c === id));
+  if (current && Stages[current]) Stages[current].stop();
+  current = id;
+  if (Stages[id]) Stages[id].start();
+  const hints = { dome: 'drag to look around · pick a station below', dusk: 'scroll slowly · depth is time', ink: 'click tabs · stamp · drag the blade · try the lantern' };
+  document.getElementById('hint').textContent = hints[id];
+}
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => show(t.dataset.c)));
+
+/* ===================== CONCEPT 1: LIVING SKY DOME ===================== */
+Stages.dome = (() => {
+  const root = document.getElementById('c-dome');
+  const gl = root.querySelector('canvas.gl'), ov = root.querySelector('canvas.ov'), octx = ov.getContext('2d');
+  const D = TK.D, R = 100;
+  let renderer, scene, camera, running = false, raf = 0, W = 1, H = 1, dpr = 1, t0 = performance.now();
+  let yaw = 180 * D, pitch = 22 * D, fov = 62, tyaw = yaw, tpitch = pitch, tfov = fov, station = 'free';
+  let site = { lat: 12.97, lon: 77.59, name: 'Bengaluru' }, hourOffset = 0;
+  const named = [
+    ['Sirius','シリウス',6.752,-16.72,-1.46],['Canopus','カノープス',6.399,-52.70,-0.74],['Arcturus','アークトゥルス',14.261,19.18,-0.05],['Vega','ベガ',18.616,38.78,0.03],
+    ['Capella','カペラ',5.278,45.99,0.08],['Rigel','リゲル',5.242,-8.20,0.13],['Procyon','プロキオン',7.655,5.22,0.34],['Betelgeuse','ベテルギウス',5.919,7.41,0.5],
+    ['Achernar','アケルナル',1.629,-57.24,0.46],['Altair','アルタイル',19.846,8.87,0.77],['Aldebaran','アルデバラン',4.599,16.51,0.86],['Antares','アンタレス',16.490,-26.43,1.06],
+    ['Spica','スピカ',13.420,-11.16,0.97],['Pollux','ポルックス',7.755,28.03,1.14],['Fomalhaut','フォーマルハウト',22.961,-29.62,1.16],['Deneb','デネブ',20.690,45.28,1.25],
+    ['Regulus','レグルス',10.140,11.97,1.35],['Polaris','北極星',2.530,89.26,1.98],['Bellatrix','',5.419,6.35,1.64],['Saiph','',5.796,-9.67,2.07],['Alnitak','',5.679,-1.94,1.77],['Alnilam','',5.604,-1.20,1.69],['Mintaka','',5.533,-0.30,2.25],
+    ['Dubhe','',11.062,61.75,1.79],['Merak','',11.031,56.38,2.37],['Phecda','',11.897,53.69,2.44],['Megrez','',12.257,57.03,3.31],['Alioth','',12.900,55.96,1.77],['Mizar','',13.399,54.93,2.23],['Alkaid','',13.792,49.31,1.86],
+    ['Caph','',0.153,59.15,2.27],['Schedar','',0.675,56.54,2.24],['Navi','',0.945,60.72,2.47],['Ruchbah','',1.430,60.24,2.68],['Segin','',1.907,63.67,3.38],
+    ['Sadr','',20.370,40.26,2.23],['Gienah','',20.770,33.97,2.46],['Rukh','',19.750,45.13,2.87],['Albireo','',19.512,27.96,3.18],
+    ['Dschubba','',16.006,-22.62,2.32],['Sargas','',17.622,-42.99,1.86],['Shaula','',17.560,-37.10,1.62],['Graffias','',16.091,-19.81,2.62],
+    ['Hamal','',2.120,23.46,2.0],['Alhena','',6.629,16.40,1.93],['Castor','',7.577,31.89,1.58],['Denebola','',11.818,14.57,2.14],['Alphard','',9.460,-8.66,1.98],['Mirfak','',3.405,49.86,1.79],['Algol','',3.136,40.96,2.1],['Alpheratz','',0.140,29.09,2.06],['Mirach','',1.162,35.62,2.05],['Almach','',2.065,42.33,2.1],['Enif','',21.736,9.88,2.4],['Markab','',23.079,15.21,2.48],['Scheat','',23.063,28.08,2.42],['Algieba','',10.333,19.84,2.6],['Zubenelgenubi','',14.848,-16.04,2.75],['Kaus Australis','',18.403,-34.38,1.85],['Nunki','',18.921,-26.30,2.05],['Rasalhague','',17.582,12.56,2.08],['Alnair','',22.137,-46.96,1.74],['Peacock','',20.427,-56.73,1.94],['Acrux','',12.443,-63.10,0.77],['Mimosa','',12.795,-59.69,1.25],['Gacrux','',12.519,-57.11,1.63],['Hadar','',14.064,-60.37,0.61],['Rigil Kent','',14.660,-60.83,-0.27],['Menkar','',3.038,4.09,2.53],['Diphda','',0.727,-17.99,2.02]
+  ];
+  const idx = {}; named.forEach((s, i) => idx[s[0]] = i);
+  const consts = [
+    ['Orion','オリオン',[['Betelgeuse','Bellatrix'],['Bellatrix','Mintaka'],['Mintaka','Alnilam'],['Alnilam','Alnitak'],['Alnitak','Saiph'],['Saiph','Rigel'],['Rigel','Mintaka'],['Betelgeuse','Alnitak']]],
+    ['Ursa Major','北斗七星',[['Dubhe','Merak'],['Merak','Phecda'],['Phecda','Megrez'],['Megrez','Dubhe'],['Megrez','Alioth'],['Alioth','Mizar'],['Mizar','Alkaid']]],
+    ['Cassiopeia','カシオペヤ',[['Caph','Schedar'],['Schedar','Navi'],['Navi','Ruchbah'],['Ruchbah','Segin']]],
+    ['Cygnus','白鳥',[['Deneb','Sadr'],['Sadr','Gienah'],['Sadr','Rukh'],['Sadr','Albireo']]],
+    ['Scorpius','さそり',[['Graffias','Dschubba'],['Dschubba','Antares'],['Antares','Sargas'],['Sargas','Shaula']]],
+    ['Summer Triangle','夏の大三角',[['Vega','Deneb'],['Deneb','Altair'],['Altair','Vega']]],
+    ['Winter Triangle','冬の大三角',[['Sirius','Procyon'],['Procyon','Betelgeuse'],['Betelgeuse','Sirius']]],
+    ['Gemini','双子',[['Castor','Pollux'],['Pollux','Alhena']]],
+    ['Crux','南十字',[['Acrux','Gacrux'],['Mimosa','Hadar']]],
+    ['Leo','獅子',[['Regulus','Algieba'],['Algieba','Denebola']]]
+  ];
+  let stars, mw, moon, moonHalo, sunLight, ridges = [], shooters = [], shootTimer = 0, nowDate = new Date();
+  const horiz = { lst: 0 };
+  function eqToVec(raDeg, dec, out){ // RA deg, Dec deg → three vector at radius R in horizontal frame (x east, y up, -z north)
+    const H = (horiz.lst - raDeg) * D, d = dec * D, lat = site.lat * D;
+    const up = Math.sin(d) * Math.sin(lat) + Math.cos(d) * Math.cos(lat) * Math.cos(H);
+    const n = Math.sin(d) * Math.cos(lat) - Math.cos(d) * Math.sin(lat) * Math.cos(H);
+    const e = -Math.cos(d) * Math.sin(H);
+    out.set(e * R, up * R, -n * R); return out;
+  }
+  const tmp = new THREE.Vector3();
+  function build(){
+    renderer = new THREE.WebGLRenderer({ canvas: gl, antialias: true, alpha: false });
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(fov, 1, 0.1, 400);
+    // star sprite shader
+    const vs = `attribute float size; attribute vec3 col; attribute float tw; uniform float t; uniform float dpr; varying vec3 vc; varying float va;
+      void main(){ vc=col; float k=0.78+0.22*sin(t*2.2+tw*6.2832); va=k; vec4 mv=modelViewMatrix*vec4(position,1.0); gl_PointSize=size*dpr*(0.9+0.1*k); gl_Position=projectionMatrix*mv; }`;
+    const fs = `varying vec3 vc; varying float va; void main(){ float d=length(gl_PointCoord-0.5)*2.0; if(d>1.0) discard; float a=pow(1.0-d,2.2); gl_FragColor=vec4(vc,a*va); }`;
+    const mkPoints = (N, fill) => {
+      const pos = new Float32Array(N * 3), col = new Float32Array(N * 3), size = new Float32Array(N), tw = new Float32Array(N);
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('col', new THREE.BufferAttribute(col, 3));
+      g.setAttribute('size', new THREE.BufferAttribute(size, 1)); g.setAttribute('tw', new THREE.BufferAttribute(tw, 1));
+      const m = new THREE.ShaderMaterial({ vertexShader: vs, fragmentShader: fs, uniforms: { t: { value: 0 }, dpr: { value: 1 } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+      const p = new THREE.Points(g, m); p.frustumCulled = false; fill(pos, col, size, tw); return p;
+    };
+    // random field + named stars; store RA/Dec to re-place when time changes
+    const NR = 7000; const field = [];
+    for (let i = 0; i < NR; i++) { const ra = Math.random() * 360, dec = Math.asin(Math.random() * 2 - 1) / D; const m = 2.2 + Math.pow(Math.random(), 0.5) * 4; field.push([ra, dec, m, 0]); }
+    named.forEach(s => field.push([s[2] * 15, s[3], s[4], 1]));
+    stars = mkPoints(field.length, (pos, col, size, tw) => {
+      field.forEach((s, i) => { const m = s[2]; const sz = Math.max(1.6, 9.4 - 1.55 * m) * (s[3] ? 1.35 : 1); size[i] = sz; tw[i] = Math.random();
+        const warm = Math.random() < 0.25; const c = s[3] ? [0.98, 0.92, 0.78] : warm ? [0.95, 0.88, 0.75] : [0.82, 0.86, 0.96]; col[i * 3] = c[0]; col[i * 3 + 1] = c[1]; col[i * 3 + 2] = c[2]; });
+    });
+    stars.userData.field = field; scene.add(stars);
+    // milky way as galactic-plane point cloud
+    const NM = 22000; const gal = [];
+    const aG = 192.859 * D, dG = 27.128 * D, lN = 122.932 * D;
+    for (let i = 0; i < NM; i++) {
+      const l = Math.random() * Math.PI * 2; let b = (Math.random() + Math.random() + Math.random() - 1.5) * 9 * D; // triangular-ish
+      b += Math.sin(l * 2.3) * 2 * D; const dens = 0.55 + 0.45 * Math.cos(l - 0.3) ; if (Math.random() > dens) continue;
+      const sd = Math.sin(dG) * Math.sin(b) + Math.cos(dG) * Math.cos(b) * Math.cos(lN - l); const dec = Math.asin(sd);
+      const y = Math.cos(b) * Math.sin(lN - l), x = Math.cos(dG) * Math.sin(b) - Math.sin(dG) * Math.cos(b) * Math.cos(lN - l); const ra = aG + Math.atan2(y, x);
+      gal.push([((ra / D) % 360 + 360) % 360, dec / D, 0, 0]);
+    }
+    mw = mkPoints(gal.length, (pos, col, size, tw) => { gal.forEach((s, i) => { size[i] = 1.6 + Math.random() * 2.6; tw[i] = Math.random(); const k = 0.18 + Math.random() * 0.2; col[i * 3] = k * 0.95; col[i * 3 + 1] = k; col[i * 3 + 2] = k * 1.15; }); });
+    mw.userData.field = gal; scene.add(mw);
+    // ground + ridges + torii
+    const ground = new THREE.Mesh(new THREE.CircleGeometry(300, 48), new THREE.MeshBasicMaterial({ color: 0x050508 })); ground.rotation.x = -Math.PI / 2; ground.position.y = -0.6; scene.add(ground);
+    const mkRidge = (rad, base, amp, color, seed) => {
+      const N = 360, pos = new Float32Array(N * 2 * 3), idx = [];
+      for (let i = 0; i < N; i++) { const a = i / N * Math.PI * 2; const h = base + amp * (TK.fbm1(i / N * 14 + seed, 4) - 0.35) * 2 + Math.max(0, TK.n1(i / N * 5 + seed * 3) - 0.6) * amp * 2.6; const x = Math.sin(a) * rad, z = -Math.cos(a) * rad;
+        pos.set([x, h, z], i * 6); pos.set([x, -4, z], i * 6 + 3); const j = (i + 1) % N; idx.push(i * 2, i * 2 + 1, j * 2, j * 2, i * 2 + 1, j * 2 + 1); }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setIndex(idx);
+      const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide })); scene.add(m); return m;
+    };
+    ridges = [mkRidge(95, 7, 9, 0x1a1c2a, 2.1), mkRidge(62, 5, 7, 0x10111b, 5.7), mkRidge(34, 2.6, 4.2, 0x08080d, 9.3)];
+    const torii = new THREE.Group(); const black = new THREE.MeshBasicMaterial({ color: 0x030304 });
+    const pillar = () => new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 5.2, 10), black);
+    const p1 = pillar(), p2 = pillar(); p1.position.set(-1.9, 2.6, 0); p2.position.set(1.9, 2.6, 0); p1.rotation.z = -0.03; p2.rotation.z = 0.03;
+    const kasagi = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.36, 0.5), black); kasagi.position.y = 5.3;
+    const shimaki = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.22, 0.42), black); shimaki.position.y = 4.95;
+    const nuki = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.24, 0.3), black); nuki.position.y = 4.1;
+    const gakuzuka = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.9, 0.2), black); gakuzuka.position.y = 4.55;
+    const tipL = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.36, 0.5), black); tipL.position.set(-3.3, 5.45, 0); tipL.rotation.z = 0.18; const tipR = tipL.clone(); tipR.position.x = 3.3; tipR.rotation.z = -0.18;
+    torii.add(p1, p2, kasagi, shimaki, nuki, gakuzuka, tipL, tipR); torii.position.set(2.2, -0.5, 24); torii.rotation.y = -0.15; torii.scale.setScalar(0.9); scene.add(torii);
+    // moon
+    moon = new THREE.Mesh(new THREE.SphereGeometry(2.1, 40, 40), new THREE.MeshLambertMaterial({ color: 0xf3ead6 }));
+    scene.add(moon); scene.add(new THREE.AmbientLight(0xffffff, 0.06));
+    sunLight = new THREE.DirectionalLight(0xffffff, 1.6); scene.add(sunLight); sunLight.target = moon; scene.add(sunLight.target);
+    const hc = document.createElement('canvas'); hc.width = hc.height = 128; const hg = hc.getContext('2d'); const grd = hg.createRadialGradient(64, 64, 6, 64, 64, 64); grd.addColorStop(0, 'rgba(243,234,214,0.55)'); grd.addColorStop(0.25, 'rgba(243,234,214,0.16)'); grd.addColorStop(1, 'rgba(243,234,214,0)'); hg.fillStyle = grd; hg.fillRect(0, 0, 128, 128);
+    moonHalo = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(hc), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); moonHalo.scale.set(16, 16, 1); scene.add(moonHalo);
+    // shooting stars
+    for (let i = 0; i < 3; i++) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3)); const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xfff2d0, transparent: true, opacity: 0, blending: THREE.AdditiveBlending })); l.frustumCulled = false; scene.add(l); shooters.push({ l, t: 2, dir: new THREE.Vector3(), vel: new THREE.Vector3() }); }
+    placeSky();
+  }
+  function placeSky(){
+    const d = new Date(Date.now() + hourOffset * 3600000); nowDate = d;
+    horiz.lst = (TK.gmst(d) + site.lon) % 360;
+    for (const p of [stars, mw]) { const pos = p.geometry.attributes.position; p.userData.field.forEach((s, i) => { eqToVec(s[0], s[1], tmp); pos.setXYZ(i, tmp.x, tmp.y, tmp.z); }); pos.needsUpdate = true; }
+    const age = TK.moonAge(d); const sl = TK.sunLon(d); const ml = sl + age / TK.SYN * 360; const me = TK.eclToEq(ml, 0); eqToVec(me.ra, me.dec, tmp).multiplyScalar(0.92); moon.position.copy(tmp); moonHalo.position.copy(tmp).multiplyScalar(0.99);
+    const se = TK.eclToEq(sl, 0); eqToVec(se.ra, se.dec, tmp); sunLight.position.copy(tmp).multiplyScalar(3);
+    const sunAlt = Math.asin(tmp.y / R) / D; const tw = Math.max(0, Math.min(1, (sunAlt + 14) / 10)); renderer.setClearColor(new THREE.Color(0x07070b).lerp(new THREE.Color(0x1c2340), tw));
+    const lt = new Date(d.getTime() + site.lon / 15 * 3600000); const hh = String(lt.getUTCHours()).padStart(2, '0'), mm = String(lt.getUTCMinutes()).padStart(2, '0');
+    document.getElementById('timelab').textContent = `${site.name} · ${hh}:${mm} local`;
+    const mn = TK.moonName(age); document.getElementById('ev-moon').textContent = `${mn.jp} ${mn.ro} · ${Math.round(TK.litFrac(age) * 100)}% lit`;
+  }
+  function brightestUp(){ let best = null, bm = 99; const pos = stars.geometry.attributes.position; const base = stars.userData.field.length - named.length; named.forEach((s, i) => { const y = pos.getY(base + i); if (y / R > 0.25 && s[4] < bm) { bm = s[4]; best = { s, i: base + i }; } }); return best; }
+  function dirToYawPitch(v){ const yawv = Math.atan2(v.x, -v.z); const pitchv = Math.asin(v.y / v.length()); return [yawv, pitchv]; }
+  function setStation(st){
+    station = st; root.querySelectorAll('.stations button').forEach(b => b.classList.toggle('active', b.dataset.st === st));
+    document.getElementById('dome-card').classList.toggle('hide', st !== 'watch'); document.getElementById('estrip').classList.toggle('hide', st !== 'scroll'); document.getElementById('reticle').classList.toggle('on', st === 'lens');
+    if (st === 'watch') { tyaw = Math.PI - 0.09; tpitch = 0.04; tfov = 66; }
+    if (st === 'scroll') { const [y, p] = dirToYawPitch(moon.position); tyaw = moon.position.y > 4 ? y : Math.PI; tpitch = Math.max(0.35, p); tfov = 56; }
+    if (st === 'lens') { const b = brightestUp(); if (b) { const pos = stars.geometry.attributes.position; tmp.set(pos.getX(b.i), pos.getY(b.i), pos.getZ(b.i)); const [y, p] = dirToYawPitch(tmp); tyaw = y; tpitch = p; tfov = 13; lensTarget = b.s; } }
+    if (st === 'free') { tfov = 62; }
+  }
+  let lensTarget = null;
+  function nearestYaw(a, b){ let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return b + d; }
+  function resize(){ W = root.clientWidth; H = root.clientHeight; dpr = Math.min(2, window.devicePixelRatio || 1); renderer.setPixelRatio(dpr); renderer.setSize(W, H, false); ov.width = W * dpr; ov.height = H * dpr; ov.style.width = W + 'px'; ov.style.height = H + 'px'; octx.setTransform(dpr, 0, 0, dpr, 0, 0); camera.aspect = W / H; camera.updateProjectionMatrix(); stars.material.uniforms.dpr.value = dpr; mw.material.uniforms.dpr.value = dpr; }
+  const v2 = new THREE.Vector3();
+  const fwd = new THREE.Vector3();
+  function project(v){ if (fwd.dot(v) < 0) return null; v2.copy(v).project(camera); if (v2.z > 1) return null; return [(v2.x + 1) / 2 * W, (1 - v2.y) / 2 * H]; }
+  function drawOverlay(time){
+    octx.clearRect(0, 0, W, H);
+    const pos = stars.geometry.attributes.position; const base = stars.userData.field.length - named.length;
+    const P = name => { const i = base + idx[name]; tmp.set(pos.getX(i), pos.getY(i), pos.getZ(i)); if (tmp.y < -1) return null; return project(tmp); };
+    octx.lineCap = 'round'; octx.lineJoin = 'round';
+    const scale = 62 / fov;
+    for (const c of consts) { let cx = 0, cy = 0, n = 0;
+      for (const [a, b] of c[2]) { const A = P(a), B = P(b); if (!A || !B) continue; cx += A[0] + B[0]; cy += A[1] + B[1]; n += 2;
+        for (const [w, al] of [[9, 0.045], [4, 0.14], [1.5, 0.5]]) { octx.strokeStyle = `rgba(233,224,204,${al})`; octx.lineWidth = w * Math.min(2, scale); octx.beginPath(); octx.moveTo(A[0], A[1]); octx.lineTo(B[0], B[1]); octx.stroke(); } }
+      if (n && station !== 'lens') { octx.fillStyle = 'rgba(207,168,79,0.8)'; octx.font = `500 ${15}px "Shippori Mincho", serif`; octx.textAlign = 'center'; octx.fillText(c[1], cx / n, cy / n - 14); octx.fillStyle = 'rgba(233,224,204,0.5)'; octx.font = `italic 13px "Cormorant Garamond", serif`; octx.fillText(c[0], cx / n, cy / n + 4); }
+    }
+    // ecliptic (the Scroll's path)
+    if (station === 'scroll') { octx.setLineDash([2, 7]); octx.strokeStyle = 'rgba(207,168,79,0.55)'; octx.lineWidth = 1.2; octx.beginPath(); let pen = false; for (let l = 0; l <= 360; l += 3) { const e = TK.eclToEq(l, 0); eqToVec(e.ra, e.dec, tmp); const q = tmp.y > 0 ? project(tmp) : null; if (q) { pen ? octx.lineTo(q[0], q[1]) : octx.moveTo(q[0], q[1]); pen = true; } else pen = false; } octx.stroke(); octx.setLineDash([]); }
+    // bright star labels
+    octx.textAlign = 'left';
+    named.forEach((s, i) => { if (s[4] > 1.3 || !s[1]) return; const j = base + i; tmp.set(pos.getX(j), pos.getY(j), pos.getZ(j)); if (tmp.y < 2) return; const q = project(tmp); if (!q) return;
+      octx.fillStyle = 'rgba(233,224,204,0.72)'; octx.font = `14px "Cormorant Garamond", serif`; octx.fillText(s[0], q[0] + 9, q[1] + 4); octx.fillStyle = 'rgba(207,168,79,0.7)'; octx.font = `11px "Shippori Mincho", serif`; octx.fillText(s[1], q[0] + 9, q[1] + 17); });
+    // moon label
+    if (moon.position.y > 1) { const q = project(moon.position); if (q) { const mn = TK.moonName(TK.moonAge(nowDate)); octx.fillStyle = 'rgba(243,234,214,0.85)'; octx.font = `500 15px "Shippori Mincho", serif`; octx.fillText(mn.jp + ' · ' + mn.ro, q[0] + 16 * scale + 8, q[1] + 5); } }
+    // compass on horizon
+    octx.textAlign = 'center'; octx.font = `500 13px "Shippori Mincho", serif`;
+    [['北', 'N', 0], ['東', 'E', 90], ['南', 'S', 180], ['西', 'W', 270]].forEach(([j, e, az]) => { tmp.set(Math.sin(az * D) * R, 0.6, -Math.cos(az * D) * R); const q = project(tmp); if (!q) return; octx.fillStyle = 'rgba(180,40,45,0.9)'; octx.fillText(j, q[0], q[1] - 6); octx.fillStyle = 'rgba(233,224,204,0.45)'; octx.fillText(e, q[0], q[1] + 10); });
+    // lens label
+    if (station === 'lens' && lensTarget) { octx.fillStyle = 'rgba(243,234,214,0.9)'; octx.font = `500 18px "Shippori Mincho", serif`; octx.fillText(`${lensTarget[0]} · ${lensTarget[1]}`, W / 2, H / 2 + Math.min(62 * Math.min(W, H) / 100, 520) / 2 + 30); octx.fillStyle = 'rgba(207,168,79,0.8)'; octx.font = `14px "Cormorant Garamond", serif`; octx.fillText(`magnitude ${lensTarget[4].toFixed(2)} · the lens narrows to 13°`, W / 2, H / 2 + Math.min(62 * Math.min(W, H) / 100, 520) / 2 + 50); }
+    // mist band on horizon
+    const g = octx.createLinearGradient(0, H * 0.55, 0, H); g.addColorStop(0, 'rgba(20,22,34,0)'); g.addColorStop(1, 'rgba(20,22,34,0.35)'); octx.fillStyle = g; octx.fillRect(0, H * 0.55, W, H * 0.45);
+  }
+  let lastNow = 0;
+  function frame(now){
+    if (!running) return; raf = requestAnimationFrame(frame);
+    const t = (now - t0) / 1000; const dt = Math.min(0.1, lastNow ? (now - lastNow) / 1000 : 1 / 60); lastNow = now;
+    if (station === 'scroll') tyaw += 0.036 * dt;
+    const ease = 1 - Math.pow(0.05, dt); // time-based: ~95% of the way per second
+    yaw += (nearestYaw(tyaw, yaw) - yaw) * ease; pitch += (tpitch - pitch) * ease; fov += (tfov - fov) * ease; camera.fov = fov; camera.updateProjectionMatrix();
+    camera.lookAt(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
+    stars.material.uniforms.t.value = t; mw.material.uniforms.t.value = t * 0.3;
+    // shooting stars
+    shootTimer -= dt; if (shootTimer < 0) { shootTimer = 1.8 + Math.random() * 3.5; const s = shooters.find(x => x.t >= 1); if (s) { s.t = 0; const az = yaw + (Math.random() - 0.5) * 1.6, al = pitch + (Math.random() - 0.3) * 0.9; s.dir.set(Math.sin(az) * Math.cos(al), Math.sin(al), -Math.cos(az) * Math.cos(al)).multiplyScalar(R * 0.95); s.vel.set(Math.random() - 0.5, -0.6 - Math.random() * 0.5, Math.random() - 0.5).normalize().multiplyScalar(26); } }
+    for (const s of shooters) { if (s.t >= 1) { s.l.material.opacity = 0; continue; } s.t += dt * 1.7; const head = s.dir.clone().addScaledVector(s.vel, s.t); const tail = head.clone().addScaledVector(s.vel, -0.22); const p = s.l.geometry.attributes.position; p.setXYZ(0, head.x, head.y, head.z); p.setXYZ(1, tail.x, tail.y, tail.z); p.needsUpdate = true; s.l.material.opacity = Math.sin(s.t * Math.PI) * 0.9; }
+    camera.getWorldDirection(fwd); renderer.render(scene, camera); drawOverlay(t);
+  }
+  // input
+  let drag = null;
+  gl.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, yaw: tyaw, pitch: tpitch }; gl.classList.add('dragging'); gl.setPointerCapture(e.pointerId); if (station !== 'free') setStation('free'); });
+  gl.addEventListener('pointermove', e => { if (!drag) return; const k = fov / 62 * 0.0045; tyaw = drag.yaw - (e.clientX - drag.x) * k; tpitch = Math.max(-0.15, Math.min(1.45, drag.pitch + (e.clientY - drag.y) * k)); });
+  gl.addEventListener('pointerup', () => { drag = null; gl.classList.remove('dragging'); });
+  gl.addEventListener('wheel', e => { e.preventDefault(); tfov = Math.max(10, Math.min(80, tfov + e.deltaY * 0.03)); if (station !== 'free') setStation('free'); }, { passive: false });
+  root.querySelectorAll('.stations button').forEach(b => b.addEventListener('click', () => setStation(b.dataset.st)));
+  document.getElementById('site').addEventListener('change', e => { const [la, lo, nm] = e.target.value.split(','); site = { lat: +la, lon: +lo, name: nm }; placeSky(); if (station !== 'free') setStation(station); });
+  document.getElementById('dome-time').addEventListener('input', e => { hourOffset = +e.target.value; placeSky(); });
+  function pickNight(){ // if the sun is up for the chosen observer, jump to the next dark hour
+    for (let h = 0; h <= 24; h += 0.25) { const d = new Date(Date.now() + h * 3600000); const se = TK.eclToEq(TK.sunLon(d), 0); horiz.lst = (TK.gmst(d) + site.lon) % 360; eqToVec(se.ra, se.dec, tmp); if (tmp.y / R < -0.2) { hourOffset = h; break; } }
+    document.getElementById('dome-time').value = hourOffset;
+  }
+  let built = false;
+  return {
+    start(){ if (!built) { build(); built = true; pickNight(); placeSky(); } running = true; resize(); t0 = performance.now() - 1; raf = requestAnimationFrame(frame); },
+    stop(){ running = false; cancelAnimationFrame(raf); },
+    resize(){ if (built && running) resize(); }
+  };
+})();
+
+/* ===================== CONCEPT 2: SUMI-E DUSK ===================== */
+Stages.dusk = (() => {
+  const scroller = document.getElementById('dusk-scroll'), sticky = document.getElementById('dusk-sticky'), cv = document.getElementById('dusk-cv'), ctx = cv.getContext('2d');
+  const caps = [...document.querySelectorAll('.dusk-cap')], title = document.getElementById('dusk-title'), cta = document.getElementById('dusk-cta'), hint = document.getElementById('dusk-hint');
+  let W = 1, H = 1, dpr = 1, running = false, raf = 0, p = 0, t0 = performance.now();
+  const grainImg = new Image(); grainImg.src = TK.grain(220);
+  // ridges: precomputed profiles in 0..1
+  const ridges = [
+    { base: 0.56, amp: 0.13, seed: 1.3, freq: 2.2, col: [52, 56, 78] },
+    { base: 0.66, amp: 0.12, seed: 4.1, freq: 3.1, col: [34, 36, 52] },
+    { base: 0.77, amp: 0.10, seed: 7.9, freq: 4.0, col: [18, 19, 28] },
+    { base: 0.88, amp: 0.07, seed: 11.2, freq: 5.5, col: [8, 8, 12] }
+  ];
+  const profRaw = (r, u) => r.base - r.amp * (TK.fbm1(u * r.freq + r.seed, 5) * 1.6 - 0.4) - Math.max(0, TK.n1(u * r.freq * 0.5 + r.seed * 2) - 0.62) * r.amp * 2.2;
+  const PN = 512; const profs = ridges.map(r => { const a = new Float32Array(PN + 1); for (let i = 0; i <= PN; i++) a[i] = profRaw(r, i / PN); return a; });
+  const prof = (r, u) => { const a = profs[ridges.indexOf(r)]; const k = Math.max(0, Math.min(PN, u * PN)); const i = Math.floor(k), f = k - i; return a[i] + (a[Math.min(PN, i + 1)] - a[i]) * f; };
+  const stars = []; for (let i = 0; i < 1100; i++) stars.push({ x: Math.random(), y: Math.random() * 0.78, th: 0.34 + Math.pow(Math.random(), 1.6) * 0.6, s: 0.6 + Math.random() * 1.8, tw: Math.random() * 6 });
+  stars.sort((a, b) => a.th - b.th);
+  let meteors = [], meteorT = 1.5;
+  const petals = []; for (let i = 0; i < 26; i++) petals.push({ x: Math.random(), y: Math.random(), s: 5 + Math.random() * 6, r: Math.random() * 6, v: 0.4 + Math.random() * 0.6 });
+  const age = TK.moonAge(new Date()); const mn = TK.moonName(age);
+  document.getElementById('dusk-moonk').textContent = `The Moon rises · ${mn.jp}`; document.getElementById('dusk-moont').textContent = `${mn.ro}. ${mn.text}`;
+  const sky = [ // p, top rgb, mid rgb, bottom rgb
+    [0.00, [196, 206, 210], [222, 214, 190], [233, 224, 204]],
+    [0.22, [120, 118, 150], [214, 150, 110], [230, 176, 120]],
+    [0.40, [38, 36, 70], [120, 70, 90], [190, 95, 70]],
+    [0.58, [14, 14, 32], [34, 28, 52], [60, 38, 56]],
+    [0.80, [6, 6, 12], [12, 12, 22], [18, 16, 28]],
+    [1.00, [4, 4, 8], [8, 8, 14], [10, 9, 16]]
+  ];
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const sm = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  function skyAt(p){ let i = 0; while (i < sky.length - 2 && sky[i + 1][0] < p) i++; const a = sky[i], b = sky[i + 1]; const t = sm(a[0], b[0], p); const mix = (u, v) => `rgb(${Math.round(lerp(u[0], v[0], t))},${Math.round(lerp(u[1], v[1], t))},${Math.round(lerp(u[2], v[2], t))})`; return [mix(a[1], b[1]), mix(a[2], b[2]), mix(a[3], b[3])]; }
+  function resize(){ sticky.style.height = scroller.clientHeight + 'px'; W = sticky.clientWidth; H = sticky.clientHeight; dpr = Math.min(2, window.devicePixelRatio || 1); cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+  function draw(time){
+    const night = sm(0.3, 0.75, p);
+    const [c1, c2, c3] = skyAt(p); const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, c1); g.addColorStop(0.55, c2); g.addColorStop(1, c3); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    // sun
+    const sunP = sm(0, 0.42, p); if (sunP < 1) { const sx = W * (0.62 - sunP * 0.1), sy = H * (0.28 + sunP * 0.5); const sr = Math.min(W, H) * 0.075; const a = 1 - sm(0.3, 0.42, p);
+      const gl = ctx.createRadialGradient(sx, sy, sr * 0.6, sx, sy, sr * 4); gl.addColorStop(0, `rgba(230,90,60,${0.35 * a})`); gl.addColorStop(1, 'rgba(230,90,60,0)'); ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = `rgba(180,40,45,${a})`; ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2); ctx.fill(); }
+    // milky way band (late)
+    const mwA = sm(0.72, 0.95, p) * 0.5; if (mwA > 0) { ctx.save(); ctx.translate(W * 0.5, H * 0.3); ctx.rotate(-0.5); const bg = ctx.createLinearGradient(0, -H * 0.18, 0, H * 0.18); bg.addColorStop(0, 'rgba(160,170,210,0)'); bg.addColorStop(0.5, `rgba(160,170,210,${mwA * 0.22})`); bg.addColorStop(1, 'rgba(160,170,210,0)'); ctx.fillStyle = bg; ctx.fillRect(-W, -H * 0.18, W * 2, H * 0.36); ctx.restore(); }
+    // stars
+    for (const s of stars) { if (p < s.th) break; const k = Math.min(1, (p - s.th) / 0.025); const bloom = Math.max(0, 1 - (p - s.th) / 0.06); const y = s.y * H; if (y > prof(ridges[0], s.x) * H - 6) continue; const tw = 0.7 + 0.3 * Math.sin(time * 2 + s.tw);
+      ctx.fillStyle = `rgba(243,234,214,${k * tw})`; ctx.beginPath(); ctx.arc(s.x * W, y, s.s * (1 + bloom * 1.6), 0, Math.PI * 2); ctx.fill();
+      if (bloom > 0) { const bg = ctx.createRadialGradient(s.x * W, y, 0, s.x * W, y, 18 * bloom + 4); bg.addColorStop(0, `rgba(243,234,214,${0.35 * bloom})`); bg.addColorStop(1, 'rgba(243,234,214,0)'); ctx.fillStyle = bg; ctx.fillRect(s.x * W - 24, y - 24, 48, 48); } }
+    // meteors once it is dark
+    if (night > 0.6) { meteorT -= 1 / 60; if (meteorT < 0) { meteorT = 2 + Math.random() * 4; meteors.push({ x: 0.2 + Math.random() * 0.7, y: 0.05 + Math.random() * 0.3, a: 2.3 + Math.random() * 0.6, t: 0 }); }
+      for (const m of meteors) { m.t += 0.03; const len = 0.09 * W, k = Math.sin(Math.min(1, m.t) * Math.PI); const x = m.x * W + Math.cos(m.a) * m.t * 220, y = m.y * H + Math.sin(m.a) * m.t * 220; const g = ctx.createLinearGradient(x, y, x - Math.cos(m.a) * len, y - Math.sin(m.a) * len); g.addColorStop(0, `rgba(255,245,225,${k})`); g.addColorStop(1, 'rgba(255,245,225,0)'); ctx.strokeStyle = g; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - Math.cos(m.a) * len, y - Math.sin(m.a) * len); ctx.stroke(); }
+      meteors = meteors.filter(m => m.t < 1); }
+    // moon rising (real phase)
+    const mp = sm(0.48, 0.86, p); if (mp > 0) { const mx = W * (0.18 + mp * 0.22), my = H * (0.72 - mp * 0.5); const mr = Math.min(W, H) * 0.055; const a = sm(0.48, 0.6, p);
+      ctx.save(); ctx.globalAlpha = a; const hg = ctx.createRadialGradient(mx, my, mr, mx, my, mr * 5); hg.addColorStop(0, 'rgba(243,234,214,0.28)'); hg.addColorStop(1, 'rgba(243,234,214,0)'); ctx.fillStyle = hg; ctx.fillRect(mx - mr * 5, my - mr * 5, mr * 10, mr * 10); TK.drawMoon(ctx, mx, my, mr, age, { earthshine: 'rgba(243,234,214,0.07)' }); ctx.restore(); }
+    // mist layers drifting between ridges
+    const mist = (y0, h, a, sp) => { const off = (time * sp * 20) % W; const mg = ctx.createLinearGradient(0, y0, 0, y0 + h); mg.addColorStop(0, `rgba(200,200,215,0)`); mg.addColorStop(0.5, `rgba(200,200,215,${a})`); mg.addColorStop(1, `rgba(200,200,215,0)`); ctx.fillStyle = mg; for (let i = -1; i < 2; i++) { ctx.beginPath(); for (let x = 0; x <= W; x += 16) { const yy = y0 + h * 0.5 + Math.sin((x + off + i * W) / W * 6.3 + sp) * h * 0.18; x === 0 ? ctx.moveTo(x, yy - h / 2) : ctx.lineTo(x, yy - h / 2); } ctx.lineTo(W, y0 + h); ctx.lineTo(0, y0 + h); ctx.closePath(); ctx.fill(); } };
+    // ridges with ink bleed
+    const bleed = sm(0.12, 0.62, p);
+    ridges.forEach((r, i) => {
+      const dayCol = [r.col[0] + 90 - i * 10, r.col[1] + 92 - i * 10, r.col[2] + 100 - i * 8]; const col = [0, 1, 2].map(k => Math.round(lerp(dayCol[k], r.col[k], night)));
+      const passes = 1 + Math.round(bleed * 4);
+      for (let k = passes - 1; k >= 0; k--) { const jit = k === 0 ? 0 : (k / passes) * 14 * bleed; const al = k === 0 ? 1 : 0.12 * bleed;
+        ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${al})`; ctx.beginPath(); ctx.moveTo(0, H);
+        for (let x = 0; x <= W; x += 4) { const u = x / W; const y = prof(r, u) * H + (jit ? (TK.n1(u * 40 + k * 7 + i * 3) - 0.5) * jit * 2 : 0); ctx.lineTo(x, y); } ctx.lineTo(W, H); ctx.closePath(); ctx.fill(); }
+      // ink drips on front ridges after dusk
+      if (i >= 2 && bleed > 0.5) { ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${(bleed - 0.5) * 0.9})`; for (let d = 0; d < 7; d++) { const u = (d * 0.137 + i * 0.05 + 0.03) % 1; const y0 = prof(r, u) * H; const len = (TK.n1(d * 3.1 + i) * 40 + 10) * (bleed - 0.5) * 2; ctx.beginPath(); ctx.ellipse(u * W, y0 + len / 2, 2.2, len / 2, 0, 0, Math.PI * 2); ctx.fill(); } }
+      if (i === 0) mist(prof(r, 0.5) * H + 10, H * 0.08, 0.04 + 0.1 * (1 - night), 0.9);
+      if (i === 2) mist(prof(r, 0.5) * H - 6, H * 0.07, 0.03 + 0.06 * (1 - night), 0.6);
+    });
+    // torii + pine on ridge 2
+    const tA = sm(0.22, 0.5, p); if (tA > 0) { const u = 0.78; const bx = u * W, by = prof(ridges[2], u) * H + 6; const s = Math.min(W, H) * 0.0021; ctx.save(); ctx.translate(bx, by); ctx.scale(s, s); ctx.globalAlpha = tA; ctx.fillStyle = '#060608';
+      ctx.fillRect(-28, -70, 7, 70); ctx.fillRect(21, -70, 7, 70); ctx.beginPath(); ctx.moveTo(-46, -80); ctx.quadraticCurveTo(0, -88, 46, -80); ctx.lineTo(44, -74); ctx.quadraticCurveTo(0, -80, -44, -74); ctx.closePath(); ctx.fill(); ctx.fillRect(-36, -73, 72, 4); ctx.fillRect(-34, -56, 68, 5); ctx.fillRect(-4, -68, 8, 12);
+      // pine
+      ctx.translate(-120, 0); ctx.fillRect(-3, -50, 6, 56); for (const [x, y, w] of [[-10, -46, 26], [8, -60, 22], [-14, -72, 18], [4, -84, 14]]) { ctx.beginPath(); ctx.ellipse(x, y, w, 6, -0.1, 0, Math.PI * 2); ctx.fill(); } ctx.restore(); }
+    // petals
+    const pa = 0.9 - night * 0.55; for (const pt of petals) { pt.x += 0.0008 * pt.v + Math.sin(time + pt.r) * 0.0004; pt.y += 0.0007 * pt.v; if (pt.x > 1.05) pt.x = -0.05; if (pt.y > 1.05) { pt.y = -0.05; pt.x = Math.random(); } const x = pt.x * W, y = pt.y * H; ctx.save(); ctx.translate(x, y); ctx.rotate(pt.r + time * pt.v); ctx.fillStyle = `rgba(${Math.round(lerp(236, 190, night))},${Math.round(lerp(170, 150, night))},${Math.round(lerp(185, 170, night))},${pa})`; ctx.beginPath(); ctx.ellipse(0, 0, pt.s, pt.s * 0.55, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+    // paper grain + vignette
+    if (grainImg.complete) { ctx.save(); ctx.globalAlpha = 0.12 + 0.1 * (1 - night); ctx.globalCompositeOperation = 'multiply'; const pat = ctx.createPattern(grainImg, 'repeat'); ctx.fillStyle = pat; ctx.fillRect(0, 0, W, H); ctx.restore(); }
+    const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.4, W / 2, H / 2, Math.max(W, H) * 0.8); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(0,0,0,${0.25 + 0.3 * night})`); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+  }
+  function ui(){
+    const mins = 17.5 * 60 + p * 6 * 60; const hh = Math.floor(mins / 60) % 24, mm = Math.floor(mins % 60); document.getElementById('dusk-h').textContent = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+    const koku = hh < 19 ? '酉の刻' : hh < 21 ? '戌の刻' : hh < 23 ? '亥の刻' : '子の刻'; document.getElementById('dusk-j').textContent = koku;
+    title.classList.toggle('gone', p > 0.12); hint.style.opacity = p < 0.04 ? 1 : 0; cta.classList.toggle('on', p > 0.93);
+    caps.forEach(c => c.classList.toggle('on', p >= +c.dataset.from && p <= +c.dataset.to));
+  }
+  function frame(now){ if (!running) return; raf = requestAnimationFrame(frame); draw((now - t0) / 1000); }
+  scroller.addEventListener('scroll', () => { p = scroller.scrollTop / (scroller.scrollHeight - scroller.clientHeight); ui(); });
+  document.querySelector('#dusk-cta button').addEventListener('click', () => show('dome'));
+  return { start(){ running = true; resize(); p = scroller.scrollTop / Math.max(1, scroller.scrollHeight - scroller.clientHeight); ui(); raf = requestAnimationFrame(frame); }, stop(){ running = false; cancelAnimationFrame(raf); }, resize(){ if (running) resize(); } };
+})();
+
+/* ===================== CONCEPT 3: INK & PAPER ===================== */
+Stages.ink = (() => {
+  const paper = document.getElementById('paper'), fx = document.getElementById('inkfx'), fctx = fx.getContext('2d');
+  const now = new Date(); const age = TK.moonAge(now); const mn = TK.moonName(age);
+  document.getElementById('ink-date').textContent = now.toLocaleDateString(undefined, { day: 'numeric', month: 'long' });
+  document.getElementById('mn-jp').textContent = mn.jp; document.getElementById('mn-ro').textContent = mn.ro; document.getElementById('mn-p').textContent = mn.text;
+  // title ink-in
+  const h1 = document.getElementById('ink-title'); h1.innerHTML = [...h1.textContent].map((ch, i) => `<span style="animation-delay:${i * 45}ms">${ch === ' ' ? '&nbsp;' : ch}</span>`).join('');
+  document.getElementById('btn-enso').addEventListener('click', () => { const e = document.getElementById('enso'); e.classList.remove('play'); void e.getBoundingClientRect(); e.classList.add('play'); h1.querySelectorAll('span').forEach(s => { s.style.animation = 'none'; void s.offsetWidth; s.style.animation = ''; }); });
+  // ink-spread tab transition
+  let anim = null;
+  function inkTransition(x, y, swap){
+    const r = paper.getBoundingClientRect(); fx.width = r.width; fx.height = r.height; fx.style.width = r.width + 'px'; fx.style.height = r.height + 'px';
+    const maxR = Math.hypot(r.width, r.height); const seed = Math.random() * 100; const t0 = performance.now(); let swapped = false;
+    const blob = (R, alpha) => { fctx.fillStyle = `rgba(14,13,20,${alpha})`; fctx.beginPath(); for (let a = 0; a <= Math.PI * 2 + 0.01; a += Math.PI / 64) { const rr = R * (0.72 + 0.4 * TK.fbm1(a * 1.6 + seed, 3)); const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr; a === 0 ? fctx.moveTo(px, py) : fctx.lineTo(px, py); } fctx.closePath(); fctx.fill(); };
+    cancelAnimationFrame(anim);
+    const step = now => { const t = (now - t0) / 1000; fctx.clearRect(0, 0, fx.width, fx.height);
+      if (t < 0.55) { const k = t / 0.55; const e = 1 - Math.pow(1 - k, 3); blob(maxR * e * 1.1, 0.35); blob(maxR * e * 0.9, 0.6); blob(maxR * e * 0.75, 1); for (let i = 0; i < 5; i++) { const a = seed + i * 1.7; const d = maxR * e * (1.15 + 0.12 * i); fctx.beginPath(); fctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, 4 + i * 2, 0, Math.PI * 2); fctx.fill(); } }
+      else { if (!swapped) { swapped = true; swap(); } const k = Math.min(1, (t - 0.55) / 0.5); fctx.globalAlpha = 1 - k; blob(maxR * 1.2, 1); fctx.globalAlpha = 1; if (k >= 1) { fctx.clearRect(0, 0, fx.width, fx.height); return; } }
+      anim = requestAnimationFrame(step); };
+    anim = requestAnimationFrame(step);
+  }
+  document.querySelectorAll('.ptab').forEach(t => t.addEventListener('click', e => { if (t.classList.contains('active')) return; const r = paper.getBoundingClientRect(); inkTransition(e.clientX - r.left, e.clientY - r.top, () => { document.querySelectorAll('.ptab').forEach(x => x.classList.toggle('active', x === t)); document.querySelectorAll('.pane').forEach(pn => pn.classList.toggle('active', pn.dataset.p === t.dataset.p)); if (t.dataset.p === 'watch') gauge(); if (t.dataset.p === 'lens') lensInit(); }); }));
+  // gauge
+  function gauge(){ const v = document.getElementById('gval'), n = document.getElementById('gnum'); const L = 332; v.style.strokeDashoffset = 600; n.textContent = '0'; requestAnimationFrame(() => requestAnimationFrame(() => { v.style.strokeDashoffset = 600 - L * 0.82; const t0 = performance.now(); const tick = now => { const k = Math.min(1, (now - t0) / 1600); const e = 1 - Math.pow(1 - k, 3); n.textContent = Math.round(82 * e); if (k < 1) requestAnimationFrame(tick); }; requestAnimationFrame(tick); })); }
+  // hanko stamps
+  let honor = 0; const ranks = [[0, '足軽 Ashigaru'], [30, '侍 Samurai'], [60, '大名 Daimyō'], [100, '将軍 Shōgun']];
+  document.getElementById('btn-stamp').addEventListener('click', () => { const row = document.getElementById('stamps'); const h = row.querySelector('.hint'); if (h) h.remove(); const rot = (Math.random() * 10 - 5).toFixed(1);
+    const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 60 60'); s.setAttribute('class', 'hanko'); s.style.setProperty('--r', rot + 'deg');
+    s.innerHTML = `<g filter="url(#rough)"><rect x="4" y="4" width="52" height="52" rx="3" fill="#b4282d"/><rect x="9" y="9" width="42" height="42" rx="2" fill="none" stroke="#e9e0cc" stroke-width="1.5" opacity=".8"/><text x="30" y="26" text-anchor="middle" font-family="Shippori Mincho, serif" font-size="17" fill="#e9e0cc" font-weight="700">月</text><text x="30" y="46" text-anchor="middle" font-family="Shippori Mincho, serif" font-size="17" fill="#e9e0cc" font-weight="700">読</text></g>`;
+    row.appendChild(s); honor += 10; const hp = document.getElementById('honorpts'); hp.hidden = false; let rk = ranks[0][1]; for (const r of ranks) if (honor >= r[0]) rk = r[1]; hp.innerHTML = `Honor <b>${honor}</b> · ${rk}`; });
+  // lantern
+  const ld = document.getElementById('ldark'), lt = document.getElementById('lantern'); let lantern = false, lx = 0, ly = 0, sw = 0;
+  document.getElementById('btn-lantern').addEventListener('click', e => { lantern = !lantern; ld.classList.toggle('on', lantern); lt.classList.toggle('on', lantern); e.currentTarget.classList.toggle('on', lantern); });
+  paper.addEventListener('pointermove', e => { const r = paper.getBoundingClientRect(); const nx = e.clientX - r.left, ny = e.clientY - r.top; sw = Math.max(-14, Math.min(14, (nx - lx) * 0.6)); lx = nx; ly = ny; paper.style.setProperty('--lx', lx + 'px'); paper.style.setProperty('--ly', ly + 'px'); paper.style.setProperty('--sw', sw + 'deg'); });
+  // lunar calendar
+  (function cal(){ const el = document.getElementById('cal'); ['日', '月', '火', '水', '木', '金', '土'].forEach(d => { const h = document.createElement('div'); h.className = 'dh'; h.textContent = d; el.appendChild(h); });
+    const first = new Date(now.getFullYear(), now.getMonth(), 1); const days = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(); for (let i = 0; i < first.getDay(); i++) { const b = document.createElement('div'); el.appendChild(b); }
+    for (let d = 1; d <= days; d++) { const c = document.createElement('div'); c.className = 'cd' + (d === now.getDate() ? ' today' : ''); const cv = document.createElement('canvas'); cv.width = cv.height = 44; const g = cv.getContext('2d'); const a = TK.moonAge(new Date(now.getFullYear(), now.getMonth(), d, 21)); TK.drawMoon(g, 22, 22, 10, a, { color: '#1b1a20', earthshine: 'rgba(27,26,32,0.12)' }); c.appendChild(cv); const n = document.createElement('span'); n.textContent = d; c.appendChild(n);
+      if ([3, 8, 17, 21, 29].includes(d)) { const dot = document.createElement('i'); dot.className = 'dot ' + (d % 2 ? 'g' : 'm'); c.appendChild(dot); } el.appendChild(c); }
+    const am = document.getElementById('alert-moon'); am.width = am.height = 56; TK.drawMoon(am.getContext('2d'), 28, 28, 13, age, { color: '#1b1a20', earthshine: 'rgba(27,26,32,0.12)' });
+    const riseMin = Math.round((18 * 60 + (age / TK.SYN) * 24 * 60 * 0.98) % (24 * 60)); document.getElementById('alert-t').textContent = `The Moon rises tonight at ${String(Math.floor(riseMin / 60)).padStart(2, '0')}:${String(riseMin % 60).padStart(2, '0')}`;
+  })();
+  // lens: procedural nebula, before/after, blade
+  let lensReady = false;
+  function lensInit(){ if (lensReady) return; lensReady = true;
+    const b = document.getElementById('cv-before'), a = document.getElementById('cv-after'); const Wn = 640, Hn = 400; a.width = b.width = Wn; a.height = b.height = Hn; const ac = a.getContext('2d'), bc = b.getContext('2d');
+    const im = ac.createImageData(Wn, Hn); const pal = [[6, 5, 12], [48, 12, 30], [104, 28, 66], [88, 52, 124], [168, 120, 110], [226, 196, 150]];
+    for (let y = 0; y < Hn; y++) for (let x = 0; x < Wn; x++) { const u = x / Wn * 3, v = y / Hn * 2; let n = TK.fbm2(u + 10, v + 3, 6); n = Math.pow(Math.max(0, n * 1.5 - 0.35), 1.4) * Math.exp(-Math.pow((x - Wn * 0.52) / (Wn * 0.33), 2) - Math.pow((y - Hn * 0.5) / (Hn * 0.35), 2)); const fil = TK.fbm2(u * 3 + 50, v * 3, 3); n *= 0.6 + fil * 0.9; const k = Math.min(0.999, n * 1.25) * (pal.length - 1); const i0 = Math.floor(k), f = k - i0; const c0 = pal[i0], c1 = pal[Math.min(pal.length - 1, i0 + 1)]; const o = (y * Wn + x) * 4; im.data[o] = c0[0] + (c1[0] - c0[0]) * f; im.data[o + 1] = c0[1] + (c1[1] - c0[1]) * f; im.data[o + 2] = c0[2] + (c1[2] - c0[2]) * f; im.data[o + 3] = 255; }
+    ac.putImageData(im, 0, 0);
+    const objs = []; for (let i = 0; i < 160; i++) { const x = Math.random() * Wn, y = Math.random() * Hn, r = 0.6 + Math.pow(Math.random(), 3) * 3; const g = ac.createRadialGradient(x, y, 0, x, y, r * 4); g.addColorStop(0, `rgba(255,250,235,${0.6 + r * 0.1})`); g.addColorStop(0.3, `rgba(255,245,225,${0.25})`); g.addColorStop(1, 'rgba(255,245,225,0)'); ac.fillStyle = g; ac.fillRect(x - r * 4, y - r * 4, r * 8, r * 8); if (r > 2.2) objs.push({ x, y, r, gal: false }); }
+    [[0.2, 0.3], [0.82, 0.72]].forEach(([fx_, fy]) => { const x = fx_ * Wn, y = fy * Hn; ac.save(); ac.translate(x, y); ac.rotate(0.6); const g = ac.createRadialGradient(0, 0, 0, 0, 0, 22); g.addColorStop(0, 'rgba(240,230,210,0.9)'); g.addColorStop(0.4, 'rgba(200,180,170,0.35)'); g.addColorStop(1, 'rgba(200,180,170,0)'); ac.fillStyle = g; ac.scale(1, 0.45); ac.beginPath(); ac.arc(0, 0, 22, 0, Math.PI * 2); ac.fill(); ac.restore(); objs.push({ x, y, r: 12, gal: true }); });
+    // before = blurred + noisy copy
+    bc.filter = 'blur(2.2px)'; bc.drawImage(a, 0, 0); bc.filter = 'none'; const bi = bc.getImageData(0, 0, Wn, Hn); for (let i = 0; i < bi.data.length; i += 4) { const n = (Math.random() - 0.5) * 70 + (Math.random() < 0.004 ? 160 : 0); bi.data[i] = Math.max(0, Math.min(255, bi.data[i] + n)); bi.data[i + 1] = Math.max(0, Math.min(255, bi.data[i + 1] + n)); bi.data[i + 2] = Math.max(0, Math.min(255, bi.data[i + 2] + n * 1.1)); } bc.putImageData(bi, 0, 0);
+    const dets = document.getElementById('dets'); objs.sort((p, q) => q.r - p.r).slice(0, 7).forEach((o, i) => { const d = document.createElement('div'); d.className = 'det' + (o.gal ? ' gal' : ''); const sz = o.gal ? 46 : 14 + o.r * 5; d.style.left = o.x / Wn * 100 + '%'; d.style.top = o.y / Hn * 100 + '%'; d.style.width = sz + 'px'; d.style.height = (o.gal ? sz * 0.6 : sz) + 'px'; if (o.x > Wn * 0.68) d.classList.add('flip'); d.innerHTML = `<span>${o.gal ? 'galaxy · e 0.55' : 'star · m ' + (7.8 - o.r).toFixed(1)}</span>`; dets.appendChild(d); });
+    const cmp = document.getElementById('cmp'); let dragging = false; const set = x => { const r = cmp.getBoundingClientRect(); const px = Math.max(0, Math.min(r.width, x - r.left)); cmp.style.setProperty('--cx', px + 'px'); };
+    cmp.addEventListener('pointerdown', e => { dragging = true; cmp.setPointerCapture(e.pointerId); set(e.clientX); cmp.classList.remove('slash'); });
+    cmp.addEventListener('pointermove', e => { if (dragging) set(e.clientX); });
+    cmp.addEventListener('pointerup', () => { dragging = false; cmp.classList.remove('slash'); void cmp.offsetWidth; cmp.classList.add('slash'); });
+    set(cmp.getBoundingClientRect().left + cmp.getBoundingClientRect().width * 0.5);
+  }
+  // kintsugi loading
+  document.getElementById('btn-kin').addEventListener('click', () => { const box = document.getElementById('lacq'), cv = document.getElementById('kcv'), txt = document.getElementById('ktxt'); const r = box.getBoundingClientRect(); const d = Math.min(2, devicePixelRatio || 1); cv.width = r.width * d; cv.height = r.height * d; const g = cv.getContext('2d'); g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, r.width, r.height); txt.textContent = 'Restoring · 修復中'; txt.style.opacity = 1;
+    const cracks = []; const spawn = (x, y, a, life, w) => cracks.push({ x, y, a, life, w }); spawn(-2, r.height * (0.3 + Math.random() * 0.4), 0.1, 120, 2.2); spawn(r.width + 2, r.height * (0.2 + Math.random() * 0.5), Math.PI - 0.1, 110, 2);
+    g.lineCap = 'round'; const t0 = performance.now(); let steps = 0;
+    const tick = now => { steps++; for (const c of cracks) { if (c.life <= 0) continue; for (let i = 0; i < 2; i++) { const nx = c.x + Math.cos(c.a) * 5, ny = c.y + Math.sin(c.a) * 5; g.strokeStyle = `rgba(207,168,79,${0.75 + Math.random() * 0.25})`; g.lineWidth = c.w; g.shadowColor = 'rgba(255,215,120,0.9)'; g.shadowBlur = 7; g.beginPath(); g.moveTo(c.x, c.y); g.lineTo(nx, ny); g.stroke(); c.x = nx; c.y = ny; c.a += (Math.random() - 0.5) * 0.9; c.a = Math.max(-1.2, Math.min(1.2, c.a < Math.PI / 2 ? c.a : c.a)); c.life--; c.w = Math.max(0.5, c.w * 0.993); if (Math.random() < 0.05 && cracks.length < 14) spawn(c.x, c.y, c.a + (Math.random() - 0.5) * 1.6, c.life * 0.5, c.w * 0.6); if (c.x < -10 || c.x > r.width + 10 || c.y < -10 || c.y > r.height + 10) c.life = 0; } }
+      if (now - t0 < 2600 && cracks.some(c => c.life > 0)) requestAnimationFrame(tick); else { txt.textContent = 'Restored · 修復完了 — gold where it was broken'; } };
+    requestAnimationFrame(tick); });
+  let first = true;
+  return { start(){ if (first) { first = false; gauge(); } }, stop(){}, resize(){} };
+})();
+
+/* ===================== boot ===================== */
+window.addEventListener('resize', () => { for (const k in Stages) Stages[k].resize(); });
+const h = (location.hash || '').replace('#', ''); show(['dome', 'dusk', 'ink'].includes(h) ? h : 'dome');
+</script>
