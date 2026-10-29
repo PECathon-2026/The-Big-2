@@ -103,3 +103,5 @@ export function token(name: string, fallback = '#000000'): string {
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   return v || fallback;
 }
+
+if (import.meta.env.DEV && typeof window !== 'undefined') (window as unknown as { __intro: typeof intro }).__intro = intro;

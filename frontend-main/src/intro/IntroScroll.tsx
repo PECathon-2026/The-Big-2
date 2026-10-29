@@ -13,7 +13,7 @@ import { fmtClock, kokuAt, moonState } from '@/astro/skytime';
 import { moonName } from '@/astro/moonNames';
 import { Button, Kanji } from '@/ui';
 import { P, intro, landForMag, lerp, smooth, timeAt } from '@/scene/intro/introBus';
-import { finishIntro, introSeen } from './flow';
+import { finishIntro, introSeen, startIntro } from './flow';
 import IntroFrame, { type FrameHandle } from './IntroFrame';
 
 const D = Math.PI / 180;
@@ -130,6 +130,7 @@ export default function IntroScroll() {
   }, [place]);
 
   useEffect(() => {
+    if (!intro.active) startIntro(); // ?dev=intro enters without the gate
     const tl = intro.timeline;
     const yaw0 = (tl?.sunsetAz ?? 270) * D;
     const s = useApp.getState();

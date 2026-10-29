@@ -31,23 +31,35 @@ export function buildTrees(sunsetAzDeg: number): TreeSet {
     const end = start.clone().addScaledVector(dir, len);
     const mid = start.clone().lerp(end, 0.5).add(new THREE.Vector3((r() - 0.5) * len * 0.25, (r() - 0.3) * len * 0.15, (r() - 0.5) * len * 0.25));
     const curve = new THREE.CatmullRomCurve3([start, mid, end]);
-    const g = new THREE.TubeGeometry(curve, depth < 2 ? 8 : 4, rad, depth < 2 ? 7 : 4, false);
+    const tub = depth < 2 ? 8 : 4;
+    const radial = depth < 2 ? 7 : 4;
+    const g = new THREE.TubeGeometry(curve, tub, rad, radial, false);
+    // taper each segment toward the child radius so joints read as one brush stroke
+    const pa = g.getAttribute('position') as THREE.BufferAttribute;
+    const c = new THREE.Vector3();
+    for (let j = 0; j < pa.count; j++) {
+      const ring = Math.floor(j / (radial + 1));
+      const u = ring / tub;
+      curve.getPointAt(u, c);
+      const k = 1 - 0.4 * u;
+      pa.setXYZ(j, c.x + (pa.getX(j) - c.x) * k, c.y + (pa.getY(j) - c.y) * k, c.z + (pa.getZ(j) - c.z) * k);
+    }
     g.deleteAttribute('uv');
     g.deleteAttribute('normal');
     geos.push(g);
     if (depth >= 3) anchors.push(end.x, end.y, end.z, 0.35 + len * 0.35);
-    if (depth >= 4) {
+    if (depth >= 5) {
       anchors.push(mid.x, mid.y, mid.z, 0.3 + len * 0.25);
       return;
     }
-    const kids = depth === 0 ? 3 : 2 + (r() < 0.45 ? 1 : 0);
+    const kids = depth === 0 ? 3 : 2 + (r() < 0.6 ? 1 : 0);
     for (let k = 0; k < kids; k++) {
       const d = dir.clone();
       // spread around, bias upward and toward the centre of the view (the canopy frames the scene)
       const axis = new THREE.Vector3(r() - 0.5, (r() - 0.5) * 0.3, r() - 0.5).normalize();
       d.applyAxisAngle(axis, (0.35 + r() * 0.5) * (k === 0 ? 0.6 : 1));
       d.addScaledVector(inward, 0.28 + depth * 0.07).addScaledVector(up, depth < 2 ? 0.15 : -0.05).normalize();
-      grow(r, end, d, len * (0.66 + r() * 0.14), rad * 0.62, depth + 1, inward);
+      grow(r, end, d, len * (0.68 + r() * 0.14), rad * 0.6, depth + 1, inward);
     }
   };
 
@@ -56,10 +68,10 @@ export function buildTrees(sunsetAzDeg: number): TreeSet {
     const base = fwd.clone().multiplyScalar(dist).addScaledVector(right, side * lateral).setY(-0.6);
     const inward = right.clone().multiplyScalar(-side).addScaledVector(fwd, -0.25).normalize();
     const dir = up.clone().addScaledVector(inward, 0.32).normalize();
-    grow(r, base, dir, 2.6, 0.2, 0, inward);
+    grow(r, base, dir, 2.2, 0.17, 0, inward);
   };
-  tree(11, -1, 7.2, 6.4);
-  tree(29, 1, 8.4, 6.9);
+  tree(11, -1, 8.6, 7.4);
+  tree(29, 1, 9.6, 7.9);
 
   const geometry = mergeGeometries(geos, false)!;
   geos.forEach((g) => g.dispose());

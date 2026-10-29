@@ -241,3 +241,5 @@
 .tw-intro-skip .tw-btn { color: var(--kinu); text-shadow: 0 1px 8px color-mix(in srgb, var(--sumi) 80%, transparent); }
 .tw-intro-fade { position: fixed; inset: 0; z-index: var(--z-gate); background: var(--sumi); opacity: 0; pointer-events: none; transition: opacity 320ms linear; }
 .tw-intro-fade.on { opacity: 1; }
+html[data-phase='intro'] { scrollbar-width: none; }
+html[data-phase='intro']::-webkit-scrollbar { display: none; }

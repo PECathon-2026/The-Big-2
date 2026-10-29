@@ -7,11 +7,12 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { fbm1, n1, rng } from '@/scene/noise';
+import { fbm1, rng } from '@/scene/noise';
 import { skyClock } from '@/scene/skyClock';
 import { intro, smooth, token } from './introBus';
 
 const D = Math.PI / 180;
+const WHITE = new THREE.Color(1, 1, 1);
 
 /* ---------- painted textures ---------- */
 
@@ -27,35 +28,6 @@ function canvasTex(w: number, h: number, paint: (ctx: CanvasRenderingContext2D, 
   return t;
 }
 
-/** Ink-wash ridge: dense at the crest, fading into mist below. */
-function ridgeTex(seed: number, freq: number, amp: number, ink: string) {
-  return canvasTex(1024, 256, (ctx, w, h) => {
-    const prof = (u: number) => 0.32 - amp * (fbm1(u * freq + seed, 5) * 1.6 - 0.45) - Math.max(0, n1(u * freq * 0.5 + seed * 2) - 0.6) * amp * 2;
-    ctx.beginPath();
-    ctx.moveTo(0, h);
-    for (let x = 0; x <= w; x += 2) ctx.lineTo(x, Math.max(2, prof(x / w) * h));
-    ctx.lineTo(w, h);
-    ctx.closePath();
-    const g = ctx.createLinearGradient(0, h * 0.1, 0, h);
-    g.addColorStop(0, ink);
-    g.addColorStop(0.45, ink);
-    g.addColorStop(1, 'rgba(0,0,0,0.18)');
-    ctx.fillStyle = g;
-    ctx.fill();
-    // dry-brush texture along the crest
-    const r = rng(seed * 1000);
-    ctx.globalCompositeOperation = 'destination-out';
-    for (let i = 0; i < 900; i++) {
-      const x = r() * w;
-      const y = prof(x / w) * h + 6 + r() * h * 0.5;
-      ctx.globalAlpha = 0.05 + r() * 0.08;
-      ctx.fillRect(x, y, 2 + r() * 30, 1);
-    }
-    ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = 'source-over';
-  });
-}
-
 /** Mt Fuji: concave cone, truncated summit, snow with streaks, ink-wash body. */
 function fujiTex(body: string, snow: string) {
   return canvasTex(1024, 384, (ctx, w, h) => {
@@ -63,7 +35,7 @@ function fujiTex(body: string, snow: string) {
     const top = h * 0.12;
     const half = (y: number) => {
       const t = (y - top) / (h - top); // 0 at summit → 1 at base
-      return w * (0.045 + 0.47 * Math.pow(t, 1.65)) * (1 + 0.02 * Math.sin(t * 40));
+      return w * (0.035 + 0.36 * Math.pow(t, 1.5)) * (1 + 0.015 * Math.sin(t * 40));
     };
     const outline = () => {
       ctx.beginPath();
@@ -79,10 +51,17 @@ function fujiTex(body: string, snow: string) {
     outline();
     const g = ctx.createLinearGradient(0, top, 0, h);
     g.addColorStop(0, body);
-    g.addColorStop(0.7, body);
-    g.addColorStop(1, 'rgba(0,0,0,0.12)');
+    g.addColorStop(1, body);
     ctx.fillStyle = g;
     ctx.fill();
+    // the foot dissolves into mist
+    const fade = ctx.createLinearGradient(0, h * 0.6, 0, h);
+    fade.addColorStop(0, 'rgba(0,0,0,0)');
+    fade.addColorStop(1, 'rgba(0,0,0,1)');
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = fade;
+    ctx.fillRect(0, h * 0.6, w, h * 0.4);
+    ctx.globalCompositeOperation = 'source-over';
     // snow cap with streaks running down the ravines
     ctx.save();
     outline();
@@ -168,7 +147,7 @@ const layerVS = /* glsl */ `
 
 const layerFS = /* glsl */ `
   uniform sampler2D uMap; uniform vec3 uHaze; uniform float uHazeAmt; uniform float uNight; uniform float uBleed;
-  uniform float uSeed; uniform float uOpacity; uniform vec3 uNightInk;
+  uniform float uSeed; uniform float uOpacity; uniform vec3 uNightInk; uniform float uFeather;
   varying vec2 vUv;
   float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
@@ -189,8 +168,36 @@ const layerFS = /* glsl */ `
     }
     vec3 col = mix(c.rgb, uNightInk, uNight * 0.82);
     col = mix(col, uHaze, uHazeAmt * (1.0 - uNight * 0.6));
-    gl_FragColor = vec4(col, c.a * uOpacity);
+    float edge = smoothstep(0.0, 0.1, vUv.x) * smoothstep(1.0, 0.9, vUv.x);
+    gl_FragColor = vec4(col, c.a * uOpacity * mix(1.0, edge, uFeather));
     if (gl_FragColor.a < 0.004) discard;
+  }`;
+
+const ridgeFS = /* glsl */ `
+  uniform vec3 uInk; uniform vec3 uHaze; uniform float uHazeAmt; uniform float uNight; uniform float uBleed;
+  uniform float uSeed; uniform float uOpacity; uniform vec3 uNightInk; uniform float uAmp; uniform float uFreq;
+  varying vec2 vUv;
+  float h1(float x){ return fract(sin(x * 127.1) * 43758.5453); }
+  float n1(float x){ float i = floor(x), f = fract(x); f = f*f*(3.0-2.0*f); return mix(h1(i), h1(i + 1.0), f); }
+  float fbm(float x){ float s = 0.0, a = 0.5; for (int i = 0; i < 5; i++){ s += a * n1(x); x *= 2.03; a *= 0.5; } return s / 0.97; }
+  float prof(float u){ return 0.6 + uAmp * (fbm(u * uFreq + uSeed) - 0.5) * 2.0 + max(0.0, n1(u * uFreq * 0.5 + uSeed * 2.0) - 0.6) * uAmp * 2.4; }
+  void main(){
+    float top = prof(vUv.x);
+    float body = smoothstep(top + 0.006, top - 0.006, vUv.y);
+    // ink-wash: dense at the crest, thinning into mist below
+    float a = body * mix(0.3, 1.0, smoothstep(top - 0.55, top - 0.04, vUv.y));
+    // ink bleed (demo): a wet halo creeps above the crest and dark drips run down as dusk deepens
+    float wet = smoothstep(top + 0.06 * uBleed + 0.001, top, vUv.y) * (0.22 + 0.25 * n1(vUv.x * 160.0 + uSeed)) * uBleed;
+    float col1 = vUv.x * 90.0 + uSeed * 3.0;
+    float drip = smoothstep(0.7, 0.95, n1(floor(col1) * 7.3)) * (1.0 - smoothstep(0.0, 0.18, abs(fract(col1) - 0.5)));
+    float dripLen = 0.12 + 0.3 * n1(floor(col1) * 3.1);
+    drip *= smoothstep(top - dripLen * uBleed, top, vUv.y) * step(vUv.y, top) * uBleed;
+    a = max(max(a, wet), drip * 0.9);
+    vec3 col = mix(uInk, uNightInk, uNight * 0.82);
+    col = mix(col, uHaze, uHazeAmt * (1.0 - uNight * 0.6) * (0.6 + 0.4 * smoothstep(top - 0.3, top, vUv.y)));
+    a *= smoothstep(0.0, 0.1, vUv.x) * smoothstep(1.0, 0.9, vUv.x) * uOpacity;
+    if (a < 0.004) discard;
+    gl_FragColor = vec4(col, a);
   }`;
 
 const mistFS = /* glsl */ `
@@ -242,7 +249,8 @@ const glowFS = /* glsl */ `
 /* ---------- component ---------- */
 
 interface Layer {
-  tex: THREE.Texture;
+  tex?: THREE.Texture;
+  ridge?: { ink: string; amp: number; freq: number };
   z: number;
   x: number;
   w: number;
@@ -267,16 +275,35 @@ export default function DuskLandscape() {
     const washi = token('--washi', '#EFE4CD');
     const beni = token('--crimson-deep', '#61070D');
     const layers: Layer[] = [
-      { tex: fujiTex(nebula, washi), z: -88, x: -7, w: 150, h: 56, y: -3, haze: 0.5, bleed: 0.2, seed: 1 },
-      { tex: ridgeTex(4.1, 3.1, 0.12, indigo), z: -70, x: 0, w: 190, h: 30, y: -6, haze: 0.42, bleed: 0.5, seed: 2 },
-      { tex: ridgeTex(7.9, 4.0, 0.1, ink), z: -50, x: 5, w: 140, h: 20, y: -4.5, haze: 0.26, bleed: 0.8, seed: 3 },
-      { tex: pagodaTex(sumi, beni), z: -34, x: 7.2, w: 7, h: 14, y: -0.4, haze: 0.08, bleed: 0, seed: 4 },
-      { tex: ridgeTex(11.2, 5.5, 0.07, sumi), z: -29, x: -3, w: 100, h: 10, y: -3.2, haze: 0.06, bleed: 1, seed: 5 },
+      // Kept inside r < 34 so the sky's own horizon ridge ring never hides it.
+      { tex: fujiTex(nebula, washi), z: -32.5, x: -5.5, w: 38, h: 11.5, y: -0.6, haze: 0.45, bleed: 0.2, seed: 1 },
+      { ridge: { ink: indigo, amp: 0.22, freq: 3.1 }, z: -29, x: 0, w: 72, h: 6.2, y: -1.9, haze: 0.36, bleed: 0.5, seed: 2 },
+      { ridge: { ink, amp: 0.2, freq: 4.0 }, z: -24, x: 2, w: 58, h: 4.2, y: -1.6, haze: 0.2, bleed: 0.8, seed: 3 },
+      { tex: pagodaTex(sumi, beni), z: -18, x: 4.4, w: 3.4, h: 6.8, y: -0.5, haze: 0.06, bleed: 0, seed: 4 },
+      { ridge: { ink: sumi, amp: 0.18, freq: 5.5 }, z: -16, x: -1.5, w: 48, h: 2.6, y: -1.35, haze: 0.04, bleed: 1, seed: 5 },
     ];
     const nightInk = new THREE.Color(sumi);
-    const mats = layers.map(
-      (l) =>
-        new THREE.ShaderMaterial({
+    const mats = layers.map((l) =>
+      l.ridge
+        ? new THREE.ShaderMaterial({
+            vertexShader: layerVS,
+            fragmentShader: ridgeFS,
+            uniforms: {
+              uInk: { value: new THREE.Color(l.ridge.ink) },
+              uHaze: { value: new THREE.Color() },
+              uHazeAmt: { value: l.haze },
+              uNight: { value: 0 },
+              uBleed: { value: 0 },
+              uSeed: { value: l.seed * 13.7 },
+              uOpacity: { value: 1 },
+              uNightInk: { value: nightInk },
+              uAmp: { value: l.ridge.amp },
+              uFreq: { value: l.ridge.freq },
+            },
+            transparent: true,
+            depthWrite: false,
+          })
+        : new THREE.ShaderMaterial({
           vertexShader: layerVS,
           fragmentShader: layerFS,
           uniforms: {
@@ -288,6 +315,7 @@ export default function DuskLandscape() {
             uSeed: { value: l.seed * 13.7 },
             uOpacity: { value: 1 },
             uNightInk: { value: nightInk },
+            uFeather: { value: l.bleed > 0.3 ? 1 : 0 },
           },
           transparent: true,
           depthWrite: false,
@@ -295,9 +323,9 @@ export default function DuskLandscape() {
     );
     const mistCol = new THREE.Color(washi);
     const mists = [
-      { z: -60, w: 200, h: 9, y: 0.5, a: 0.22, seed: 1 },
-      { z: -40, w: 150, h: 6, y: -0.6, a: 0.16, seed: 5 },
-      { z: -24, w: 90, h: 4, y: -1.2, a: 0.12, seed: 9 },
+      { z: -27, w: 80, h: 2.2, y: -0.9, a: 0.14, seed: 1 },
+      { z: -21, w: 60, h: 1.5, y: -0.9, a: 0.1, seed: 5 },
+      { z: -14, w: 40, h: 1, y: -0.7, a: 0.07, seed: 9 },
     ].map(
       (m) =>
         ({
@@ -314,6 +342,7 @@ export default function DuskLandscape() {
     const sunMat = new THREE.ShaderMaterial({
       vertexShader: layerVS,
       fragmentShader: sunFS,
+      depthTest: false,
       uniforms: {
         uCore: { value: new THREE.Color(token('--sun-1', '#D3572E')) },
         uRim: { value: new THREE.Color(token('--crimson', '#A70D16')) },
@@ -327,6 +356,7 @@ export default function DuskLandscape() {
     const glowMat = new THREE.ShaderMaterial({
       vertexShader: layerVS,
       fragmentShader: glowFS,
+      depthTest: false,
       uniforms: { uColor: { value: new THREE.Color(token('--akane', '#A84C37')) }, uAlpha: { value: 0 } },
       transparent: true,
       depthWrite: false,
@@ -336,6 +366,7 @@ export default function DuskLandscape() {
   }, []);
 
   useFrame((state) => {
+    if (import.meta.env.DEV) Object.assign(window, { __sky: skyClock, __land: group.current, __sun: sun.current, __glow: glow.current });
     const p = intro.progress;
     const alt = skyClock.sun.alt;
     const night = smooth(3, -12, alt);
@@ -353,7 +384,7 @@ export default function DuskLandscape() {
     for (const m of mists) {
       m.mat.uniforms.uTime.value = t;
       m.mat.uniforms.uOpacity.value = fadeOut * (1 - night * 0.55);
-      (m.mat.uniforms.uColor.value as THREE.Color).setRGB(hr, hg, hb, THREE.SRGBColorSpace).lerp(new THREE.Color(1, 1, 1), 0.35 * (1 - night));
+      (m.mat.uniforms.uColor.value as THREE.Color).setRGB(hr, hg, hb, THREE.SRGBColorSpace).lerp(WHITE, 0.25 * (1 - night));
     }
     // the real Sun (time-lapse via skyClock.override): crimson ink disc + glow
     const sd = skyClock.sun.dir;

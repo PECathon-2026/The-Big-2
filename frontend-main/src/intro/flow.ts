@@ -38,6 +38,7 @@ export function afterGate(place: Place) {
 /** Enter the dusk: camera at eye height facing the real sunset azimuth. */
 export function startIntro() {
   const s = useApp.getState();
+  if (s.place) preloadForPlace(s.place);
   const place = s.place;
   if (place && !intro.timeline) intro.timeline = introTimeline(place);
   const tl = intro.timeline;
@@ -48,7 +49,7 @@ export function startIntro() {
     updateSkyClock(true);
   }
   s.setIntroProgress(0);
-  s.setPhase('intro');
+  if (s.phase !== 'intro') s.setPhase('intro');
   Director.station('intro', { instant: true, yaw: (tl?.sunsetAz ?? 270) * D, pitch: 6 * D, fov: 38 });
 }
 
