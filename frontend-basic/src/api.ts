@@ -62,10 +62,13 @@ export class ApiError extends Error {
   url: string;
   constructor(status: number, url: string, body: unknown) {
     const pe = body as ProviderError | null;
+    const detail = body && typeof body === 'object' && 'detail' in body ? (body as { detail: unknown }).detail : undefined;
     const msg =
       pe && typeof pe === 'object' && 'error' in pe
         ? `${pe.error}${pe.source ? ` (${pe.source})` : ''}${pe.detail ? `: ${pe.detail}` : ''}`
-        : `HTTP ${status}`;
+        : typeof detail === 'string'
+          ? `HTTP ${status}: ${detail}` // FastAPI validation / HTTPException message
+          : `HTTP ${status}`;
     super(msg);
     this.name = 'ApiError';
     this.status = status;
@@ -695,7 +698,61 @@ export const api = {
     cancel: (alertId: number, endpoint: string) => request(buildUrl(`/api/alerts/scheduled/${alertId}`, { endpoint }), { method: 'DELETE' }),
     stats: (signal?: AbortSignal) => getRaw<Record<string, number | string>>('/api/alerts/stats', undefined, signal),
   },
+
+  /** Honor points: observations verified against the sky before points are awarded. */
+  honor: {
+    ranks: (signal?: AbortSignal) => getRaw<{ ranks: HonorRank[]; points: Record<string, number>; photo_bonus: number }>('/api/honor/ranks', undefined, signal),
+    observe: (p: { user_id: string; lat: number; lon: number; kind: string; event_id?: string; title?: string; note?: string; claimed_at?: string; photo_job_id?: string }) =>
+      post<ObserveResult>('/api/honor/observe', p),
+    ledger: (userId: string, signal?: AbortSignal) => getRaw<Ledger>('/api/honor/ledger', { user_id: userId }, signal),
+  },
 };
+
+export interface HonorRank {
+  at: number;
+  kanji: string;
+  romaji: string;
+  meaning: string;
+}
+export interface RankInfo {
+  points: number;
+  kanji: string;
+  romaji: string;
+  meaning: string;
+  next: { kanji: string; romaji: string; at: number; points_needed: number } | null;
+}
+export interface Observation {
+  id: number;
+  user_id: string;
+  kind: string;
+  event_id: string | null;
+  title: string;
+  note: string | null;
+  lat: number;
+  lon: number;
+  claimed_at: string;
+  verified: boolean;
+  reason: string;
+  evidence: Record<string, unknown>;
+  points: number;
+  photo_job_id: string | null;
+  conditions: { score: number; cloud_low: number | null; humidity: number | null; moon_illum: number; time_local: string } | null;
+  created_at: string;
+}
+export interface ObserveResult {
+  observation: Observation;
+  accepted: boolean;
+  points_awarded: number;
+  reason: string;
+  rank: RankInfo;
+}
+export interface Ledger {
+  user_id: string;
+  rank: RankInfo;
+  verified_count: number;
+  rejected_count: number;
+  entries: Observation[];
+}
 
 export interface ScheduledAlert {
   id: number;
