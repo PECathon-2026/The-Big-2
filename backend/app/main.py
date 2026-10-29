@@ -14,8 +14,12 @@ from .watchtower.router import router as watchtower_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Warm the slow caches (Overpass spots for the demo cities) in the background; failures are harmless."""
+    """Startup: make sure the Lens sample images exist, then warm the slow caches (Overpass spots for the
+    demo cities) in the background; failures are harmless."""
+    from .lens.router import _ensure_samples
     from .watchtower import spots
+
+    await asyncio.to_thread(_ensure_samples)
 
     async def warm():
         for lat, lon in spots.DEMO_CITIES:

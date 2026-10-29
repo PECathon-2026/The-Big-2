@@ -44,10 +44,12 @@ Processing is asynchronous: upload creates a job, the job runs through named sta
 - `GET /jobs/{id}` → `{ job_id, status: queued|running|done|failed, created_at, stages: [{ name, status, started_at, ended_at, detail }], error, result: LensResult | null }`
   Stage names, in order: `load`, `background`, `detect`, `psf`, `denoise`, `deblur`, `honesty`, `classify`, `wcs`.
 - `GET /jobs/{id}/image/{kind}?stretch=asinh|linear` → PNG. `kind` ∈ `original | denoised | restored | residual | psf | noise | overlay`.
-- `POST /jobs/{id}/benchmark?n_stars=40` → synthetic-star injection benchmark: `{ injected, recovered, recovery_rate, false_positives, magnitude_error_rms, position_error_rms_px, note }`.
+- `POST /jobs/{id}/benchmark?n_stars=40` → synthetic-star injection benchmark: `{ injected, recovered, recovery_rate, baseline_detections, recovered_before_restoration, false_positives, magnitude_error_rms, position_error_rms_px, note }`. Baseline = detections on the injected-but-unrestored copy; a false positive is a detection on the restored copy that matches neither an injected star nor a baseline detection (2 px).
 - `POST /jobs/{id}/solve` → starts a plate-solve (astrometry.net) if a key is configured; progress appears in the `wcs` stage.
 - `GET /jobs/{id}/skyview?survey=DSS2%20Red` → PNG cutout of the same field from NASA SkyView when the WCS is known (404 otherwise).
-- `GET /jobs/{id}/catalog` → catalogue matches (SIMBAD) for the brightest detections when the WCS is known.
+- `GET /jobs/{id}/catalog` → `Envelope{ matches: [{ detection_id, name, otype, ra, dec, separation_arcsec }], queried, note }` from SIMBAD for the 10 brightest detections when the WCS is known; fails soft with an empty list and a note.
+
+Job endpoints (`/samples`, `/jobs/{id}`, `/benchmark`) return their documented shapes unwrapped; `/catalog` is wrapped in the standard envelope with SIMBAD provenance.
 
 `LensResult`:
 ```
