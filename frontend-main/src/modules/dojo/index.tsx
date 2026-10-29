@@ -14,6 +14,7 @@ import PageFrame from '../_ui/PageFrame';
 import KatanaSlider from '../_ui/KatanaSlider';
 import { Num, Reveal, SectionHead } from '../_ui/kit';
 import { Detections, HonestyCanvas, Kintsugi, Stages } from '../lens/shared';
+import { FieldTransients } from '../lens/Transients';
 import '../lens/lens.css';
 
 type Mode = 'original' | 'restored' | 'honesty';
@@ -283,6 +284,8 @@ export default function Dojo() {
               </Card>
             </Reveal>
           </div>
+
+          {!isMock && job && r.wcs.solved && <FieldTransients jobId={job.job_id} />}
 
           {!isMock && job && (
             <section className="pg-section" id="benchmark">

@@ -173,9 +173,10 @@ export function HonestyCanvas({ src, onStats }: { src: string; onStats?: (s: { s
       for (let i = 0; i < W * H; i++) {
         const m = Math.max(px.data[i * 4], px.data[i * 4 + 2]) / 255;
         mag[i] = m;
-        const a = m < 0.5 ? c0 : c1;
-        const b = m < 0.5 ? c1 : c2;
-        const t = m < 0.5 ? m * 2 : (m - 0.5) * 2;
+        const v = m * m; // undo the backend's sqrt compression: v = |residual| / 3σ, linear
+        const a = v < 0.5 ? c0 : c1;
+        const b = v < 0.5 ? c1 : c2;
+        const t = v < 0.5 ? v * 2 : (v - 0.5) * 2;
         heat.data[i * 4] = a[0] + (b[0] - a[0]) * t;
         heat.data[i * 4 + 1] = a[1] + (b[1] - a[1]) * t;
         heat.data[i * 4 + 2] = a[2] + (b[2] - a[2]) * t;

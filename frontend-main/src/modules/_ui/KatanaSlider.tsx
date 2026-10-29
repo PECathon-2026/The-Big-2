@@ -112,7 +112,7 @@ export default function KatanaSlider({ width, height, left, right, rightOverlay,
     e.stopPropagation();
     e.preventDefault();
     cancelAnimationFrame(tween.current);
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    capture(e);
     gesture.current = { kind: 'cut', id: e.pointerId, x0: e.clientX, y0: e.clientY, vx: view.x, vy: view.y, moved: false };
     setDragging(true);
   };
@@ -134,7 +134,7 @@ export default function KatanaSlider({ width, height, left, right, rightOverlay,
     if ((e.target as HTMLElement).closest('.ks-det, button, a')) return;
     const pan = view.z > 1.001 || space.current;
     gesture.current = { kind: pan ? 'pan' : 'maybe', id: e.pointerId, x0: e.clientX, y0: e.clientY, vx: view.x, vy: view.y, moved: false };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    capture(e);
   };
   const onFrameMove = (e: React.PointerEvent) => {
     const g = gesture.current;
@@ -298,6 +298,14 @@ export default function KatanaSlider({ width, height, left, right, rightOverlay,
       )}
     </div>
   );
+}
+
+function capture(e: React.PointerEvent) {
+  try {
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  } catch {
+    /* synthetic or already-released pointer */
+  }
 }
 
 /** Keep the zoomed image covering the frame. */

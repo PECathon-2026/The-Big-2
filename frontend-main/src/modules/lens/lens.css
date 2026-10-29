@@ -84,3 +84,15 @@
 .sc-ev-glyph.meteor { color: var(--gold-bright); }
 .sc-ev-glyph.eclipse { background: var(--shu); border-color: var(--shu); }
 .sc-ev-glyph.satellite { color: var(--mist); }
+
+/* transients */
+.tr-card { padding: 18px 22px; }
+.tr-list > li { padding: 0; }
+.tr-row { width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; text-align: left; padding: 12px 4px; min-height: 48px; }
+.tr-row:hover .tr-oid { color: var(--gold-bright); }
+.tr-oid { font-family: var(--font-display); font-size: 15px; color: var(--kinu); letter-spacing: .04em; }
+.tr-detail { padding: 4px 4px 16px; animation: ink-arrive 320ms var(--ease-katana) both; }
+.tr-stamps { display: flex; gap: 12px; flex-wrap: wrap; }
+.tr-stamps figure { margin: 0; display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.tr-stamps img { width: 128px; height: 128px; image-rendering: pixelated; border-radius: 6px; border: 1px solid var(--card-line); background: var(--sumi); }
+.tr-stamps figcaption { font-family: var(--font-jp); font-size: 12px; color: var(--washi-3); }

@@ -14,6 +14,7 @@ import PageFrame from '../_ui/PageFrame';
 import KatanaSlider from '../_ui/KatanaSlider';
 import { DataState, Num, Reveal, SectionHead } from '../_ui/kit';
 import { Kintsugi, Stages } from './shared';
+import { RecentSupernovae } from './Transients';
 import './lens.css';
 
 const POLL_MS = 800;
@@ -309,6 +310,7 @@ export default function Lens() {
           </div>
         </section>
       )}
+      <RecentSupernovae />
       {samples.status === 'error' && <p className="pg-quiet" style={{ marginTop: 40 }}>Provenance: {MOCK_PROVENANCE[0].note}.</p>}
     </PageFrame>
   );
