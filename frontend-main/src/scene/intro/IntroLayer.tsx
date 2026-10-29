@@ -1,8 +1,18 @@
 /**
- * PHASE-0 PLACEHOLDER (lead) — workstream B owns scene/intro/ and replaces this with
- * SakuraTrees, Petals, Centrepiece, DuskLandscape and StarMorph (§7.3).
- * Mounted permanently inside the one Canvas; render nothing unless phase === 'intro'.
+ * Workstream B's in-canvas mount point. The intro scene is a lazy chunk (prefetched behind the gate,
+ * see intro/preload.ts) and renders only while phase === 'intro'.
  */
+import { lazy, Suspense } from 'react';
+import { useApp } from '@/state/store';
+
+const IntroScene = lazy(() => import('./IntroScene'));
+
 export default function IntroLayer() {
-  return null;
+  const phase = useApp((s) => s.phase);
+  if (phase !== 'intro') return null;
+  return (
+    <Suspense fallback={null}>
+      <IntroScene />
+    </Suspense>
+  );
 }
