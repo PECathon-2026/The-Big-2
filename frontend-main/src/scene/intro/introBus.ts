@@ -45,8 +45,10 @@ export const intro = {
 
 /** Landing progress for a star of magnitude `mag` — the same formula the sky's star shader can use. */
 export function landForMag(mag: number, magMax = intro.magMax): number {
-  const k = Math.min(1, Math.max(0, (mag - MAG_MIN) / Math.max(0.5, magMax - MAG_MIN)));
-  return LAND0 + (LAND1 - LAND0) * Math.pow(k, 0.8);
+  // ≈ the fraction of visible stars brighter than mag (counts grow ~10^0.4m), so landings are evenly paced
+  const e0 = Math.pow(10, 0.4 * (MAG_MIN - magMax));
+  const k = Math.min(1, Math.max(0, (Math.pow(10, 0.4 * (mag - magMax)) - e0) / (1 - e0)));
+  return LAND0 + (LAND1 - LAND0) * Math.sqrt(k);
 }
 
 /**
@@ -59,8 +61,9 @@ export function landForMag(mag: number, magMax = intro.magMax): number {
 export const INTRO_REVEAL_GLSL = /* glsl */ `
   uniform float uIntroP; uniform float uIntroMagMax;
   float introReveal(float mag){
-    float k = clamp((mag - (${MAG_MIN.toFixed(1)})) / max(0.5, uIntroMagMax - (${MAG_MIN.toFixed(1)})), 0.0, 1.0);
-    float land = ${LAND0} + ${(LAND1 - LAND0).toFixed(3)} * pow(k, 0.8);
+    float e0 = pow(10.0, 0.4 * (${MAG_MIN.toFixed(1)} - uIntroMagMax));
+    float k = clamp((pow(10.0, 0.4 * (mag - uIntroMagMax)) - e0) / (1.0 - e0), 0.0, 1.0);
+    float land = ${LAND0} + ${(LAND1 - LAND0).toFixed(3)} * sqrt(k);
     return smoothstep(land, land + ${LAND_FADE}, uIntroP);
   }`;
 
