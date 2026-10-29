@@ -1,5 +1,5 @@
 /**
- * The gate (§7.1): sakura-washi paper, live suminagashi ink (LiquidEther, multiply), a glass card,
+ * The gate (§7.1): ivory paper, crimson and sumi ink confined behind the card content,
  * the sound choice (the user gesture) and the location flow GPS (6 s) → IP → Chandigarh.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -28,8 +28,8 @@ export default function Gate() {
   const [searchOpen, setSearchOpen] = useState(false);
   const busyRef = useRef(false);
 
-  // Ink colours from the tokens: sumi, beni (ink red), indigo.
-  const inkColors = useMemo(() => [token('--indigo', '#101B2B'), token('--sumi', '#090A0C'), token('--beni', '#C8372D'), token('--crimson', '#A70D16')], []);
+  // Carbon-black sumi and crimson pigment, without the cool indigo cast.
+  const inkColors = useMemo(() => [token('--paper-ink', '#1B1A20'), token('--crimson-deep', '#61070D'), token('--crimson', '#A70D16')], []);
 
   useEffect(() => {
     startPreload();
@@ -86,76 +86,75 @@ export default function Gate() {
 
   return (
     <div className="tw-gate" role="dialog" aria-modal="true" aria-labelledby="gate-title">
-      {!lite && (
-        <div className="tw-gate-ink" aria-hidden="true">
-          <LiquidEther
-            colors={inkColors}
-            lightMode
-            intensity={0.85}
-            mouseForce={14}
-            cursorSize={80}
-            persistence={0.88}
-            viscosity={0.3}
-            resolution={tierCfg.liquidResolution}
-            autoDemo={!reduced}
-            autoSpeed={0.22}
-            autoIntensity={1.6}
-            autoResumeDelay={2500}
-            clickBurst
-            maxDevicePixelRatio={1.5}
-          />
-        </div>
-      )}
-      <div className="tw-gate-grain" aria-hidden="true" />
       <main className="tw-gate-card reveal-ink">
-        <span className="tw-gate-corner tl" aria-hidden="true" />
-        <span className="tw-gate-corner tr" aria-hidden="true" />
-        <span className="tw-gate-corner bl" aria-hidden="true" />
-        <span className="tw-gate-corner br" aria-hidden="true" />
-        <div className="tw-gate-eyebrow">
-          <Kanji>月読</Kanji>
-          <span>·</span>
-          <span>TSUKUYOMI WATCH</span>
-        </div>
-        <h1 id="gate-title" className="tw-gate-title">
-          Your sky, <em>tonight</em>.
-        </h1>
-        <p className="tw-gate-body">
-          To draw the real stars above you, we need to know where you stand. We round it to about a kilometre and use it only to compute your sky and fetch tonight's forecast.
-        </p>
-        {shown && !status && (
-          <p className="tw-gate-found" aria-live="polite">
-            <span className="dot" aria-hidden="true" />
-            {chosen ? 'Your sky over' : 'We found you'} · <strong>{shown.label}</strong> <span className="num">{fmtCoord(shown)}</span>
+        {!lite && !reduced && (
+          <div className="tw-gate-ink" aria-hidden="true">
+            <LiquidEther
+              colors={inkColors}
+              lightMode
+              inkMode
+              intensity={1.05}
+              mouseForce={10}
+              cursorSize={64}
+              persistence={0.94}
+              viscosity={0.55}
+              resolution={tierCfg.liquidResolution}
+              autoDemo={false}
+              clickBurst={false}
+              maxDevicePixelRatio={1.5}
+            />
+          </div>
+        )}
+        <div className="tw-gate-content">
+          <span className="tw-gate-corner tl" aria-hidden="true" />
+          <span className="tw-gate-corner tr" aria-hidden="true" />
+          <span className="tw-gate-corner bl" aria-hidden="true" />
+          <span className="tw-gate-corner br" aria-hidden="true" />
+          <div className="tw-gate-eyebrow">
+            <Kanji>月読</Kanji>
+            <span>·</span>
+            <span>TSUKUYOMI WATCH</span>
+          </div>
+          <h1 id="gate-title" className="tw-gate-title">
+            Your sky, <em>tonight</em>.
+          </h1>
+          <p className="tw-gate-body">
+            To draw the real stars above you, we need to know where you stand. We round it to about a kilometre and use it only to compute your sky and fetch tonight's forecast.
           </p>
-        )}
-        <div className="tw-gate-actions">
-          <Button variant="gold" disabled={!!status?.busy} onClick={() => enter(true)}>
-            Enter with sound
-          </Button>
-          <Button variant="primary" className="tw-gate-silent" disabled={!!status?.busy} onClick={() => enter(false)}>
-            Enter in silence
-          </Button>
-        </div>
-        <button type="button" className="tw-gate-link" onClick={() => setSearchOpen((o) => !o)} aria-expanded={searchOpen} disabled={!!status?.busy}>
-          {searchOpen ? 'Close the search' : 'Choose a place instead'}
-        </button>
-        {searchOpen && (
-          <CitySearch
-            onPick={(p) => {
-              setChosen(p);
-              setSearchOpen(false);
-            }}
-          />
-        )}
-        <p className="tw-gate-status" role="status" aria-live="polite">
-          {status && (
-            <>
-              {status.busy && <span className="tw-gate-spin" aria-hidden="true" />}
-              {status.text}
-            </>
+          {shown && !status && (
+            <p className="tw-gate-found" aria-live="polite">
+              <span className="dot" aria-hidden="true" />
+              {chosen ? 'Your sky over' : 'We found you'} · <strong>{shown.label}</strong> <span className="num">{fmtCoord(shown)}</span>
+            </p>
           )}
-        </p>
+          <div className="tw-gate-actions">
+            <Button variant="commit" className="tw-gate-sound" disabled={!!status?.busy} onClick={() => enter(true)}>
+              Enter with sound
+            </Button>
+            <Button variant="primary" className="tw-gate-silent" disabled={!!status?.busy} onClick={() => enter(false)}>
+              Enter in silence
+            </Button>
+          </div>
+          <button type="button" className="tw-gate-link" onClick={() => setSearchOpen((o) => !o)} aria-expanded={searchOpen} disabled={!!status?.busy}>
+            {searchOpen ? 'Close the search' : 'Choose a place instead'}
+          </button>
+          {searchOpen && (
+            <CitySearch
+              onPick={(p) => {
+                setChosen(p);
+                setSearchOpen(false);
+              }}
+            />
+          )}
+          <p className="tw-gate-status" role="status" aria-live="polite">
+            {status && (
+              <>
+                {status.busy && <span className="tw-gate-spin" aria-hidden="true" />}
+                {status.text}
+              </>
+            )}
+          </p>
+        </div>
       </main>
     </div>
   );

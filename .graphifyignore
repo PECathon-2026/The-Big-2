@@ -1,0 +1,13 @@
+# Approved corpus: application source and project documentation.
+.presentation-build/
+presentation/
+night-sky-reference/
+frontend-main/qa/
+frontend-main/public/
+frontend-basic/public/
+backend/data/
+
+# Agent tooling copies and temporary extraction files are not product source.
+.claude/skills/
+.graphify_*
+graphify-out/

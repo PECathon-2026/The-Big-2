@@ -18,6 +18,7 @@ export interface LiquidEtherProps {
   autoResumeDelay?: number;
   intro?: boolean;
   lightMode?: boolean;
+  inkMode?: boolean;
   backgroundColor?: string;
   maxDevicePixelRatio?: number;
   className?: string;
@@ -41,6 +42,7 @@ interface Settings {
   autoResumeDelay: number;
   intro: boolean;
   light: boolean;
+  ink: boolean;
   background: number[];
   maxRatio: number;
 }
@@ -208,7 +210,20 @@ uniform sampler2D uPalette;
 uniform vec2 uSimSize;
 uniform float uSpeedScale;
 uniform float uLight;
+uniform float uInk;
 uniform vec4 uBackground;
+
+float paperNoise(vec2 p) {
+  vec2 cell = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  vec4 seed = vec4(dot(cell, vec2(127.1, 311.7)),
+    dot(cell + vec2(1.0, 0.0), vec2(127.1, 311.7)),
+    dot(cell + vec2(0.0, 1.0), vec2(127.1, 311.7)),
+    dot(cell + vec2(1.0), vec2(127.1, 311.7)));
+  vec4 n = fract(sin(seed) * 43758.5453);
+  return mix(mix(n.x, n.y, f.x), mix(n.z, n.w, f.x), f.y);
+}
 
 vec2 velocityAt(vec2 uv) {
   vec2 st = uv * uSimSize - 0.5;
@@ -236,7 +251,24 @@ void main() {
   float level = speed < 0.75 ? speed : 0.75 + 0.25 * tanh((speed - 0.75) * 4.0);
   vec3 ink = texture(uPalette, vec2(level, 0.5)).rgb;
   float alpha = level;
-  if (uLight > 0.5) {
+  if (uInk > 0.5) {
+    // Pigment settles in soft washes and darker, irregular suminagashi ridges.
+    vec2 paper = vUv * uSimSize;
+    float fiber = paperNoise(paper * 0.7) * 0.65 + paperNoise(paper * 2.8) * 0.35;
+    float density = max(0.0, speed + (fiber - 0.5) * 0.012);
+    float wash = smoothstep(0.025, 0.45, density);
+    float rings = 0.5 + 0.5 * sin(sqrt(density) * 32.0 + fiber * 0.7);
+    float ridge = pow(rings, 8.0) * smoothstep(0.04, 0.18, density);
+    alpha = clamp(wash * 0.58 + ridge * 0.3, 0.0, 0.88);
+    float pigment = clamp(0.3 + level * 0.7 + (paperNoise(vUv * 4.0) - 0.5) * 0.4, 0.0, 1.0);
+    ink = texture(uPalette, vec2(pigment, 0.5)).rgb;
+    // Palette textures contain linear RGB; paper pigment needs its sRGB colour.
+    ink = 1.055 * pow(max(ink, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055;
+    vec3 carbon = texture(uPalette, vec2(0.0, 0.5)).rgb;
+    carbon = 1.055 * pow(max(carbon, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055;
+    ink = mix(ink, carbon, ridge * 0.65);
+    alpha *= 0.9 + fiber * 0.1;
+  } else if (uLight > 0.5) {
     float hollow = smoothstep(0.7, 1.6, speed);
     alpha = smoothstep(0.08, 0.5, level) * mix(0.85, 0.1, hollow);
   } else {
@@ -349,6 +381,7 @@ const LiquidEther = ({
   autoResumeDelay = 1000,
   intro = true,
   lightMode = false,
+  inkMode = false,
   backgroundColor = 'transparent',
   maxDevicePixelRatio = 2,
   className = '',
@@ -378,6 +411,7 @@ const LiquidEther = ({
     autoResumeDelay: Math.max(0, autoResumeDelay),
     intro,
     light: lightMode,
+    ink: inkMode,
     background: background ? [...background, 1] : [0, 0, 0, 0],
     maxRatio: clamp(maxDevicePixelRatio, 0.5, 3)
   };
@@ -604,6 +638,7 @@ const LiquidEther = ({
         gl.uniform2f(u.uSimSize, grid.width, grid.height);
         gl.uniform1f(u.uSpeedScale, (1.25 * s.intensity) / (0.84 * Math.max(size.width, size.height)));
         gl.uniform1f(u.uLight, s.light ? 1 : 0);
+        gl.uniform1f(u.uInk, s.ink ? 1 : 0);
         gl.uniform4f(u.uBackground, s.background[0], s.background[1], s.background[2], s.background[3]);
       });
     };

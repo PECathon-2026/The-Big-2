@@ -27,3 +27,8 @@ backend/data/vapid/
 backend/data/alerts.db
 .playwright-mcp/
 backend/data/honor.db
+
+# build and tooling artifacts
+.presentation-build/
+.graphify_*
+graphify-out/cache/
