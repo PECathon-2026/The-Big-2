@@ -69,6 +69,33 @@ export default defineConfig({
   ],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+    // one React / one three in the whole graph (a late re-optimisation once split React → invalid hook calls)
+    dedupe: ['react', 'react-dom', 'three', '@react-three/fiber'],
+  },
+  optimizeDeps: {
+    // prebundle everything up front so the dev server never re-optimises mid-session
+    include: [
+      'react',
+      'react-dom',
+      'react-dom/client',
+      'react/jsx-runtime',
+      'react/jsx-dev-runtime',
+      'react-router',
+      'three',
+      '@react-three/fiber',
+      '@react-three/drei',
+      '@react-three/postprocessing',
+      'postprocessing',
+      'zustand',
+      'gsap',
+      'gsap/ScrollTrigger',
+      '@gsap/react',
+      'lenis',
+      'motion/react',
+      'astronomy-engine',
+      'leaflet',
+      'react-leaflet',
+    ],
   },
   server: { port: 3000, strictPort: true },
   preview: { port: 3000, strictPort: true },
