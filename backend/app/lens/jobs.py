@@ -120,8 +120,8 @@ def _load_from_disk(job_id: str) -> Job | None:
         info = JobInfo.model_validate_json(p.read_text(encoding="utf-8"))
     except Exception:  # noqa: BLE001
         return None
-    if info.status == "running":
-        info.status, info.error = "failed", "server restarted while the job was running"
+    if info.status in ("running", "queued"):  # the worker that owned it died with the old process
+        info.status, info.error = "failed", "server restarted before the job finished; submit it again"
     job = Job(id=info.job_id, created_at=info.created_at, params={}, source_filename=info.result.image.source_filename if info.result else "",
               status=info.status, stages=info.stages, error=info.error, result=info.result)
     try:
