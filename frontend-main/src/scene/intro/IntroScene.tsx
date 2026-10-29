@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import DuskLandscape from './DuskLandscape';
 import SakuraTrees from './SakuraTrees';
 import Petals from './Petals';
+import StarMorph from './StarMorph';
 import { intro } from './introBus';
 
 export default function IntroScene() {
@@ -18,6 +19,7 @@ export default function IntroScene() {
       <DuskLandscape />
       <SakuraTrees />
       <Petals targetsKey={targetsKey} />
+      <StarMorph targetsKey={targetsKey} />
     </>
   );
 }
