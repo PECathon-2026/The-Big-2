@@ -180,25 +180,6 @@ export function MoonDisc({ ageDays, size = 220, label }: { ageDays: number; size
     g.fillStyle = halo;
     g.fillRect(0, 0, size, size);
     drawMoon(g, size / 2, size / 2, r, ageDays, { color: lit, earthshine: 'rgba(169,193,240,.07)' });
-    // faint maria texture: a few soft blots, clipped to the lit disc by 'source-atop'
-    g.globalCompositeOperation = 'source-atop';
-    const blots = [
-      [-0.25, -0.2, 0.28],
-      [0.12, -0.32, 0.18],
-      [-0.05, 0.12, 0.22],
-      [0.3, 0.18, 0.14],
-      [-0.32, 0.3, 0.12],
-    ];
-    for (const [bx, by, br] of blots) {
-      const gx = size / 2 + bx * r;
-      const gy = size / 2 + by * r;
-      const gr = g.createRadialGradient(gx, gy, 0, gx, gy, br * r);
-      gr.addColorStop(0, 'rgba(120,112,100,.28)');
-      gr.addColorStop(1, 'rgba(120,112,100,0)');
-      g.fillStyle = gr;
-      g.fillRect(0, 0, size, size);
-    }
-    g.globalCompositeOperation = 'source-over';
   }, [ageDays, size, field]);
   return <canvas ref={ref} role="img" aria-label={label} style={{ width: size, height: size, display: 'block' }} />;
 }

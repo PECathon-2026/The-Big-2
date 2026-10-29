@@ -126,3 +126,19 @@
 
 .pg-svg-text { font-family: var(--font-ui); font-size: 11px; fill: var(--washi-3); }
 .pg-stat .v small { font-family: var(--font-ui); font-size: 12px; font-weight: 600; letter-spacing: .04em; color: var(--washi-3); margin-left: 3px; }
+
+/* Field mode (red night vision): flatten the beige/gold rgba accents that the token remap cannot reach */
+:root[data-field='on'] .pg-root .pg-washi .pg-quiet, :root[data-field='on'] .pg-root .pg-washi .pg-label { color: var(--washi-3); }
+:root[data-field='on'] .pg-root .tw-card, :root[data-field='on'] .pg-root .pg-filter, :root[data-field='on'] .pg-root .pg-chips .tw-chip { background: #000; }
+:root[data-field='on'] .pg-root .pg-lede, :root[data-field='on'] .pg-root .wt-reason, :root[data-field='on'] .pg-root .sc-ev-detail, :root[data-field='on'] .pg-root .sc-moon-meaning, :root[data-field='on'] .pg-root .sci-notes { color: var(--washi); }
+:root[data-field='on'] .pg-root .wt-bar { fill: var(--washi-3); }
+:root[data-field='on'] .pg-root img, :root[data-field='on'] .pg-root .ks canvas { filter: grayscale(1) sepia(1) hue-rotate(-50deg) saturate(5) brightness(.6); }
+:root[data-field='on'] .pg-emaki::before, :root[data-field='on'] .pg-emaki::after { background: var(--crimson-deep); }
+
+/* Lite / narrow: tighter gutters, no backdrop blur on cards */
+@media (max-width: 640px) {
+  .pg-content, .pg-content.wide { width: calc(100% - 32px); padding-top: 96px; }
+  .pg-head-row { margin-bottom: 18px; }
+  .pg-section { margin-top: 48px; }
+  .tw-card { padding: 22px 20px; }
+}

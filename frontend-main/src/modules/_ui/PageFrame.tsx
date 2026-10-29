@@ -100,19 +100,37 @@ export default function PageFrame({ eyebrow, seal, title, lede, actions, childre
     const id = decodeURIComponent(hash.slice(1)).split('&')[0];
     let tries = 0;
     let h = 0;
+    let fixes = 0;
+    let touched = false;
+    const wrapEl = scroller.current;
+    const stop = () => (touched = true);
+    wrapEl?.addEventListener('wheel', stop, { passive: true });
+    wrapEl?.addEventListener('pointerdown', stop);
+    wrapEl?.addEventListener('keydown', stop);
+    const OFFSET = 96; // clear the HUD bar
     const go = () => {
       const target = document.getElementById(id);
       const wrap = scroller.current;
       if (target && wrap) {
-        const top = target.getBoundingClientRect().top - wrap.getBoundingClientRect().top + wrap.scrollTop - 24;
-        if (lenisRef.current) lenisRef.current.scrollTo(top, { duration: 1.2 });
-        else wrap.scrollTo({ top, behavior: calm ? 'auto' : 'smooth' });
+        const delta = target.getBoundingClientRect().top - wrap.getBoundingClientRect().top - OFFSET;
+        if (Math.abs(delta) > 40) {
+          const top = delta + wrap.scrollTop;
+          if (lenisRef.current) lenisRef.current.scrollTo(top, { duration: fixes ? 0.6 : 1.2 });
+          else wrap.scrollTo({ top, behavior: calm ? 'auto' : 'smooth' });
+        }
+        // content above may still be loading (slow APIs): correct the landing a couple of times
+        if (fixes++ < 3) h = window.setTimeout(() => !touched && go(), 1600);
         return;
       }
       if (tries++ < 20) h = window.setTimeout(go, 150);
     };
     h = window.setTimeout(go, 350);
-    return () => window.clearTimeout(h);
+    return () => {
+      window.clearTimeout(h);
+      wrapEl?.removeEventListener('wheel', stop);
+      wrapEl?.removeEventListener('pointerdown', stop);
+      wrapEl?.removeEventListener('keydown', stop);
+    };
   }, [hash, calm]);
 
   const back = () => {
