@@ -1,6 +1,6 @@
 """Meteor showers: which are active, and the expected hourly rate from this observer tonight.
 
-expected_rate(hour) = ZHR_now × sin(radiant altitude) × r^(6.5 − LM)
+expected_rate(hour) = ZHR_now × sin(radiant altitude) / r^(6.5 − LM)
 
 ZHR_now follows a simple exponential activity profile around the peak (full ZHR at peak, halving every 2 days away).
 LM is the limiting magnitude: 6.5 at a pristine site, reduced by light pollution (Bortle) and by moonlight.
@@ -98,7 +98,8 @@ def active_showers(lat: float, lon: float, at: datetime | None = None, bortle: f
             m_alt = astro.moon_alt(t, obs)
             m_ill = astro.moon_illumination(t)
             lm, _ = limiting_magnitude(bortle, m_alt, m_ill)
-            rate = zhr_now * max(0.0, math.sin(math.radians(r_alt))) * s["r"] ** (6.5 - lm) if r_alt > 0 else 0.0
+            # IMO: ZHR = HR · r^(6.5−LM) / sin(h)  ⇒  HR = ZHR · sin(h) / r^(6.5−LM)
+            rate = zhr_now * max(0.0, math.sin(math.radians(r_alt))) / s["r"] ** (6.5 - lm) if r_alt > 0 else 0.0
             hours.append(HourRate(time=t, time_local=t.astimezone(zone).strftime("%H:%M"), radiant_alt=round(r_alt, 1), limiting_magnitude=round(lm, 2), rate_per_hour=round(rate, 1)))
             t += timedelta(hours=1)
         best = max(hours, key=lambda h: h.rate_per_hour) if hours else None
@@ -122,7 +123,7 @@ def active_showers(lat: float, lon: float, at: datetime | None = None, bortle: f
                 best_hour=best,
                 hours=hours,
                 trace=Trace(
-                    formula="rate = ZHR_now × sin(radiant alt) × r^(6.5 − LM); ZHR_now = ZHR × 0.5^(|days from peak|/2)",
+                    formula="rate = ZHR_now × sin(radiant alt) / r^(6.5 − LM); ZHR_now = ZHR × 0.5^(|days from peak|/2)",
                     inputs={"shower": s, "limiting_magnitude": lm_note, "radiant": "fixed at peak position (drift ignored)"},
                     notes=["IMO working-list values", "observer darkness from astronomy-engine", "moon altitude and illumination per hour"],
                 ),
