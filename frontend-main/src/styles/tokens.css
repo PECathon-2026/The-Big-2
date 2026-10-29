@@ -1,0 +1,85 @@
+/* Design tokens — AGENT_BRIEF §5.1 and §5.3. These variables are the source of truth;
+   Tailwind's @theme (globals.css) maps onto them. */
+:root {
+  /* night surfaces (~90% of pixels) */
+  --sumi: #07070B;
+  --ink: #121219;
+  --night: #0B1222;
+  --indigo: #101B2B;
+  --lacquer: rgba(10, 12, 22, .66);
+
+  /* paper / text */
+  --washi: #EDE6D6;
+  --washi-2: #D6CAB0;
+  --washi-3: #BDB094;
+  --paper-ink: #1B1A20;
+  --mist: #8B94A7;
+
+  /* moonlight */
+  --moon: #D9DEE8;
+  --moon-warm: #F3EAD6;
+
+  /* gold = hierarchy */
+  --gold: #CFA84F;
+  --gold-bright: #E8C66A;
+  --gold-soft: #C4AA7C;
+  --gold-accent: #E2C17F;
+  --line: rgba(207, 168, 79, .22);
+  --line-hover: rgba(232, 198, 106, .55);
+
+  /* vermilion = alive / now */
+  --vermilion: #C8372D;
+  --vermilion-deep: #B4282D;
+
+  /* intro only */
+  --urushi: #6B0F14;
+  --urushi-deep: #3E080B;
+  --sakura: #F4C6CF;
+  --sakura-deep: #E79AB0;
+  --sakura-washi: #F3E4E2;
+
+  /* sky colour, written every frame-ish by the scene from the Sun's real altitude (astro/skyColor.ts) */
+  --sky-zenith: #07070B;
+  --sky-horizon: #0E1222;
+
+  /* motion */
+  --ease-katana: cubic-bezier(.16, 1, .3, 1);
+  --ease-cinematic: cubic-bezier(.25, 1, .5, 1);
+  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --ease-breath: cubic-bezier(.4, 0, .6, 1);
+  --dur-micro: 180ms;
+  --dur-reveal: 400ms;
+  --dur-dive: 1600ms;
+
+  /* type */
+  --font-display: 'Cinzel', 'Times New Roman', serif;
+  --font-ui: 'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-jp: 'Shippori Mincho', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
+  --font-accent: 'Cormorant Garamond', Georgia, serif;
+
+  /* radii */
+  --r-card: 6px;
+  --r-dialog: 8px;
+  --r-pill: 999px;
+
+  /* z layers — §5.7 */
+  --z-canvas: 0;
+  --z-labels: 10;
+  --z-cursor: 20;
+  --z-hud: 30;
+  --z-page: 40;
+  --z-flood: 60;
+  --z-gate: 80;
+  --z-grain: 95;
+  --z-toast: 100;
+}
+
+:root[data-field="on"] {
+  --sumi: #000; --ink: #140000; --night: #0A0000; --indigo: #1A0000;
+  --lacquer: rgba(20, 0, 0, .8);
+  --washi: #FF3B30; --washi-2: #C42A22; --washi-3: #8A1C17; --mist: #7A1A14;
+  --moon: #FF3B30; --moon-warm: #FF3B30; --gold: #E0352B; --gold-bright: #FF3B30;
+  --gold-soft: #8A1C17; --gold-accent: #FF3B30; --vermilion: #FF3B30; --line: rgba(255, 59, 48, .25);
+  --line-hover: rgba(255, 59, 48, .55);
+  --paper-ink: #FF3B30;
+}
