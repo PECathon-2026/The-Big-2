@@ -83,6 +83,12 @@ The browser registers `public/sw.js`, subscribes with the server's VAPID key and
 - `POST /mask` body `{ lat, lon, points: [{az, alt}], use_terrain=true }` → the same with the traced skyline merged (max of terrain and manual).
 - `POST /path` body `{ lat, lon, points, use_terrain, target?/ra?/dec?/kind?, date? }` → `{ horizon, report: { target, geometric_rise_local, geometric_set_local, crossings: [{kind, time, local, az, alt, mask_alt}], minutes_above_geometric, minutes_above_mask, minutes_lost_to_skyline, sentence, path: [{time, local, alt, az, mask_alt, visible}] }, night }` — e.g. "The Moon rises at 20:54 but clears your skyline only at 22:54".
 
+## Spectra (`/api/spectra`) — SDSS spectrum on click
+
+- `GET /near?ra&dec&radius_arcmin=1&limit=5` → `{ objects: [{spec_obj_id, plate, mjd, fiberid, class, subclass, z, z_err, ra, dec, survey, run2d, sn_median, separation_arcsec}] }` (SkyServer DR18).
+- `GET /spectrum/{plate}/{mjd}/{fiberid}?run2d&survey` → `Spectrum`: `{ plate, mjd, fiberid, ra, dec, class, subclass, z, z_err, sn_median, exptime_s, flux_unit, wavelength[], flux[], model[], n_pixels, binned_to, wavelength_range, lines_measured: [{name, rest_wavelength, observed_wavelength, z, area, area_err, sigma_kms, equivalent_width, emission, significance}], lines_expected: [{name, rest_wavelength, observed_wavelength}], note }` from the DR17 Science Archive FITS (legacy SDSS and eBOSS), median-binned to ≤ 900 points; measured lines are the pipeline's spZline fits kept at ≥ 3σ.
+- `GET /at?ra&dec&radius_arcmin=1` → nearest spectrum in one call; 404 when SDSS has none there (SDSS covers mainly the northern sky).
+
 ## Spirit Lens (`/api/lens`) — image pipeline contract
 
 Processing is asynchronous: upload creates a job, the job runs through named stages, results are fetched by id.

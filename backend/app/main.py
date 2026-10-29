@@ -14,6 +14,7 @@ from .horizon.router import router as horizon_router
 from .lens.router import router as lens_router
 from .planner.router import router as planner_router
 from .scroll.router import router as scroll_router
+from .spectra.router import router as spectra_router
 from .transients.router import router as transients_router
 from .watchtower.router import router as watchtower_router
 
@@ -88,3 +89,4 @@ app.include_router(honor_router, prefix="/api/honor", tags=["honor"])
 app.include_router(transients_router, prefix="/api/transients", tags=["transients"])
 app.include_router(planner_router, prefix="/api/planner", tags=["planner"])
 app.include_router(horizon_router, prefix="/api/horizon", tags=["horizon"])
+app.include_router(spectra_router, prefix="/api/spectra", tags=["spectra"])
