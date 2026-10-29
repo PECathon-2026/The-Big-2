@@ -80,7 +80,7 @@ No keys are needed for Open-Meteo, CelesTrak, Overpass, NASA SkyView or ALeRCE.
 ## Conventions
 
 - **Trace everything.** Any computed score returns a `trace` with each factor's value, weight and contribution. The frontend's ⓘ popovers are driven by it; never hard-code an explanation.
-- **Stamp everything.** Upstream data returns `{ data, source, fetched_at, stale }`.
+- **Stamp everything.** Responses are wrapped as `{ data, provenance: [{ source, url, fetched_at, stale, cached, note }], computed_at }` (see `docs/API.md`).
 - **Cache everything.** Each provider adapter has its own TTL. Launch Library 2 is limited to 15 calls/hour unauthenticated, so it is cached server-side and never called from the browser.
 - **Honest units.** For plain JPEG/PNG uploads, report relative brightness and pixel sizes. Magnitudes and arcseconds appear only after a plate-solve.
 - **No invented detail.** Image restoration uses a measured PSF and deterministic deconvolution plus a denoiser that cannot hallucinate. Every restoration ships with its honesty metrics.
