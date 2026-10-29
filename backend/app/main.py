@@ -1,3 +1,5 @@
+import asyncio
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 from fastapi import FastAPI
@@ -10,25 +12,9 @@ from .lens.router import router as lens_router
 from .scroll.router import router as scroll_router
 from .watchtower.router import router as watchtower_router
 
-app = FastAPI(
-    title="Tsukuyomi Watch API",
-    version="0.1.0",
-    description="The Samurai's Celestial Guide. Every response carries provenance and, for computed numbers, a trace.",
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.origins,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@app.on_event("startup")
-async def prewarm():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     """Warm the slow caches (Overpass spots for the demo cities) in the background; failures are harmless."""
-    import asyncio
-
     from .watchtower import spots
 
     async def warm():
@@ -38,7 +24,24 @@ async def prewarm():
             except Exception:  # noqa: BLE001
                 pass
 
-    asyncio.create_task(warm())
+    task = asyncio.create_task(warm())
+    yield
+    task.cancel()
+
+
+app = FastAPI(
+    title="Tsukuyomi Watch API",
+    version="0.1.0",
+    description="The Samurai's Celestial Guide. Every response carries provenance and, for computed numbers, a trace.",
+    lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.origins,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.exception_handler(ProviderError)
