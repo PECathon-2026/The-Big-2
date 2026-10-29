@@ -246,3 +246,10 @@ dialog.city-dialog { max-width: min(560px, calc(100vw - 32px)); }
 .compass-body.docked:hover, .compass-body.docked:focus-within, .compass-body.docked.engaged { transform: none; transition-delay: 0ms; }
 .compass-body.docked:not(:hover):not(:focus-within):not(.engaged) .compass-now { opacity: 0; pointer-events: none; }
 .compass-body .compass-now { transition: opacity 260ms var(--ease-katana); }
+
+/* Tonight's highlights lead the directory (no dome: this list is the main way to find things). */
+.dir-grid { grid-template-columns: 1.15fr 1fr; }
+.dir-hl { padding: 14px 14px 10px; margin: 10px 0 0 -14px; border: 1px solid var(--card-line-soft); border-radius: 14px; background: radial-gradient(circle at 0 0, rgba(201, 154, 58, .07), transparent 60%); }
+.dir-hl .hl-row { min-height: 52px; }
+.dir-hl .hl-row b { font-size: 15px; }
+.dir-hl .hl-row .g { font-size: 17px; }

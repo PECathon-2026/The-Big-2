@@ -83,14 +83,14 @@ export default function HudRoot() {
   useEffect(
     () =>
       useApp.subscribe((s, prev) => {
-        if (s.hovered && s.hovered.id !== prev.hovered?.id && (s.phase === 'sky' || s.phase === 'dome')) cue('pluck', 0.35);
+        if (s.hovered && s.hovered.id !== prev.hovered?.id && s.phase === 'sky') cue('pluck', 0.35);
       }),
     [],
   );
 
   // the card belongs to the open sky only
   useEffect(() => {
-    if (phase !== 'sky' && phase !== 'dome') setCard(null);
+    if (phase !== 'sky') setCard(null);
   }, [phase]);
 
   useEffect(() => {
@@ -132,7 +132,7 @@ export default function HudRoot() {
           <div className={`hud hud-enter ${onPage ? 'on-page' : ''}`} data-hud>
             {onPage && <div className="hud-topbar" aria-hidden="true" />}
             <div className="hud-tl">
-              <button className="hud-wordmark" onClick={goHome} aria-label="Tsukuyomi: return to the dome">
+              <button className="hud-wordmark" onClick={goHome} aria-label="Tsukuyomi: return to the sky">
                 <span className="seal" lang="ja" aria-hidden="true">
                   月
                 </span>
@@ -161,7 +161,7 @@ export default function HudRoot() {
               </Button>
             </div>
             <ChapterRail />
-            {lite && !onPage ? <TimeBand /> : <TimeCompass folded={onPage} compact={phase === 'dome'} docked={phase === 'sky'} />}
+            {lite && !onPage ? <TimeBand /> : <TimeCompass folded={onPage} docked={phase === 'sky'} />}
             <SoundToggle />
           </div>
           {card && !onPage && <InfoCard obj={card.obj} x={card.x} y={card.y} onClose={() => (app().select(null), setCard(null))} />}

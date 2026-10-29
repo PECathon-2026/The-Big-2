@@ -51,7 +51,7 @@ function moonPath(r: number, ageDays: number) {
   return `M0 ${-r}A${r} ${r} 0 0 ${outer} 0 ${r}A${f1(a)} ${r} 0 0 ${term} 0 ${-r}Z`;
 }
 
-/** min(40vh, 340px) in the sky; compact at the dome so the dome and its "Enter your sky" CTA stay clear. */
+/** min(40vh, 340px); `compact` gives a small dial (kept for narrow uses). */
 function useRadius(compact: boolean) {
   const get = () => Math.round(compact ? Math.min(window.innerHeight * 0.15, 150) : Math.min(window.innerHeight * 0.4, 340, window.innerWidth * 0.46));
   const [r, setR] = useState(get);

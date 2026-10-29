@@ -1,5 +1,6 @@
 /**
- * Chapter navigation (§8.5): each chapter is a camera station + a page. Chapter 一 is the dome (home).
+ * Chapter navigation (§8.5): each chapter is a camera station + a page. Chapter 一 is the sky itself (home;
+ * there is no dome exterior any more).
  * The station is a dive toward a real object: Watchtower → the torii/horizon, Scroll → the Moon,
  * Lens → M42 (or the brightest DSO above the horizon), Honor → Polaris.
  */
@@ -38,17 +39,17 @@ export function goChapter(path: string, pt?: { x: number; y: number }) {
   void Director.diveTo(chapterTarget(path), pt, path);
 }
 
-/** Wordmark / chapter 一: back to the dome. */
+/** Wordmark / chapter 一: the sky home view (current yaw, pitch 24°, FOV 62). */
 export function goHome() {
   if (Director.busy) return;
   const s = app();
   if (isModulePath(window.location.pathname)) {
-    void Director.back({ to: 'dome' });
+    void Director.back({ to: 'home' });
     return;
   }
   s.select(null);
-  s.setPhase('dome');
-  void Director.station('dome', { instant: s.reducedMotion });
+  s.setPhase('sky');
+  void Director.home({ instant: s.reducedMotion });
 }
 
 /** Index of the active chapter for a pathname (−1 for /science and unknown paths). */

@@ -34,7 +34,7 @@ export default function Directory() {
       .map((o) => ({ o, ...vecToAltAz(o.world) }))
       .filter((h) => h.alt > -2 || h.o.kind === 'landmark')
       .sort((a, b) => ORDER[a.o.kind] - ORDER[b.o.kind] || b.alt - a.alt)
-      .slice(0, 9);
+      .slice(0, 12);
   }, [objects, open]);
 
   const close = () => setOpen(false);
@@ -65,50 +65,8 @@ export default function Directory() {
           Choose your <em>chapter</em>.
         </Title>
         <div className="dir-grid">
-          <div>
-            <h3 className="dir-h">Chapters</h3>
-            <ul className="dir-list">
-              {CHAPTERS.map((c, i) => (
-                <li key={c.path}>
-                  <button className={`dir-row ${i === active ? 'active' : ''}`} onClick={(e) => go(c.path, e)} aria-current={i === active ? 'page' : undefined}>
-                    <span className="k" lang="ja">
-                      {c.num}
-                    </span>
-                    <span className="t">
-                      <b>{c.name}</b>
-                      <span>
-                        <span className="jp" lang="ja">
-                          {c.jp}
-                        </span>
-                        {c.romaji}
-                        {i === 0 ? ' · the dome, tonight' : ''}
-                      </span>
-                    </span>
-                    {i === active ? <span className="here">You are here</span> : <span className="r">{c.roman}</span>}
-                  </button>
-                </li>
-              ))}
-              <li>
-                <button className={`dir-row ${pathname === SCIENCE.path ? 'active' : ''}`} onClick={(e) => go(SCIENCE.path, e)}>
-                  <span className="k" lang="ja">
-                    {SCIENCE.num}
-                  </span>
-                  <span className="t">
-                    <b>{SCIENCE.name}</b>
-                    <span>
-                      <span className="jp" lang="ja">
-                        {SCIENCE.jp}
-                      </span>
-                      {SCIENCE.romaji} · is this real?
-                    </span>
-                  </span>
-                  <span className="r">†</span>
-                </button>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <h3 className="dir-h">Tonight's highlights</h3>
+          <div className="dir-hl">
+            <h3 className="dir-h">Tonight's highlights · dive straight in</h3>
             {highlights.length === 0 ? (
               <p className="hl-empty">The sky is still being drawn…</p>
             ) : (
@@ -133,6 +91,48 @@ export default function Directory() {
                 ))}
               </ul>
             )}
+          </div>
+          <div>
+            <h3 className="dir-h">Chapters</h3>
+            <ul className="dir-list">
+              {CHAPTERS.map((c, i) => (
+                <li key={c.path}>
+                  <button className={`dir-row ${i === active ? 'active' : ''}`} onClick={(e) => go(c.path, e)} aria-current={i === active ? 'page' : undefined}>
+                    <span className="k" lang="ja">
+                      {c.num}
+                    </span>
+                    <span className="t">
+                      <b>{c.name}</b>
+                      <span>
+                        <span className="jp" lang="ja">
+                          {c.jp}
+                        </span>
+                        {c.romaji}
+                        {i === 0 ? ' · your sky, tonight' : ''}
+                      </span>
+                    </span>
+                    {i === active ? <span className="here">You are here</span> : <span className="r">{c.roman}</span>}
+                  </button>
+                </li>
+              ))}
+              <li>
+                <button className={`dir-row ${pathname === SCIENCE.path ? 'active' : ''}`} onClick={(e) => go(SCIENCE.path, e)}>
+                  <span className="k" lang="ja">
+                    {SCIENCE.num}
+                  </span>
+                  <span className="t">
+                    <b>{SCIENCE.name}</b>
+                    <span>
+                      <span className="jp" lang="ja">
+                        {SCIENCE.jp}
+                      </span>
+                      {SCIENCE.romaji} · is this real?
+                    </span>
+                  </span>
+                  <span className="r">†</span>
+                </button>
+              </li>
+            </ul>
           </div>
         </div>
         <div className="dir-foot">

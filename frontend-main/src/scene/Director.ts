@@ -3,7 +3,9 @@
  *
  * The camera state is { pos, yaw, pitch, fov } with targets; `CameraRig` (CanvasRoot) eases the
  * current values toward the targets every frame with time-based damping, so any new input interrupts
- * a move. yaw 0 = north, +east; pitch up. The dome view is just a far position looking at the origin.
+ * a move. yaw 0 = north, +east; pitch up. There is no dome exterior any more (product-owner change):
+ * home / chapter 一 is the sky itself, and station('dome') is an alias of station('sky') so nothing can
+ * fly the camera back out to DOME_POS.
  *
  * Dives (§7.6) are orchestrated here: flight → ink flood from the click point → navigate(route) →
  * the page mounts under the ink → ink clears centre-out. `back()` reverses it to the exact saved view.
@@ -34,7 +36,7 @@ export const rig = {
   ease: 0.05,
   /** dome ambient rotation (rad/s) applied while at the dome and idle */
   domeSpin: 0,
-  station: 'dome' as StationName,
+  station: 'sky' as StationName,
   /** 0..1 written during a dive — stars streak radially in the shader while > 0 */
   dive: 0,
 };
@@ -95,7 +97,7 @@ function tweenDive(to: number, ms: number) {
   requestAnimationFrame(step);
 }
 
-/** Where the camera looks to frame `obj`, and (from the dome) how far it travels toward it. */
+/** Where the camera looks to frame `obj` (and, if the camera is ever outside the sphere, how far it travels toward it). */
 function viewFor(obj: SkyObject, from: CamState): CamState {
   const outside = Math.hypot(...from.pos) > 120;
   const pos: Vec3 = outside
@@ -135,12 +137,9 @@ export const Director = {
   },
 
   station(name: StationName, opts: { instant?: boolean; yaw?: number; pitch?: number; fov?: number } = {}): Promise<void> {
+    if (name === 'dome') name = 'sky'; // no dome exterior: home is the sky
     rig.station = name;
-    if (name === 'dome') {
-      const dir: Vec3 = [-DOME_POS[0], -DOME_POS[1], -DOME_POS[2]];
-      const { yaw, pitch } = dirToYawPitch(dir);
-      setTarget({ pos: DOME_POS, yaw: opts.yaw ?? yaw, pitch: opts.pitch ?? pitch, fov: opts.fov ?? 50 }, opts.instant);
-    } else if (name === 'intro') {
+    if (name === 'intro') {
       setTarget({ pos: EYE, yaw: opts.yaw ?? rig.cur.yaw, pitch: opts.pitch ?? 6 * D, fov: opts.fov ?? 38 }, opts.instant);
     } else {
       setTarget({ pos: EYE, yaw: opts.yaw ?? rig.tgt.yaw, pitch: opts.pitch ?? 24 * D, fov: opts.fov ?? 62 }, opts.instant);
@@ -160,7 +159,7 @@ export const Director = {
     const s = app();
     const fromModule = s.phase === 'module' || onModulePath();
     try {
-      if (!fromModule) saved = { cam: { pos: [...rig.tgt.pos], yaw: rig.tgt.yaw, pitch: rig.tgt.pitch, fov: rig.tgt.fov }, phase: s.phase === 'dome' ? 'dome' : 'sky', station: rig.station };
+      if (!fromModule) saved = { cam: { pos: [...rig.tgt.pos], yaw: rig.tgt.yaw, pitch: rig.tgt.pitch, fov: rig.tgt.fov }, phase: 'sky', station: rig.station === 'intro' ? 'intro' : 'sky' };
       s.setTimeFrozen(true);
       const view = viewFor(obj, rig.cur);
       if (s.reducedMotion) {
@@ -209,10 +208,11 @@ export const Director = {
 
   /**
    * Reverse a dive: ink closes over the page, the page unmounts, the camera flies back to the exact
-   * saved orientation + FOV while the ink clears. `to: 'dome'` returns home (chapter 一) instead.
+   * saved orientation + FOV while the ink clears. `to: 'home'` (or the legacy 'dome') returns to the sky
+   * home view instead (chapter 一: current yaw, pitch 24°, FOV 62).
    * Safe to call after something else already navigated to '/'.
    */
-  async back(opts: { to?: 'saved' | 'dome' } = {}): Promise<void> {
+  async back(opts: { to?: 'saved' | 'home' | 'dome' } = {}): Promise<void> {
     if (busy) {
       pendingBack = true;
       return;
@@ -220,12 +220,11 @@ export const Director = {
     busy = true;
     const s = app();
     const onPage = onModulePath();
-    const home = opts.to === 'dome' || !saved ? (opts.to === 'dome' || s.phase === 'dome' ? 'dome' : 'sky') : null;
+    const home = opts.to === 'home' || opts.to === 'dome' || !saved;
     const restore = () => {
-      if (home === 'dome' || (!home && saved?.phase === 'dome')) app().setPhase('dome');
-      else app().setPhase('sky');
+      app().setPhase('sky');
       if (home) {
-        void Director.station(home, { instant: s.reducedMotion });
+        void Director.home({ instant: s.reducedMotion });
       } else if (saved) {
         rig.station = saved.station;
         setTarget(saved.cam, s.reducedMotion);
@@ -258,6 +257,13 @@ export const Director = {
       app().setTimeFrozen(false);
       busy = false;
     }
+  },
+
+  /** Home view (chapter 一): inside the sky, current yaw, pitch 24°, FOV 62. */
+  home(opts: { instant?: boolean } = {}): Promise<void> {
+    rig.station = 'sky';
+    setTarget({ pos: EYE, yaw: rig.tgt.yaw, pitch: 24 * D, fov: 62 }, opts.instant);
+    return opts.instant ? Promise.resolve() : settle(1400);
   },
 
   /** Eased look at a direction (any length) with optional FOV. */

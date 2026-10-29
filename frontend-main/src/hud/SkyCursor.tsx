@@ -1,5 +1,5 @@
 /**
- * GlowCursor over the night sky (§10.2). On only in dome / sky / diving (or the intro past 55 %, but the
+ * GlowCursor over the night sky (§10.2). On only in sky / diving (or the intro past 55 %, but the
  * HUD is not mounted then), off over [data-cursor="off"] (cards, sheets, inputs, dialogs) and over the HUD,
  * off in Lite mode, on touch devices, with reduced motion and on the `low` tier. Never on the gate.
  */
@@ -24,7 +24,7 @@ export default function SkyCursor() {
   const coarse = useMemo(() => window.matchMedia('(pointer: coarse)').matches, []);
   const tierCursor = TIERS[quality].glowCursor;
   const allowed = !lite && !coarse && !reduced && !field && tierCursor !== 'off';
-  const skyDark = phase === 'dome' || phase === 'sky' || phase === 'diving' || (phase === 'intro' && intro > 0.55);
+  const skyDark = phase === 'sky' || phase === 'diving' || (phase === 'intro' && intro > 0.55);
 
   useEffect(() => {
     if (!allowed) return;
