@@ -11,6 +11,7 @@ from .alerts.router import router as alerts_router
 from .core.http import ProviderError
 from .honor.router import router as honor_router
 from .lens.router import router as lens_router
+from .planner.router import router as planner_router
 from .scroll.router import router as scroll_router
 from .transients.router import router as transients_router
 from .watchtower.router import router as watchtower_router
@@ -25,11 +26,15 @@ async def lifespan(app: FastAPI):
     await asyncio.to_thread(_ensure_samples)
 
     async def warm():
-        for lat, lon in spots.DEMO_CITIES:
+        # Gently: the public Overpass server rate-limits bursts (HTTP 429). 60 km for every demo city, the
+        # planner's wider radius only for the first one, with a pause between cold queries.
+        jobs = [(lat, lon, 60.0) for lat, lon in spots.DEMO_CITIES] + [(*spots.DEMO_CITIES[0], 110.0)]
+        for lat, lon, radius in jobs:
             try:
-                await spots.overpass(lat, lon, 60.0)
+                await spots.overpass(lat, lon, radius)
             except Exception:  # noqa: BLE001
                 pass
+            await asyncio.sleep(5)
 
     from .alerts import worker as alert_worker
 
@@ -76,3 +81,4 @@ app.include_router(lens_router, prefix="/api/lens", tags=["lens"])
 app.include_router(alerts_router, prefix="/api/alerts", tags=["alerts"])
 app.include_router(honor_router, prefix="/api/honor", tags=["honor"])
 app.include_router(transients_router, prefix="/api/transients", tags=["transients"])
+app.include_router(planner_router, prefix="/api/planner", tags=["planner"])

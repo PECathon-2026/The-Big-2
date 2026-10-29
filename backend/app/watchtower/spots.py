@@ -65,6 +65,14 @@ def _kind(tags: dict[str, str]) -> str:
     return "park"
 
 
+def _overpass_ok(data: Any) -> bool:
+    """Overpass answers 200 even when it ran out of time; the 'remark' field says so. Never cache those."""
+    if not isinstance(data, dict) or "elements" not in data:
+        return False
+    remark = str(data.get("remark") or "").lower()
+    return not ("error" in remark or "timed out" in remark or "runtime" in remark)
+
+
 async def overpass(lat: float, lon: float, radius_km: float) -> tuple[list[dict[str, Any]], Provenance]:
     q = _query(round(lat, 3), round(lon, 3), int(radius_km * 1000))
     last: Exception | None = None
@@ -72,7 +80,7 @@ async def overpass(lat: float, lon: float, radius_km: float) -> tuple[list[dict[
         try:
             # The public Overpass servers queue requests; a cold query can take a minute. Results are cached for
             # a day per rounded location, and main.py pre-warms the demo cities at startup.
-            f = await fetch("overpass", url, method="POST", data={"data": q}, ttl=24 * 3600, retries=0, timeout=150)
+            f = await fetch("overpass", url, method="POST", data={"data": q}, ttl=24 * 3600, retries=0, timeout=150, validate=_overpass_ok)
             els = f.data.get("elements", [])
             out = []
             for e in els:
