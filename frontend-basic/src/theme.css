@@ -328,3 +328,6 @@ pre.json { margin: 0; padding: 10px 12px; background: var(--ink-2); border: 1px 
   .cal .cell .tip { width: 160px; }
   .map { height: 300px; }
 }
+
+.t tr.sel td { background: rgba(207, 168, 79, 0.14); }
+.t tbody tr[style*='cursor'] :hover { }

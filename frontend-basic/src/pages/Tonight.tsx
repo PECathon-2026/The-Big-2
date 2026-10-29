@@ -1,6 +1,7 @@
 import api from '../api';
 import { Card, Chip, KV } from '../components/Card';
 import { Controls } from '../components/Controls';
+import { HonorCard } from '../components/Honor';
 import { MoonGlyph } from '../components/MoonGlyph';
 import { NotifyButton } from '../components/Notify';
 import { ProvenanceFooter } from '../components/Provenance';
@@ -213,6 +214,7 @@ export default function Tonight() {
         </Card>
       </div>
 
+      <HonorCard />
       <ProvenanceFooter
         lists={[moon.provenance, sun.provenance, score.provenance, season.provenance, events.provenance]}
         computedAt={[moon.state.computedAt, sun.state.computedAt, score.state.computedAt, season.state.computedAt, events.state.computedAt]}

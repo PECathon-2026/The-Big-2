@@ -26,3 +26,4 @@ backend/data/replay/
 backend/data/vapid/
 backend/data/alerts.db
 .playwright-mcp/
+backend/data/honor.db

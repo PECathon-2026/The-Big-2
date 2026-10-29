@@ -399,6 +399,7 @@ function Results({ job, onSolve, solving }: { job: LensJob; onSolve: () => void;
               ]}
             />
             {wcsStage?.detail && <div className="muted small">{wcsStage.detail}</div>}
+            {r.wcs.solved && <FieldAlerts id={id} />}
             {r.wcs.solved && (
               <div>
                 <Label en="Catalog matches" jp="名" right={<button className="btn small ghost" onClick={() => void loadCatalog()} type="button">Reload</button>} />
@@ -716,5 +717,29 @@ export default function Lens() {
       {job?.status === 'done' && job.result && <Results job={job} onSolve={() => void solve()} solving={solving} />}
       {job?.status === 'done' && !job.result && <div className="status" style={{ marginTop: 14 }}>Job is done but carried no result.</div>}
     </main>
+  );
+}
+
+/** ZTF alert objects inside this job's field of view (needs a solved WCS). Links to the Transients page. */
+function FieldAlerts({ id }: { id: string }) {
+  const q = useApi((s) => api.transients.field(id, s), [id]);
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <Label en="Alerts in this field" jp="変光" right={q.data ? `${q.data.objects.length} ZTF objects within ${Math.round(q.data.radius_arcsec / 60)}′` : undefined} />
+      <Await q={q} what="Asking the ALeRCE broker" isEmpty={(d) => d.objects.length === 0} emptyText="No ZTF alert objects in this field.">
+        {(d) => (
+          <div className="small">
+            {d.objects.slice(0, 8).map((o) => (
+              <div key={o.oid}>
+                <code>{o.oid}</code> · {o.ndet} detections · {o.class ?? 'unclassified'} ·{' '}
+                <a href={`/transients`} className="gold">
+                  light curve ↗
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
+      </Await>
+    </div>
   );
 }

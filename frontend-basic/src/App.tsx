@@ -5,6 +5,7 @@ import Watchtower from './pages/Watchtower';
 import Scroll from './pages/Scroll';
 import Lens from './pages/Lens';
 import Science from './pages/Science';
+import Transients from './pages/Transients';
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="/watchtower" element={<Watchtower />} />
         <Route path="/scroll" element={<Scroll />} />
         <Route path="/lens" element={<Lens />} />
+        <Route path="/transients" element={<Transients />} />
         <Route path="/science" element={<Science />} />
         <Route
           path="*"

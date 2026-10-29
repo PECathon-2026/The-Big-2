@@ -49,6 +49,26 @@ The browser registers `public/sw.js`, subscribes with the server's VAPID key and
 
 `ScheduledAlert = { id, subscription_id, title, body, url, event_id, fire_at, status: scheduled|sent|failed|cancelled, created_at, sent_at, error }`. A subscription the push service reports gone (404/410) is deleted automatically.
 
+## Honor (`/api/honor`) — verified observations
+
+- `GET /ranks` → rank thresholds (Ashigaru 0, Samurai 50, Daimyō 150, Shōgun 400), points per kind, photo bonus.
+- `POST /observe` body `{ user_id, lat, lon, kind (moon|planet|meteor|satellite|launch|eclipse|deepsky|custom), event_id?, title?, note?, claimed_at?, photo_job_id? }` → `201 { observation, accepted, points_awarded, reason, rank }`. The claim is verified against the sky (Moon up, dark enough, inside the event's window); rejected claims are stored with the reason and zero points. A future `claimed_at` is refused (400). A finished Lens job with a solved WCS adds the photo bonus.
+- `GET /ledger?user_id=` → `{ user_id, rank: {points, kanji, romaji, meaning, next}, verified_count, rejected_count, entries: Observation[] }`; each entry carries `evidence` and a `conditions` snapshot (score, cloud, humidity, moon) at the claimed hour when the forecast is reachable.
+
+## Transients (`/api/transients`) — ZTF alerts via ALeRCE, and our own subtraction
+
+- `GET /classes` → classifier classes.
+- `GET /near?ra&dec&radius_arcsec=600&limit=20` → `{ ra, dec, radius_arcsec, objects: TransientObject[] }`.
+- `GET /recent?class_name=SNIa&min_probability=0.5&limit=20&lat?&lon?` → most recently detected objects of a class; with `lat/lon` each carries `visibility: { observable_tonight, max_altitude, at_local, dusk_local, dawn_local }`.
+- `GET /field/{job_id}` → alerts inside a plate-solved Lens job's field (409 if no WCS).
+- `GET /{oid}?lat?&lon?` → object record + `lightcurve` + top `probabilities` (+ `visibility`).
+- `GET /{oid}/lightcurve` → `{ detections: [{mjd, date, band, mag, err, candid, has_stamp, real_bogus}], non_detections: [{mjd, date, band, limit}], bands, peak, note }`.
+- `GET /{oid}/stamps/{candid}/{science|template|difference}.png` → the real ZTF alert cutout, proxied.
+- `POST /{oid}/subtract?candid=` → our pipeline on the ZTF template (old) and science (new) stamps: `{ shape, shift_px, fwhm_px, flux_scale, sigma, nsigma, candidates: [{x, y, sign, npix, peak, snr, flux, on_known_source, flags, real_candidate}], real_candidates, steps, images: {template, science, our_difference (data URLs), ztf_difference_url} }`.
+- `POST /subtract-jobs?job_old&job_new&nsigma=5` → the same pipeline on two finished Lens jobs of the same field.
+
+`TransientObject = { oid, ra, dec, ndet, first_detection, last_detection, days_active, class, classifier, probability, stellar, alerce_url }`.
+
 ## Spirit Lens (`/api/lens`) — image pipeline contract
 
 Processing is asynchronous: upload creates a job, the job runs through named stages, results are fetched by id.

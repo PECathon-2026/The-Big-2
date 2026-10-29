@@ -62,10 +62,13 @@ export class ApiError extends Error {
   url: string;
   constructor(status: number, url: string, body: unknown) {
     const pe = body as ProviderError | null;
+    const detail = body && typeof body === 'object' && 'detail' in body ? (body as { detail: unknown }).detail : undefined;
     const msg =
       pe && typeof pe === 'object' && 'error' in pe
         ? `${pe.error}${pe.source ? ` (${pe.source})` : ''}${pe.detail ? `: ${pe.detail}` : ''}`
-        : `HTTP ${status}`;
+        : typeof detail === 'string'
+          ? `HTTP ${status}: ${detail}` // FastAPI validation / HTTPException message
+          : `HTTP ${status}`;
     super(msg);
     this.name = 'ApiError';
     this.status = status;
@@ -695,7 +698,149 @@ export const api = {
     cancel: (alertId: number, endpoint: string) => request(buildUrl(`/api/alerts/scheduled/${alertId}`, { endpoint }), { method: 'DELETE' }),
     stats: (signal?: AbortSignal) => getRaw<Record<string, number | string>>('/api/alerts/stats', undefined, signal),
   },
+
+  /** Transients: ZTF alerts via the ALeRCE broker, light curves, real stamps and our own two-epoch subtraction. */
+  transients: {
+    classes: (signal?: AbortSignal) => getRaw<{ classes: string[]; classifier: string }>('/api/transients/classes', undefined, signal),
+    near: (ra: number, dec: number, radiusArcsec = 600, limit = 20, signal?: AbortSignal) =>
+      get<{ ra: number; dec: number; radius_arcsec: number; objects: TransientObject[] }>('/api/transients/near', { ra, dec, radius_arcsec: radiusArcsec, limit }, signal),
+    recent: (className: string, minProbability = 0.5, limit = 20, w?: Where, signal?: AbortSignal) =>
+      get<{ class: string; min_probability: number; objects: TransientObject[] }>('/api/transients/recent', { class_name: className, min_probability: minProbability, limit, lat: w?.lat, lon: w?.lon }, signal),
+    field: (jobId: string, signal?: AbortSignal) =>
+      get<{ job_id: string; ra: number; dec: number; radius_arcsec: number; objects: TransientObject[] }>(`/api/transients/field/${encodeURIComponent(jobId)}`, undefined, signal),
+    object: (oid: string, w?: Where, signal?: AbortSignal) => get<TransientDetail>(`/api/transients/${encodeURIComponent(oid)}`, { lat: w?.lat, lon: w?.lon }, signal),
+    stampUrl: (oid: string, candid: string, kind: 'science' | 'template' | 'difference') =>
+      buildUrl(`/api/transients/${encodeURIComponent(oid)}/stamps/${encodeURIComponent(candid)}/${kind}.png`),
+    subtract: (oid: string, candid: string) => post<SubtractionResult>(`/api/transients/${encodeURIComponent(oid)}/subtract`, undefined, { candid }),
+    subtractJobs: (jobOld: string, jobNew: string, nsigma = 5) => post<SubtractionResult>('/api/transients/subtract-jobs', undefined, { job_old: jobOld, job_new: jobNew, nsigma }),
+  },
+
+  /** Honor points: observations verified against the sky before points are awarded. */
+  honor: {
+    ranks: (signal?: AbortSignal) => getRaw<{ ranks: HonorRank[]; points: Record<string, number>; photo_bonus: number }>('/api/honor/ranks', undefined, signal),
+    observe: (p: { user_id: string; lat: number; lon: number; kind: string; event_id?: string; title?: string; note?: string; claimed_at?: string; photo_job_id?: string }) =>
+      post<ObserveResult>('/api/honor/observe', p),
+    ledger: (userId: string, signal?: AbortSignal) => getRaw<Ledger>('/api/honor/ledger', { user_id: userId }, signal),
+  },
 };
+
+export interface TransientVisibility {
+  observable_tonight: boolean;
+  max_altitude: number;
+  at_local: string;
+  dusk_local: string;
+  dawn_local: string;
+}
+export interface TransientObject {
+  oid: string;
+  ra: number | null;
+  dec: number | null;
+  ndet: number | null;
+  first_detection: string | null;
+  last_detection: string | null;
+  days_active: number | null;
+  class: string | null;
+  classifier: string | null;
+  probability: number | null;
+  stellar: boolean | null;
+  alerce_url: string;
+  visibility?: TransientVisibility;
+}
+export interface LightcurvePoint {
+  mjd: number;
+  date: string;
+  band: string;
+  mag: number;
+  err: number;
+  candid: string;
+  has_stamp: boolean;
+  real_bogus: number | null;
+}
+export interface Lightcurve {
+  oid: string;
+  detections: LightcurvePoint[];
+  non_detections: { mjd: number; date: string; band: string; limit: number }[];
+  bands: Record<string, { n: number; brightest: number; faintest: number }>;
+  peak: LightcurvePoint | null;
+  note: string;
+}
+export interface TransientDetail extends TransientObject {
+  lightcurve: Lightcurve;
+  probabilities: { class: string; probability: number; classifier: string; version: string | null }[];
+}
+export interface SubtractionCandidate {
+  x: number;
+  y: number;
+  sign: 'positive' | 'negative';
+  npix: number;
+  peak: number;
+  snr: number;
+  flux: number;
+  on_known_source: boolean;
+  flags: string[];
+  real_candidate: boolean;
+}
+export interface SubtractionResult {
+  shape: [number, number];
+  shift_px: [number, number];
+  fwhm_px: { old: number; new: number; matched: number };
+  flux_scale: number;
+  sigma: number;
+  nsigma: number;
+  candidates: SubtractionCandidate[];
+  real_candidates: number;
+  steps: string[];
+  images: Record<string, string>;
+  note?: string;
+  oid?: string;
+  candid?: string;
+}
+
+export interface HonorRank {
+  at: number;
+  kanji: string;
+  romaji: string;
+  meaning: string;
+}
+export interface RankInfo {
+  points: number;
+  kanji: string;
+  romaji: string;
+  meaning: string;
+  next: { kanji: string; romaji: string; at: number; points_needed: number } | null;
+}
+export interface Observation {
+  id: number;
+  user_id: string;
+  kind: string;
+  event_id: string | null;
+  title: string;
+  note: string | null;
+  lat: number;
+  lon: number;
+  claimed_at: string;
+  verified: boolean;
+  reason: string;
+  evidence: Record<string, unknown>;
+  points: number;
+  photo_job_id: string | null;
+  conditions: { score: number; cloud_low: number | null; humidity: number | null; moon_illum: number; time_local: string } | null;
+  created_at: string;
+}
+export interface ObserveResult {
+  observation: Observation;
+  accepted: boolean;
+  points_awarded: number;
+  reason: string;
+  rank: RankInfo;
+}
+export interface Ledger {
+  user_id: string;
+  rank: RankInfo;
+  verified_count: number;
+  rejected_count: number;
+  entries: Observation[];
+}
 
 export interface ScheduledAlert {
   id: number;
