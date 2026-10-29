@@ -278,7 +278,11 @@ def compute_night_score(
         f"Best {window_hours} h window {best.start_local}–{best.end_local} averages {best.mean_score:.0f}; "
         f"largest loss is {biggest.label.lower()} ({biggest.penalty:.0f} pts)."
         if best and biggest
-        else "No dark hours in the forecast range."
+        else (
+            f"Only {len(dark)} dark hour(s) left before dawn; too few for a {window_hours} h window."
+            if dark
+            else "No dark hours in the forecast range."
+        )
     )
     verdict = Verdict(verdict=v, headline=head, reason=reason, score=round(s, 1))
 
