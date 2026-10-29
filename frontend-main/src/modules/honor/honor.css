@@ -39,3 +39,25 @@
 .hn-score { font-family: var(--font-display); font-size: 28px; line-height: 1; }
 .hn-meta { font-size: 11.5px; color: rgba(27, 26, 32, .62); line-height: 1.4; }
 .hn-pts { font-family: var(--font-jp); font-weight: 700; color: var(--crimson); }
+.hn-hanko.rejected { filter: none; opacity: .8; }
+.hn-form { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
+.hn-claims { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.hn-claims legend { margin-bottom: 8px; }
+.hn-claim { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border: 1px solid var(--card-line); border-radius: var(--r-pill); cursor: pointer; font-size: 13px; color: var(--washi-2); background: rgba(11, 11, 11, .6); transition: border-color var(--dur-micro), background var(--dur-micro); }
+.hn-claim:hover { border-color: var(--card-gold); }
+.hn-claim:focus-within { outline: 2px solid var(--gold-bright); outline-offset: 3px; }
+.hn-claim.on { border-color: var(--gold-bright); background: rgba(196, 154, 69, .14); color: var(--kinu); }
+.hn-claim .jp { font-size: 15px; color: var(--gold-bright); }
+.hn-claim .h { font-size: 11.5px; color: var(--washi-3); }
+.hn-claim .p { font-size: 11.5px; color: var(--crimson-bright); font-weight: 700; }
+.hn-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%; }
+@media (max-width: 640px) { .hn-fields { grid-template-columns: 1fr; } }
+.hn-field { display: flex; flex-direction: column; gap: 6px; }
+.hn-field input { min-height: 40px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--card-line); background: rgba(11, 11, 11, .7); color: var(--washi); font: inherit; font-size: 13.5px; }
+.hn-field input:focus { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+.hn-verdict { margin: 0; font-size: 15px; }
+.hn-verdict.ok { color: var(--gold-bright); }
+.hn-verdict.no { color: var(--crimson-bright); }
+.hn-verdict span { color: var(--washi-2); margin-left: 6px; }
+.hn-entry.rej { opacity: .72; }
+.hn-reason { font-size: 11.5px; line-height: 1.35; color: rgba(27, 26, 32, .75); min-height: 46px; }

@@ -115,6 +115,13 @@ export default function Lens() {
         const j = await api.lens.job(jobId);
         if (!alive) return;
         setJob(j);
+        if (j.status === 'done') {
+          try {
+            localStorage.setItem('tsukuyomi-last-lens-job', j.job_id); // offered on /honor for the photo bonus
+          } catch {
+            /* storage unavailable */
+          }
+        }
         if (j.status === 'done' || j.status === 'failed') return;
       } catch (e) {
         if (!alive) return;
