@@ -125,3 +125,4 @@
 .pg-warn::before { content: '注'; font-family: var(--font-jp); color: var(--crimson-bright); }
 
 .pg-svg-text { font-family: var(--font-ui); font-size: 11px; fill: var(--washi-3); }
+.pg-stat .v small { font-family: var(--font-ui); font-size: 12px; font-weight: 600; letter-spacing: .04em; color: var(--washi-3); margin-left: 3px; }
