@@ -135,7 +135,8 @@ export default function MoonAndSun() {
       m.matrix.setPosition(md[0] * MOON_DIST, md[1] * MOON_DIST, md[2] * MOON_DIST);
       m.matrixWorldNeedsUpdate = true;
       (moonMat.uniforms.uSunDir.value as THREE.Vector3).set(sd[0], sd[1], sd[2]);
-      h.position.set(md[0] * MOON_DIST * 0.99, md[1] * MOON_DIST * 0.99, md[2] * MOON_DIST * 0.99);
+      // behind the globe, so the disc occludes its own glow
+      h.position.set(md[0] * (MOON_DIST + 3), md[1] * (MOON_DIST + 3), md[2] * (MOON_DIST + 3));
       const sunR = SUN_DIST * Math.tan((0.533 * MOON_SCALE * DEG) / 2);
       moonDraw.sunRadius = sunR;
       s.position.set(sd[0] * SUN_DIST, sd[1] * SUN_DIST, sd[2] * SUN_DIST);

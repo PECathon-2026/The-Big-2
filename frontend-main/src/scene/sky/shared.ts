@@ -146,3 +146,27 @@ export const domeHotspots = new Map<string, { el: HTMLElement; anchor: string }>
 
 /** Landmark meshes for raycast picking (torii, pagoda, ridges, fuji, sakura). */
 export const landmarks = new Map<string, THREE.Object3D>();
+
+/** Dev-only handles for QA. */
+export const debug: Record<string, unknown> = {};
+
+// QA hook for workstream A screenshots (dev only): window.__A.look(dirOrId, fov)
+if (import.meta.env.DEV) {
+  import('@/scene/skyClock').then(({ skyClock }) => {
+    (window as unknown as Record<string, unknown>).__A = {
+      skyClock,
+      rig,
+      live,
+      debug,
+      look(target: string | [number, number, number], fov = 30) {
+        const w = typeof target === 'string' ? live.get(target)?.world : target;
+        if (!w) return false;
+        const len = Math.hypot(w[0], w[1], w[2]);
+        rig.tgt.yaw = Math.atan2(w[0], -w[2]);
+        rig.tgt.pitch = Math.asin(w[1] / len);
+        rig.tgt.fov = fov;
+        return true;
+      },
+    };
+  });
+}

@@ -3,7 +3,7 @@
  * a warm glow toward the real Sun near the horizon (dusk runs through the PECFEST rising-sun reds),
  * and the ground below. Drawn first, behind everything; fades out when the camera leaves the dome.
  */
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { skyClock } from '@/scene/skyClock';
@@ -32,6 +32,7 @@ const fs = /* glsl */ `
   }`;
 
 export default function SkyGradient() {
+  const mesh = useRef<THREE.Mesh>(null);
   const material = useMemo(
     () =>
       new THREE.ShaderMaterial({
@@ -48,8 +49,7 @@ export default function SkyGradient() {
         },
         side: THREE.BackSide,
         depthWrite: false,
-        depthTest: false,
-        transparent: true,
+        transparent: false,
       }),
     [],
   );
@@ -69,10 +69,14 @@ export default function SkyGradient() {
       // strongest from −10° to +4°; none at night or high day
       u.uGlow.value = THREE.MathUtils.smoothstep(alt, -14, -4) * (1 - THREE.MathUtils.smoothstep(alt, 2, 14));
     }
-    u.uOpacity.value = 1 - outside();
+    // opaque (drawn first, behind everything) while inside; a fading transparent shell while leaving
+    const op = 1 - outside();
+    u.uOpacity.value = op;
+    material.transparent = op < 0.999;
+    if (mesh.current) mesh.current.visible = op > 0.001;
   });
   return (
-    <mesh renderOrder={-100} frustumCulled={false} material={material}>
+    <mesh ref={mesh} renderOrder={-100} frustumCulled={false} material={material}>
       <sphereGeometry args={[400, 48, 24]} />
     </mesh>
   );
