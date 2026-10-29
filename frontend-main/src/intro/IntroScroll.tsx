@@ -6,9 +6,9 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { gsap, ScrollTrigger, lenis } from '@/app/lenis';
 import { useApp } from '@/state/store';
-import { Director, DOME_POS, EYE } from '@/scene/Director';
+import { Director, EYE } from '@/scene/Director';
 import { skyClock } from '@/scene/skyClock';
-import { compass16, dirToYawPitch, type Vec3 } from '@/astro/coords';
+import { compass16 } from '@/astro/coords';
 import { fmtClock, kokuAt, moonState } from '@/astro/skytime';
 import { moonName } from '@/astro/moonNames';
 import { Button, Kanji } from '@/ui';
@@ -28,27 +28,24 @@ function keys(p: number, k: [number, number][]): number {
   return k[k.length - 1][1];
 }
 
-const dirOf = (yaw: number, pitch: number): Vec3 => [Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch)];
 
-/** The camera at progress p (eye height, facing the real sunset azimuth; then the pull-back to the dome). */
+/** End-of-intro framing = the sky station's own defaults, so the hand-off to phase 'sky' is seamless. */
+const SKY_PITCH = 24;
+const SKY_FOV = 62;
+
+/**
+ * The camera at progress p: eye height at the origin the whole time, facing the real sunset azimuth,
+ * lifting toward the stars; the last 10% eases into the open sky (pitch 24°, FOV 62°) at the same heading.
+ */
 function cameraAt(p: number, yaw0: number) {
-  const pitch = keys(p, [[0, 6], [P.frameEnd, 7], [P.sunEnd, 8.5], [P.streamEnd, 30], [P.landEnd, 38], [P.titleEnd, 36], [P.moonEnd, 30]]) * D;
+  const pitch = keys(p, [[0, 6], [P.frameEnd, 7], [P.sunEnd, 8.5], [P.streamEnd, 30], [P.landEnd, 38], [P.titleEnd, 36], [P.moonEnd, 30], [1, SKY_PITCH]]) * D;
   const yaw = yaw0 + keys(p, [[0, 0], [P.sunEnd, 2], [P.landEnd, -4], [P.moonEnd, -6]]) * D;
-  const fov = keys(p, [[0, 38], [P.frameEnd, 55], [P.streamEnd, 58], [P.moonEnd, 58], [1, 50]]);
-  const t = smooth(P.moonEnd, 1, p);
-  if (t <= 0) return { pos: EYE, yaw, pitch, fov };
-  // rise first (clears the trees), then dolly out through the sky to the dome view
-  const up = smooth(0, 0.55, t);
-  const out = smooth(0.15, 1, t);
-  const pos: Vec3 = [lerp(EYE[0], DOME_POS[0], out), lerp(EYE[1], DOME_POS[1], up * 0.6 + out * 0.4), lerp(EYE[2], DOME_POS[2], out)];
-  const a = dirOf(yaw, pitch);
-  const b: Vec3 = [-pos[0], -pos[1], -pos[2]];
-  const bl = Math.hypot(...b) || 1;
-  const w = smooth(0.1, 0.9, t);
-  const dir: Vec3 = [lerp(a[0], b[0] / bl, w), lerp(a[1], b[1] / bl, w), lerp(a[2], b[2] / bl, w)];
-  const yp = dirToYawPitch(dir);
-  return { pos, yaw: yp.yaw, pitch: yp.pitch, fov };
+  const fov = keys(p, [[0, 38], [P.frameEnd, 55], [P.streamEnd, 58], [P.moonEnd, 58], [1, SKY_FOV]]);
+  return { pos: EYE, yaw, pitch, fov };
 }
+
+/** The heading the intro ends on (used by finishIntro for Director.station('sky', { yaw })). */
+export const endYaw = (yaw0Deg: number) => (yaw0Deg - 6) * D;
 
 interface Cap {
   from: number;
@@ -123,8 +120,8 @@ export default function IntroScroll() {
         from: 0.915,
         to: 0.985,
         eyebrow: 'Your sky',
-        jp: '天蓋',
-        text: () => `Tonight over ${city}, captured`,
+        jp: '夜空',
+        text: () => `Tonight over ${city} · every point of light is real`,
       },
     ];
   }, [place]);

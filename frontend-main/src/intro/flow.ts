@@ -1,8 +1,8 @@
 /**
- * Phase hand-offs owned by workstream B: gate → (loading) → intro → dome.
+ * Phase hand-offs owned by workstream B: gate → (loading) → intro → sky.
  */
 import { useApp, type Place } from '@/state/store';
-import { Director } from '@/scene/Director';
+import { Director, rig } from '@/scene/Director';
 import { skyClock, updateSkyClock } from '@/scene/skyClock';
 import { introTimeline } from '@/astro/skytime';
 import { intro } from '@/scene/intro/introBus';
@@ -53,14 +53,15 @@ export function startIntro() {
   Director.station('intro', { instant: true, yaw: (tl?.sunsetAz ?? 270) * D, pitch: 6 * D, fov: 38 });
 }
 
-/** Leave the intro for the dome (end of scroll, or Skip). */
+/** Leave the intro straight into the open sky at the current heading (end of scroll, Skip, Esc, autoplay end). */
 export function finishIntro() {
   if (!intro.active) return;
   const s = useApp.getState();
   const tl = intro.timeline;
+  const yaw = rig.cur.yaw;
   intro.active = false;
   skyClock.override = null;
-  // The dome keeps showing tonight's sky (the time-lapse target): a real offset from now, shown as such by the HUD.
+  // The sky keeps showing tonight's sky (the time-lapse target): a real offset from now, shown as such by the HUD.
   if (tl) {
     const off = tl.end.getTime() - Date.now();
     s.setOffset(Math.abs(off) < 5 * 60_000 ? 0 : off);
@@ -70,6 +71,6 @@ export function finishIntro() {
   if (root) root.style.clipPath = '';
   markSeen();
   s.setIntroProgress(1);
-  s.setPhase('dome');
-  Director.station('dome');
+  s.setPhase('sky');
+  Director.station('sky', { yaw });
 }

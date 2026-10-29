@@ -4,7 +4,7 @@
  *
  * Scroll map (§7.3):
  *   0–.08 frame opens · .08–.30 sunset · .30–.55 petals stream · .55–.72 petals land on stars
- *   .72–.82 title morph · .82–.90 Moon + constellations · .90–1 pull back to the dome
+ *   .72–.82 title morph · .82–.90 Moon + constellations · .90–1 ease up into the open sky
  */
 import type { StarTargets } from '@/astro/catalog';
 
