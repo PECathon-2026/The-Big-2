@@ -65,9 +65,14 @@ def moon_phase_deg(dt: datetime) -> float:
 def moon_age_days(dt: datetime) -> float:
     """Days since the last new moon."""
     t = to_time(dt)
-    prev_new = ae.SearchMoonPhase(0.0, t.AddDays(-30.0), 31.0)
+    prev_new = ae.SearchMoonPhase(0.0, t.AddDays(-35.0), 36.0)  # some new moon in the last ~35 days
     if prev_new is None:
         return 0.0
+    while True:  # walk forward to the last new moon that is still before `dt`
+        nxt = ae.SearchMoonPhase(0.0, prev_new.AddDays(1.0), 35.0)
+        if nxt is None or nxt.ut > t.ut:
+            break
+        prev_new = nxt
     return t.ut - prev_new.ut
 
 
