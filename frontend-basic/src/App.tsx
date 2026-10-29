@@ -4,6 +4,7 @@ import Tonight from './pages/Tonight';
 import Watchtower from './pages/Watchtower';
 import Scroll from './pages/Scroll';
 import Lens from './pages/Lens';
+import Horizon from './pages/Horizon';
 import Planner from './pages/Planner';
 import Science from './pages/Science';
 import Transients from './pages/Transients';
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/lens" element={<Lens />} />
         <Route path="/transients" element={<Transients />} />
         <Route path="/planner" element={<Planner />} />
+        <Route path="/horizon" element={<Horizon />} />
         <Route path="/science" element={<Science />} />
         <Route
           path="*"

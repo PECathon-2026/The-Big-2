@@ -69,6 +69,20 @@ The browser registers `public/sw.js`, subscribes with the server's VAPID key and
 
 `TransientObject = { oid, ra, dec, ndet, first_detection, last_detection, days_active, class, classifier, probability, stellar, alerce_url }`.
 
+## Planner (`/api/planner`) — where and when, and what would change the answer
+
+- `GET /targets` → built-in targets (`{id, name, jp, kind, ra?, dec?, note}`) and equipment classes (`{min_alt, label}`).
+- `POST /plan` body `{ lat, lon, target? (built-in id or SIMBAD name), ra?, dec?, kind?, equipment=eyes, date?, earliest_local? "HH:MM", latest_local?, travel_limit_km=60, candidate_limit=6 }` → `Envelope<Plan>`:
+  `{ target, equipment, min_altitude, sun_limit, date_local, timezone, night, window, travel_limit_km, candidates: Candidate[], best, recommendation, counterfactuals: [{question, answer, usable_minutes_best, delta_minutes, best_spot, best_spot_changes}], moonset_local, forecast_spread_pct, trace }`
+  `Candidate = { name, kind, lat, lon, distance_km, travel_minutes, bortle, usable_minutes, mean_quality, blocked_minutes: {daylight, altitude, moon, cloud, light_pollution}, windows: [{start, end, start_local, end_local, minutes}], net_score, timeline: [{time, local, status, target_alt, moon_alt, cloud, quality}] }`.
+  The home candidate uses the terrain horizon (below) as its altitude floor.
+
+## Horizon (`/api/horizon`) — the personal skyline
+
+- `GET /terrain?lat&lon` → `Horizon`: `{ observer_elevation_m, az_step: 5, terrain[72], manual[72], mask[72], highest: {az, compass, alt}, mean_deg, sky_fraction_lost, note }` from the Open-Meteo elevation model sampled out to 30 km every 10° of bearing (Earth curvature included), cached 30 days.
+- `POST /mask` body `{ lat, lon, points: [{az, alt}], use_terrain=true }` → the same with the traced skyline merged (max of terrain and manual).
+- `POST /path` body `{ lat, lon, points, use_terrain, target?/ra?/dec?/kind?, date? }` → `{ horizon, report: { target, geometric_rise_local, geometric_set_local, crossings: [{kind, time, local, az, alt, mask_alt}], minutes_above_geometric, minutes_above_mask, minutes_lost_to_skyline, sentence, path: [{time, local, alt, az, mask_alt, visible}] }, night }` — e.g. "The Moon rises at 20:54 but clears your skyline only at 22:54".
+
 ## Spirit Lens (`/api/lens`) — image pipeline contract
 
 Processing is asynchronous: upload creates a job, the job runs through named stages, results are fetched by id.

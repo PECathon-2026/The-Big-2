@@ -722,6 +722,14 @@ export const api = {
       post<Plan>('/api/planner/plan', p),
   },
 
+  /** Personal horizon: terrain skyline from elevation data plus traced obstructions, and when a target really clears it. */
+  horizon: {
+    terrain: (w: Where, signal?: AbortSignal) => get<Horizon>('/api/horizon/terrain', { lat: w.lat, lon: w.lon }, signal),
+    mask: (p: { lat: number; lon: number; points: MaskPoint[]; use_terrain?: boolean }) => post<Horizon>('/api/horizon/mask', p),
+    path: (p: { lat: number; lon: number; points: MaskPoint[]; use_terrain?: boolean; target?: string; ra?: number; dec?: number; kind?: string; date?: string }) =>
+      post<{ horizon: Horizon; report: PathReport; night: { sunset: string; sunrise: string } }>('/api/horizon/path', p),
+  },
+
   /** Honor points: observations verified against the sky before points are awarded. */
   honor: {
     ranks: (signal?: AbortSignal) => getRaw<{ ranks: HonorRank[]; points: Record<string, number>; photo_bonus: number }>('/api/honor/ranks', undefined, signal),
@@ -730,6 +738,35 @@ export const api = {
     ledger: (userId: string, signal?: AbortSignal) => getRaw<Ledger>('/api/honor/ledger', { user_id: userId }, signal),
   },
 };
+
+export interface MaskPoint {
+  az: number;
+  alt: number;
+}
+export interface Horizon {
+  lat: number;
+  lon: number;
+  observer_elevation_m: number;
+  az_step: number;
+  terrain: number[];
+  manual: number[];
+  mask: number[];
+  highest: { az: number; compass: string; alt: number };
+  mean_deg: number;
+  sky_fraction_lost: number;
+  note: string;
+}
+export interface PathReport {
+  target: string;
+  geometric_rise_local: string | null;
+  geometric_set_local: string | null;
+  crossings: { kind: string; time: string; local: string; az: number; alt: number; mask_alt: number }[];
+  minutes_above_geometric: number;
+  minutes_above_mask: number;
+  minutes_lost_to_skyline: number;
+  sentence: string;
+  path: { time: string; local: string; alt: number; az: number; mask_alt: number; visible: boolean }[];
+}
 
 export interface PlannerTarget {
   id: string;

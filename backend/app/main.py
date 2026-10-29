@@ -10,6 +10,7 @@ from .core.config import settings
 from .alerts.router import router as alerts_router
 from .core.http import ProviderError
 from .honor.router import router as honor_router
+from .horizon.router import router as horizon_router
 from .lens.router import router as lens_router
 from .planner.router import router as planner_router
 from .scroll.router import router as scroll_router
@@ -64,11 +65,15 @@ async def provider_error_handler(_, exc: ProviderError):
     return JSONResponse(status_code=502, content={"error": "provider_unavailable", "source": exc.source, "detail": exc.message})
 
 
+STARTED_AT = datetime.now(timezone.utc)
+
+
 @app.get("/api/health")
 async def health():
     return {
         "status": "ok",
         "time": datetime.now(timezone.utc).isoformat(),
+        "started_at": STARTED_AT.isoformat(),
         "version": app.version,
         "demo_replay": settings.demo_replay,
         "astrometry_enabled": bool(settings.astrometry_api_key),
@@ -82,3 +87,4 @@ app.include_router(alerts_router, prefix="/api/alerts", tags=["alerts"])
 app.include_router(honor_router, prefix="/api/honor", tags=["honor"])
 app.include_router(transients_router, prefix="/api/transients", tags=["transients"])
 app.include_router(planner_router, prefix="/api/planner", tags=["planner"])
+app.include_router(horizon_router, prefix="/api/horizon", tags=["horizon"])
