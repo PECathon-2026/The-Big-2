@@ -86,6 +86,25 @@ def cache(name: str) -> TTLCache:
     return _caches[name]
 
 
+def seed_replay_from_repo() -> int:
+    """Copy the committed seed recordings (data/replay-seed) into data/replay when the latter is empty.
+
+    The seed is what makes a fresh clone demo-ready offline with TSUKUYOMI_REPLAY_MODE=first.
+    """
+    import shutil
+
+    src = settings.data_path / "replay-seed"
+    dst = settings.data_path / "replay"
+    dst.mkdir(parents=True, exist_ok=True)
+    if not src.exists() or any(dst.glob("*.json")):
+        return 0
+    n = 0
+    for p in src.glob("*.json"):
+        shutil.copy2(p, dst / p.name)
+        n += 1
+    return n
+
+
 def replay_get(key: str) -> Any | None:
     p = settings.data_path / "replay" / (TTLCache._hash(key) + ".json")
     if p.exists():

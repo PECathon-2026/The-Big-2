@@ -72,7 +72,7 @@ Full contract: [`docs/API.md`](docs/API.md). Tests: `cd backend && python -m pyt
 |---|---|---|
 | `TSUKUYOMI_ASTROMETRY_API_KEY` | Plate-solving uploads via nova.astrometry.net | empty (plate-solve disabled, AVM metadata still read) |
 | `TSUKUYOMI_LAUNCH_LIBRARY_KEY` | Higher Launch Library 2 rate limit | empty (15 calls/hour, cached 60 min) |
-| `TSUKUYOMI_DEMO_REPLAY` | Serve recorded responses when upstream APIs are down | `0` |
+| `TSUKUYOMI_REPLAY_MODE` | `off` · `fallback` (recordings when a provider fails) · `first` (recordings win: offline demo). Seed with `python scripts/seed_replay.py`; see `docs/DEPLOY.md` | `off` |
 | `TSUKUYOMI_CORS_ORIGINS` | Allowed frontend origins | `http://localhost:5173,http://localhost:3000` |
 
 No keys are needed for Open-Meteo, CelesTrak, Overpass, NASA SkyView or ALeRCE.

@@ -59,6 +59,11 @@ async def fetch(
     """Fetch with cache. Order: fresh cache → live call (retries) → stale cache → demo replay → ProviderError."""
     c = cache(cache_name or source)
     key = f"{method} {url} {sorted((params or {}).items())} {sorted((data or {}).items())}"
+    mode = settings.effective_replay_mode
+    if mode == "first":  # demo mode: a recording wins over the network, so the demo is fast and deterministic
+        rep = replay_get(key)
+        if rep is not None:
+            return Fetched(_decode(rep, binary), Provenance(source="replay", url=url, note=f"recorded response for {source} (replay mode: first)"))
     entry = c.get(key)
     if entry is not None and entry.fresh:
         return Fetched(_decode(entry.value, binary), Provenance(source=source, url=url, fetched_at=entry.fetched_dt, cached=True))
@@ -94,7 +99,7 @@ async def fetch(
             _decode(entry.value, binary),
             Provenance(source=source, url=url, fetched_at=entry.fetched_dt, stale=True, cached=True, note=f"upstream failed: {last_err}"),
         )
-    if settings.demo_replay:
+    if mode in ("fallback", "first"):
         rep = replay_get(key)
         if rep is not None:
             return Fetched(_decode(rep, binary), Provenance(source="replay", url=url, note=f"recorded response for {source}; upstream failed: {last_err}"))

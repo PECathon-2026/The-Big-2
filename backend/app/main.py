@@ -23,9 +23,11 @@ from .watchtower.router import router as watchtower_router
 async def lifespan(app: FastAPI):
     """Startup: make sure the Lens sample images exist, then warm the slow caches (Overpass spots for the
     demo cities) in the background; failures are harmless."""
+    from .core.cache import seed_replay_from_repo
     from .lens.router import _ensure_samples
     from .watchtower import spots
 
+    seed_replay_from_repo()
     await asyncio.to_thread(_ensure_samples)
 
     async def warm():
@@ -78,6 +80,7 @@ async def health():
         "started_at": STARTED_AT.isoformat(),
         "version": app.version,
         "demo_replay": settings.demo_replay,
+        "replay_mode": settings.effective_replay_mode,
         "astrometry_enabled": bool(settings.astrometry_api_key),
     }
 
