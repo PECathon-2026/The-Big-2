@@ -232,3 +232,8 @@ dialog.city-dialog { max-width: min(560px, calc(100vw - 32px)); }
 .band-tick i.major { height: 14px; background: var(--gold-soft); }
 .band-tick .k { position: absolute; top: 16px; left: 0; transform: translateX(-50%); font-size: 14px; color: var(--kinu); }
 .band-notch { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--crimson-bright); box-shadow: 0 0 8px var(--crimson-bright); }
+
+/* Legibility when the compass turns the sky to day (washi zenith): a soft sumi halo under bare HUD text. */
+.hud-wordmark, .rail-item, .rail-roman { text-shadow: 0 0 14px rgba(7, 9, 12, .85), 0 1px 3px rgba(7, 9, 12, .9); }
+.rail-item .line { box-shadow: 0 0 6px rgba(7, 9, 12, .7); }
+.rail-item.active .line { box-shadow: 0 0 8px rgba(232, 198, 106, .5), 0 0 6px rgba(7, 9, 12, .7); }

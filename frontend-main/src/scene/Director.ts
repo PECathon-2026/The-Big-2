@@ -250,7 +250,8 @@ export const Director = {
         rig.ease = 0.02;
         restore();
         await frames(2);
-        await Promise.all([inkOpen(700), settle(1400)]);
+        // release as soon as the ink has cleared; the camera keeps easing home (any input interrupts it)
+        await Promise.all([inkOpen(700), settle(700)]);
       }
     } finally {
       rig.ease = BASE_EASE;
