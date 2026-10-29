@@ -89,6 +89,10 @@ The browser registers `public/sw.js`, subscribes with the server's VAPID key and
 - `GET /spectrum/{plate}/{mjd}/{fiberid}?run2d&survey` → `Spectrum`: `{ plate, mjd, fiberid, ra, dec, class, subclass, z, z_err, sn_median, exptime_s, flux_unit, wavelength[], flux[], model[], n_pixels, binned_to, wavelength_range, lines_measured: [{name, rest_wavelength, observed_wavelength, z, area, area_err, sigma_kms, equivalent_width, emission, significance}], lines_expected: [{name, rest_wavelength, observed_wavelength}], note }` from the DR17 Science Archive FITS (legacy SDSS and eBOSS), median-binned to ≤ 900 points; measured lines are the pipeline's spZline fits kept at ≥ 3σ.
 - `GET /at?ra&dec&radius_arcmin=1` → nearest spectrum in one call; 404 when SDSS has none there (SDSS covers mainly the northern sky).
 
+## Aurora (`/api/aurora`) — space weather
+
+- `GET /api/aurora?lat&lon&at?` → `{ lat, lon, geomagnetic_lat, hemisphere, look_toward, kp_now, kp_now_time, g_now, forecast: [{time, kp, kind: observed|estimated|predicted, g_scale}], max_kp_next_24h, max_kp_time, required_kp: {overhead, horizon}, chance_tonight: none|very low|low|possible|likely|unknown, verdict, dark_window_local, trace }` from NOAA SWPC (1-minute estimated Kp, 3-hour Kp forecast, NOAA scales). Geomagnetic latitude from a centred dipole; the required Kp comes from NOAA's oval-edge rule of thumb, horizon visibility 6° further equatorward.
+
 ## Spirit Lens (`/api/lens`) — image pipeline contract
 
 Processing is asynchronous: upload creates a job, the job runs through named stages, results are fetched by id.

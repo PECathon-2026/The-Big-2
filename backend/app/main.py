@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 
 from .core.config import settings
 from .alerts.router import router as alerts_router
+from .aurora.router import router as aurora_router
 from .core.http import ProviderError
 from .honor.router import router as honor_router
 from .horizon.router import router as horizon_router
@@ -90,3 +91,4 @@ app.include_router(transients_router, prefix="/api/transients", tags=["transient
 app.include_router(planner_router, prefix="/api/planner", tags=["planner"])
 app.include_router(horizon_router, prefix="/api/horizon", tags=["horizon"])
 app.include_router(spectra_router, prefix="/api/spectra", tags=["spectra"])
+app.include_router(aurora_router, prefix="/api/aurora", tags=["aurora"])
