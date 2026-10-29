@@ -37,7 +37,9 @@ One continuous night, not four pages: the app opens on the user's real sky (fron
 | Spectra | `/api/spectra/{near,spectrum,at}` | SDSS SkyServer + DR17 FITS | M87 fixture test; NGC 5548 shows Seyfert lines |
 | Aurora | `/api/aurora` | NOAA SWPC Kp now/forecast/scales | threshold tests; Helsinki/Tromsø/Bengaluru live |
 
-Left (backend): demo-replay seeding (`TSUKUYOMI_DEMO_REPLAY=1` serves `backend/data/replay/*.json`, recorded automatically on every successful call; needs a curated seed set committed), deployment notes, plate-solve verification once the astrometry.net key is in `backend/.env`.
+Demo replay: every successful provider call is recorded to `data/replay/`; `TSUKUYOMI_REPLAY_MODE=first` serves recordings without the network, `fallback` only when a provider fails. `backend/data/replay-seed/` (committed, ~7 MB, 158 recordings for Bengaluru/Kyoto and the samples) is copied into `data/replay` on first start; refresh it with `python scripts/seed_replay.py`. Deployment: `backend/Dockerfile` and `docs/DEPLOY.md`.
+
+Left (backend): plate-solve verification once the astrometry.net key is in `backend/.env`; optional polish (tune Honor Score weights against real nights, Web Push on HTTPS for the deployed frontend, Overpass pre-warm for any extra demo city).
 
 ## Working agreements
 
