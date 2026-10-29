@@ -739,6 +739,9 @@ export const api = {
       get<Spectrum>(`/api/spectra/spectrum/${plate}/${mjd}/${fiberid}`, { run2d, survey }, signal),
   },
 
+  /** Aurora chance: NOAA Kp now and forecast against the Kp this geomagnetic latitude needs. */
+  aurora: (w: Where, at?: string, signal?: AbortSignal) => get<Aurora>('/api/aurora', { lat: w.lat, lon: w.lon, at }, signal),
+
   /** Honor points: observations verified against the sky before points are awarded. */
   honor: {
     ranks: (signal?: AbortSignal) => getRaw<{ ranks: HonorRank[]; points: Record<string, number>; photo_bonus: number }>('/api/honor/ranks', undefined, signal),
@@ -748,6 +751,30 @@ export const api = {
   },
 };
 
+export interface KpPoint {
+  time: string;
+  kp: number;
+  kind: string;
+  g_scale: string | null;
+}
+export interface Aurora {
+  lat: number;
+  lon: number;
+  geomagnetic_lat: number;
+  hemisphere: string;
+  look_toward: string;
+  kp_now: number | null;
+  kp_now_time: string | null;
+  g_now: string | null;
+  forecast: KpPoint[];
+  max_kp_next_24h: number | null;
+  max_kp_time: string | null;
+  required_kp: { overhead: number | null; horizon: number | null };
+  chance_tonight: string;
+  verdict: string;
+  dark_window_local: { dusk: string; dawn: string };
+  trace: Trace;
+}
 export interface SpecObject {
   spec_obj_id: string;
   plate: number;

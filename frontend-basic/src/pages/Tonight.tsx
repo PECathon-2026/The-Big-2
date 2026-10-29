@@ -1,6 +1,7 @@
 import api from '../api';
 import { Card, Chip, KV } from '../components/Card';
 import { Controls } from '../components/Controls';
+import { AuroraCard } from '../components/AuroraCard';
 import { HonorCard } from '../components/Honor';
 import { MoonGlyph } from '../components/MoonGlyph';
 import { NotifyButton } from '../components/Notify';
@@ -214,6 +215,7 @@ export default function Tonight() {
         </Card>
       </div>
 
+      <AuroraCard />
       <HonorCard />
       <ProvenanceFooter
         lists={[moon.provenance, sun.provenance, score.provenance, season.provenance, events.provenance]}
