@@ -123,7 +123,10 @@ def _evaluate(
     t0: datetime,
     t1: datetime,
     zone,
+    mask: list[float] | None = None,
 ) -> tuple[list[Step], dict[str, int]]:
+    from ..horizon.terrain import mask_at
+
     obs = astro.observer(lat, lon)
     steps: list[Step] = []
     blocked = {k: 0 for k in ("daylight", "altitude", "moon", "cloud", "light_pollution")}
@@ -131,7 +134,8 @@ def _evaluate(
     t = t0
     while t < t1:
         sun = astro.sun_alt(t, obs)
-        alt, _ = target.altaz(t, obs)
+        alt, az = target.altaz(t, obs)
+        floor = max(min_alt, mask_at(mask, az) + 2.0) if mask else min_alt  # the real skyline plus a little margin
         m_alt, _ = astro.altaz(ae.Body.Moon, t, obs)
         illum = astro.moon_illumination(t)
         tra, tdec = target.radec(t, obs)
@@ -148,7 +152,7 @@ def _evaluate(
         status = "usable"
         if sun > sun_limit:
             status = "daylight"
-        elif alt < min_alt:
+        elif alt < floor:
             status = "altitude"
         elif _moon_blocks(kind, m_alt, illum, sep):
             status = "moon"
@@ -261,12 +265,24 @@ async def make_plan(
     except ProviderError:
         pass
 
+    # the real skyline at home (terrain from the elevation model); spots are assumed to have an open horizon
+    home_mask: list[float] | None = None
+    try:
+        from ..horizon.terrain import terrain_horizon
+
+        home_mask, _, p_h = await terrain_horizon(lat, lon)
+        prov += p_h
+        if max(home_mask) < 1.0:
+            home_mask = None
+    except ProviderError as e:
+        prov.append(Provenance(source="open-meteo-elevation", note=f"terrain horizon unavailable: {e}"))
+
     def evaluate_all(start: datetime, end: datetime, limit_km: float) -> list[Candidate]:
         out = []
         for c, f in zip(cands, forecasts):
             if c["distance_km"] > limit_km:
                 continue
-            steps, blocked = _evaluate(target, kind, min_alt, sun_limit, c["lat"], c["lon"], f, c["bortle"], start, end, zone)
+            steps, blocked = _evaluate(target, kind, min_alt, sun_limit, c["lat"], c["lon"], f, c["bortle"], start, end, zone, mask=home_mask if c["kind"] == "home" else None)
             out.append(_candidate(c["name"], c["kind"], c["lat"], c["lon"], c["distance_km"], c["bortle"], steps, blocked, zone, spread))
         out.sort(key=lambda x: x.net_score, reverse=True)
         return out
