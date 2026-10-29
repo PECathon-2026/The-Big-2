@@ -77,6 +77,15 @@ export default function HudRoot() {
     [],
   );
 
+  // a soft koto pluck on hover (§7.5)
+  useEffect(
+    () =>
+      useApp.subscribe((s, prev) => {
+        if (s.hovered && s.hovered.id !== prev.hovered?.id && (s.phase === 'sky' || s.phase === 'dome')) cue('pluck', 0.35);
+      }),
+    [],
+  );
+
   // the card belongs to the open sky only
   useEffect(() => {
     if (phase !== 'sky' && phase !== 'dome') setCard(null);
@@ -94,8 +103,6 @@ export default function HudRoot() {
           setCard(null);
         } else if (isModulePath(window.location.pathname)) {
           void Director.back();
-        } else if (s.phase === 'sky') {
-          goHome();
         }
         return;
       }

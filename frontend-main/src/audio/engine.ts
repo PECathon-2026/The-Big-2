@@ -159,11 +159,25 @@ function duck(sec: number) {
 const INSEN = [293.66, 311.13, 392.0, 440.0, 466.16, 587.33];
 let lastTick = 0;
 
-export function cue(name: Cue): void {
+let lastPluck = 0;
+
+/** Fire a cue. `gain` (0..1) scales it, e.g. a quieter pluck on hover. */
+export function cue(name: Cue, gain = 1): void {
   if (!ctx || !master || !noiseBuf || !app().sound) return;
   const c = ctx;
   const t = c.currentTime + 0.005;
-  const out = master;
+  let out: AudioNode = master;
+  if (gain !== 1) {
+    const g = c.createGain();
+    g.gain.value = gain;
+    g.connect(master);
+    out = g;
+  }
+  if (name === 'pluck') {
+    const now = performance.now();
+    if (now - lastPluck < 90) return;
+    lastPluck = now;
+  }
   switch (name) {
     case 'pluck': {
       // koto: bright attack, two partials, gentle pitch settle

@@ -51,7 +51,7 @@ export default function InfoCard({ obj, x, y, onClose }: { obj: SkyObject; x: nu
   const con = (info.constellation ?? info.con ?? info.conName) as string | undefined;
   const dist = num(info.dist_ly ?? info.distance_ly ?? info.ly);
   const bayer = (info.bayer ?? info.desig) as string | undefined;
-  const glyph = obj.jp?.[0] ?? '星';
+  const glyph = obj.kind === 'constellation' ? '座' : obj.kind === 'planet' ? '惑' : obj.kind === 'dso' ? '雲' : '星';
 
   const rows: [string, string][] = [];
   if (con) rows.push(['Constellation', String(con)]);
@@ -75,7 +75,7 @@ export default function InfoCard({ obj, x, y, onClose }: { obj: SkyObject; x: nu
 
   return (
     <div ref={ref} className="infocard" style={pos} role="dialog" aria-label={`${obj.name}: details`} data-cursor="off">
-      <Card brand={{ kanji: glyph, text: KIND[obj.kind] }} tag={mag != null ? `m ${mag.toFixed(1)}` : undefined}>
+      <Card brand={{ kanji: glyph, text: KIND[obj.kind] }}>
         <button className="tw-icon-btn x" onClick={onClose} aria-label="Close (Esc)">
           ✕
         </button>

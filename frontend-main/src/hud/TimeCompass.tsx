@@ -283,9 +283,9 @@ export default function TimeCompass({ folded }: { folded: boolean }) {
       <svg ref={svg} width={W} height={Hh} viewBox={`${-R - PAD} ${-R - PAD} ${W} ${Hh}`} aria-hidden="false">
         <defs>
           <radialGradient id="tc-glass" cx="0" cy="0" r={R} gradientUnits="userSpaceOnUse">
-            <stop offset="0" stopColor="var(--card-black)" stopOpacity=".2" />
-            <stop offset=".7" stopColor="var(--card-black)" stopOpacity=".55" />
-            <stop offset="1" stopColor="var(--card-black)" stopOpacity=".82" />
+            <stop offset="0" stopColor="var(--card-black)" stopOpacity=".72" />
+            <stop offset=".7" stopColor="var(--card-black)" stopOpacity=".8" />
+            <stop offset="1" stopColor="var(--card-black)" stopOpacity=".88" />
           </radialGradient>
           <clipPath id="tc-top">
             <rect x={-R - PAD} y={-R - PAD} width={W} height={Hh} />
