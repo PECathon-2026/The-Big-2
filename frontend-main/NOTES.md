@@ -41,6 +41,19 @@ Shared coordination file (AGENT_BRIEF §0). Append, don't rewrite other people's
 - **Palette changed by the product owner → "Crimson Sakura Night".** It takes PECFEST colours with high inspiration from pecfest.in/developer cards, plus sakura pink, traditional Japanese colours and a celestial layer. See the override box at the top of AGENT_BRIEF §5.1 and `src/styles/tokens.css`. Use `<Card brand tag>`, `<Button variant="gold|primary|secondary|commit">`, `<Tag>`, `<Divider/>`, `<BrushLine/>` from `@/ui`.
 - **Web Push exists in the backend now** (`/api/alerts/*`). `src/data/push.ts` (`ensureSubscribed`, `unsubscribe`) and `public/sw.js` are copied from frontend-basic. "Remind me" on /scroll (D) should use `POST /api/alerts/schedule-event` after `ensureSubscribed()`. The PWA plugin (Phase 3) must keep `/sw.js` push handling: the lead will use injectManifest or import it.
 
+## Cross-workstream contracts (lead)
+
+- **Dev shortcut:** `http://localhost:3000/?dev=dome`, `?dev=sky` and `?dev=intro` skip the gate with the default place (Chandigarh). `/watchtower?dev=sky` opens a module directly.
+- **Selection → dive (A ↔ C):**
+  - A's picking calls `useApp.getState().setHovered(obj)` on hover and `useApp.getState().select(obj)` on click. Only count a click when the pointer moved less than 5 px since pointerdown, because drag-look uses the same canvas.
+  - C subscribes to `selected`. If `obj.route` is set, C runs `Director.diveTo(obj, lastPointer)`, then the ink flood and `navigate(route)`. Otherwise C shows the InfoCard beside the object.
+  - A puts InfoCard data in `obj.info` (mag, constellation, ra/dec…). C computes alt/az and rise/set itself with `astro/skytime.ts`.
+- **Object ids** published by A that C and D rely on: `moon`, `sun`, `polaris`, `M42`, `M31`, `M45`, `iss`, `meteor-radiant`, planet names in lowercase (`jupiter`…), `torii`, `pagoda`, `ridges`.
+- **Drag/zoom:** `SkyInput` in `scene/CanvasRoot.tsx` (lead) handles drag-look and wheel-zoom in phase `sky` through `Director.drag/zoom`. Request changes here rather than adding a second handler.
+- **Audio (B → C):** `src/audio/engine.ts` is a stub that C owns. B calls `unlockAudio()` inside the gate click when sound is chosen. Anyone may call `cue('pluck' | 'whoosh' | …)`.
+- **Intro canvas frame (B):** B may set `document.getElementById('canvas-root')!.style.clipPath` during the intro (crimson frame) and must clear it when leaving the intro. B drives the camera only through `Director.set({...})` / `Director.station(...)`, and the sky time-lapse through `skyClock.override` (set it back to `null` at the end). At the end of the intro B calls `setPhase('dome')` + `Director.station('dome')`.
+- **Playwright is one shared browser.** Open your own tab (`browser_tabs` → new), use only that tab, and close it when done. Save screenshots to `frontend-main/qa/<A|B|C|D>-*.png`. Keep screenshots few.
+
 ## Status
 
 - **Lead · Phase 0 done:** foundation committed. The flow runs gate (stub) → intro (stub, Skip) → dome (real stars, Moon, glass rim) → sky (drag/zoom) → module stubs. The Watchtower stub shows the real verdict and score with an ⓘ trace.
