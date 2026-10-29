@@ -23,3 +23,5 @@ Thumbs.db
 .idea/
 backend/data/replay/
 .claude/launch.json
+backend/data/vapid/
+backend/data/alerts.db
