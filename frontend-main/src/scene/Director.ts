@@ -1,12 +1,19 @@
 /**
- * The Director: the ONLY thing that moves the camera (§6.3). Owned by workstream C after Phase 0.
+ * The Director: the ONLY thing that moves the camera (§6.3). Owned by workstream C.
  *
  * The camera state is { pos, yaw, pitch, fov } with targets; `CameraRig` (CanvasRoot) eases the
  * current values toward the targets every frame with time-based damping, so any new input interrupts
  * a move. yaw 0 = north, +east; pitch up. The dome view is just a far position looking at the origin.
+ *
+ * Dives (§7.6) are orchestrated here: flight → ink flood from the click point → navigate(route) →
+ * the page mounts under the ink → ink clears centre-out. `back()` reverses it to the exact saved view.
+ * The HUD registers the router's navigate with `Director.registerNavigate`.
  */
 import { dirToYawPitch, nearestAngle, type Vec3 } from '@/astro/coords';
-import { app, type SkyObject } from '@/state/store';
+import { app, type Phase, type SkyObject } from '@/state/store';
+import { isModulePath } from '@/app/routes';
+import { inkClose, inkFade, inkOpen } from '@/hud/ink';
+import { cue } from '@/audio/engine';
 
 export type StationName = 'intro' | 'dome' | 'sky';
 
@@ -40,6 +47,8 @@ export const FOV_MAX = 80;
 export const DOME_POS: Vec3 = [0, 70, 290];
 export const EYE: Vec3 = [0, 1.6, 0];
 
+const BASE_EASE = 0.05;
+
 function setTarget(s: Partial<CamState>, instant = false) {
   if (s.pos) rig.tgt.pos = [...s.pos];
   if (s.yaw !== undefined) rig.tgt.yaw = nearestAngle(s.yaw, rig.cur.yaw);
@@ -65,9 +74,63 @@ function settle(maxMs = 2200): Promise<void> {
   });
 }
 
-let saved: CamState | null = null;
+const wait = (ms: number) => new Promise<void>((r) => window.setTimeout(r, ms));
+const frames = (n = 2) => new Promise<void>((r) => {
+  const step = () => (--n <= 0 ? r() : requestAnimationFrame(step));
+  requestAnimationFrame(step);
+});
+
+/** Animate rig.dive (star streak) to `to` over `ms`. */
+function tweenDive(to: number, ms: number) {
+  const from = rig.dive;
+  const t0 = performance.now();
+  const step = (now: number) => {
+    const k = Math.min(1, (now - t0) / ms);
+    rig.dive = from + (to - from) * (1 - Math.pow(1 - k, 3));
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+/** Where the camera looks to frame `obj`, and (from the dome) how far it travels toward it. */
+function viewFor(obj: SkyObject, from: CamState): CamState {
+  const outside = Math.hypot(...from.pos) > 120;
+  const pos: Vec3 = outside
+    ? [from.pos[0] + (obj.world[0] - from.pos[0]) * 0.45, from.pos[1] + (obj.world[1] - from.pos[1]) * 0.45, from.pos[2] + (obj.world[2] - from.pos[2]) * 0.45]
+    : [...from.pos];
+  const dir: Vec3 = [obj.world[0] - pos[0], obj.world[1] - pos[1], obj.world[2] - pos[2]];
+  const { yaw, pitch } = dirToYawPitch(dir);
+  const fov = obj.kind === 'moon' || obj.kind === 'sun' ? 12 : obj.kind === 'landmark' ? 24 : 14;
+  return { pos, yaw, pitch, fov };
+}
+
+interface Saved {
+  cam: CamState;
+  phase: Phase;
+  station: StationName;
+}
+
+let saved: Saved | null = null;
+let busy = false;
+let pendingBack = false;
+let navigate: (path: string) => void = (p) => {
+  window.history.pushState(null, '', p);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+};
+
+const centre = () => ({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+const onModulePath = () => isModulePath(window.location.pathname);
 
 export const Director = {
+  /** The HUD hands over the router's navigate (so non-React code can change pages). */
+  registerNavigate(fn: (path: string) => void) {
+    navigate = fn;
+  },
+
+  get busy() {
+    return busy;
+  },
+
   station(name: StationName, opts: { instant?: boolean; yaw?: number; pitch?: number; fov?: number } = {}): Promise<void> {
     rig.station = name;
     if (name === 'dome') {
@@ -83,28 +146,114 @@ export const Director = {
   },
 
   /**
-   * Dive (§7.6): flight toward the object + ink flood, then navigate(route).
-   * Phase-0 skeleton: eases onto the object and narrows the FOV, then resolves. C adds the ink flood
-   * and the navigation hand-off (see hud/InkFlood).
+   * Dive (§7.6) toward `obj`, then land on `route` (default obj.route).
+   * 0–600 ms the look eases onto the object and the FOV narrows; from 400 ms ink floods out of
+   * `screenPt` until it covers; then navigate, the page mounts under the ink, and the ink clears.
+   * From a module page (chapter → chapter) there is no flight: ink, navigate, ink.
    */
-  async diveTo(obj: SkyObject, _screenPt: { x: number; y: number }): Promise<void> {
-    saved = { pos: [...rig.tgt.pos], yaw: rig.tgt.yaw, pitch: rig.tgt.pitch, fov: rig.tgt.fov };
+  async diveTo(obj: SkyObject, screenPt: { x: number; y: number } = centre(), route = obj.route): Promise<void> {
+    if (!route || busy) return;
+    busy = true;
     const s = app();
-    s.setTimeFrozen(true);
-    s.setPhase('diving');
-    const { yaw, pitch } = dirToYawPitch(obj.world);
-    if (s.reducedMotion) setTarget({ yaw, pitch, fov: 20 }, true);
-    else setTarget({ yaw, pitch, fov: 14 });
-    await settle(900);
+    const fromModule = s.phase === 'module' || onModulePath();
+    try {
+      if (!fromModule) saved = { cam: { pos: [...rig.tgt.pos], yaw: rig.tgt.yaw, pitch: rig.tgt.pitch, fov: rig.tgt.fov }, phase: s.phase === 'dome' ? 'dome' : 'sky', station: rig.station };
+      s.setTimeFrozen(true);
+      const view = viewFor(obj, rig.cur);
+      if (s.reducedMotion) {
+        await inkFade(1, 150);
+        setTarget(view, true);
+        navigate(route);
+        app().setPhase('module');
+        await frames(2);
+        await inkFade(0, 150);
+      } else if (fromModule) {
+        cue('whoosh');
+        await inkClose(screenPt.x, screenPt.y, 520);
+        setTarget(view, true);
+        navigate(route);
+        app().setPhase('module');
+        await frames(3);
+        await inkOpen(560);
+      } else {
+        cue('whoosh');
+        s.setPhase('diving');
+        rig.station = 'sky';
+        rig.ease = 0.012;
+        setTarget(view);
+        tweenDive(1, 600);
+        await wait(400);
+        await inkClose(screenPt.x, screenPt.y, 700);
+        navigate(route);
+        app().setPhase('module');
+        rig.dive = 0;
+        rig.ease = BASE_EASE;
+        await frames(3);
+        await wait(60);
+        await inkOpen(620);
+      }
+    } finally {
+      rig.ease = BASE_EASE;
+      rig.dive = 0;
+      app().setTimeFrozen(false);
+      busy = false;
+    }
+    if (pendingBack) {
+      pendingBack = false;
+      void Director.back();
+    }
   },
 
-  /** Reverse flight to the orientation saved before the last dive. */
-  async back(): Promise<void> {
+  /**
+   * Reverse a dive: ink closes over the page, the page unmounts, the camera flies back to the exact
+   * saved orientation + FOV while the ink clears. `to: 'dome'` returns home (chapter 一) instead.
+   * Safe to call after something else already navigated to '/'.
+   */
+  async back(opts: { to?: 'saved' | 'dome' } = {}): Promise<void> {
+    if (busy) {
+      pendingBack = true;
+      return;
+    }
+    busy = true;
     const s = app();
-    if (saved) setTarget(saved, s.reducedMotion);
-    saved = null;
-    s.setTimeFrozen(false);
-    await settle(1400);
+    const onPage = onModulePath();
+    const home = opts.to === 'dome' || !saved ? (opts.to === 'dome' || s.phase === 'dome' ? 'dome' : 'sky') : null;
+    const restore = () => {
+      if (home === 'dome' || (!home && saved?.phase === 'dome')) app().setPhase('dome');
+      else app().setPhase('sky');
+      if (home) {
+        void Director.station(home, { instant: s.reducedMotion });
+      } else if (saved) {
+        rig.station = saved.station;
+        setTarget(saved.cam, s.reducedMotion);
+      }
+      saved = null;
+    };
+    try {
+      s.setTimeFrozen(true);
+      if (s.reducedMotion) {
+        if (onPage) await inkFade(1, 150);
+        if (onPage) navigate('/');
+        restore();
+        await frames(2);
+        await inkFade(0, 150);
+      } else {
+        cue('whooshReverse');
+        if (onPage) {
+          const c = centre();
+          await inkClose(c.x, c.y, 460);
+          navigate('/');
+        }
+        rig.ease = 0.02;
+        restore();
+        await frames(2);
+        await Promise.all([inkOpen(700), settle(1400)]);
+      }
+    } finally {
+      rig.ease = BASE_EASE;
+      app().setTimeFrozen(false);
+      busy = false;
+    }
   },
 
   /** Eased look at a direction (any length) with optional FOV. */
@@ -126,7 +275,7 @@ export const Director = {
 
   set: setTarget,
   get savedView() {
-    return saved;
+    return saved?.cam ?? null;
   },
 };
 

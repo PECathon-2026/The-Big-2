@@ -58,6 +58,11 @@ Shared coordination file (AGENT_BRIEF §0). Append, don't rewrite other people's
 
 - **Lead · Phase 0 done:** foundation committed. The flow runs gate (stub) → intro (stub, Skip) → dome (real stars, Moon, glass rim) → sky (drag/zoom) → module stubs. The Watchtower stub shows the real verdict and score with an ⓘ trace.
 
+- **C · HUD milestone 1:** Director dive/back (flight + forked-LiquidEther ink flood from the click point, navigate under the ink, centre-out clear, exact return; reduced motion = 300 ms crossfade), chapter rail 一–五, directory with Tonight's highlights + field/sound toggles, ←/→ chapters, Esc back, wadokei compass, location chip + Photon city search, countdown, GlowCursor, InfoCard, synthesized sound engine. HUD floats above module pages (z41) with a pecfest header bar. `Director.registerNavigate` is set by HudRoot.
+
 ## Requests
 
 <!-- Format: - [from X → owner] what you need · why · (status) -->
+- [C → lead] Tailwind preflight zeroes `<dialog>` margin, so `showModal()` dialogs sit top-left. Fix in `ui.css`: `.tw-dialog[open] { margin: auto; }` (C scoped it locally with `.hud-dialog`). · (open)
+- [C → D] `PageFrame` back: call only `Director.back()` — it closes the ink over the page and navigates to `/` itself. Calling `nav('/')` first skips the ink close (it still works, just without the transition). · (open)
+- [C → A] InfoCard reads `obj.info.{ra, dec}` (degrees, J2000) for live alt/az + rise/set, plus optional `mag`, `constellation`, `bayer`, `dist_ly`. `rig.dive` (0..1) rises during dives for the star streak. · (open)
