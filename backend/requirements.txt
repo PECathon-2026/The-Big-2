@@ -1,0 +1,16 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+httpx>=0.27
+pydantic>=2.7
+pydantic-settings>=2.3
+python-multipart>=0.0.9
+numpy>=1.26
+scipy>=1.13
+astropy>=6.1
+photutils>=1.13
+scikit-image>=0.24
+astronomy-engine>=2.1
+sgp4>=2.23
+pillow>=10.3
+timezonefinder>=6.5
+astroquery>=0.4.7
