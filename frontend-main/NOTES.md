@@ -38,6 +38,8 @@ Shared coordination file (AGENT_BRIEF §0). Append, don't rewrite other people's
 
 ## Decisions log
 
+- **No dome exterior (product owner).** The intro lands directly inside the night sky, and home/chapter 一 = the sky. The lead unmounted DomeLayer and DomeOverlay; App redirects phase `dome` → `sky`; `?dev=dome` is an alias of `?dev=sky`. Override box at the top of AGENT_BRIEF §3.
+
 - **Palette changed by the product owner → "Crimson Sakura Night".** It takes PECFEST colours with high inspiration from pecfest.in/developer cards, plus sakura pink, traditional Japanese colours and a celestial layer. See the override box at the top of AGENT_BRIEF §5.1 and `src/styles/tokens.css`. Use `<Card brand tag>`, `<Button variant="gold|primary|secondary|commit">`, `<Tag>`, `<Divider/>`, `<BrushLine/>` from `@/ui`.
 - **Web Push exists in the backend now** (`/api/alerts/*`). `src/data/push.ts` (`ensureSubscribed`, `unsubscribe`) and `public/sw.js` are copied from frontend-basic. "Remind me" on /scroll (D) should use `POST /api/alerts/schedule-event` after `ensureSubscribed()`. The PWA plugin (Phase 3) must keep `/sw.js` push handling: the lead will use injectManifest or import it.
 

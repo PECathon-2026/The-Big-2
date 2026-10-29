@@ -15,15 +15,17 @@ import '@/data/tonight'; // starts per-place fetching as soon as a place exists
 useApp.getState().setQuality(initialQuality());
 initLenis();
 
-// Dev shortcut for agents and QA: ?dev=dome | ?dev=sky | ?dev=intro skips the gate with the default place.
+// Dev shortcut for agents and QA: ?dev=sky | ?dev=intro skips the gate with the default place.
+// (?dev=dome is kept as an alias of sky — there is no dome exterior any more.)
 {
   const dev = new URLSearchParams(location.search).get('dev');
   if (dev === 'dome' || dev === 'sky' || dev === 'intro') {
     const s = useApp.getState();
     s.setPlace(DEFAULT_PLACE);
+    const target = dev === 'intro' ? 'intro' : 'sky';
     if (isModulePath(location.pathname)) s.setPhase('module');
-    else s.setPhase(dev);
-    Director.station(dev === 'sky' ? 'sky' : dev, { instant: true });
+    else s.setPhase(target);
+    Director.station(target, { instant: true });
   }
 }
 // Start the heavy, cacheable work immediately — it runs behind the gate (§7.1).

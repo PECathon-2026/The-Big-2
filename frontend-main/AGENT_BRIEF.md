@@ -109,6 +109,13 @@ Open `http://localhost:8000/docs` to try the endpoints.
 
 ## 3. Decisions (final)
 
+> **PRODUCT-OWNER OVERRIDE — NO DOME EXTERIOR.** When the petals have become the stars, the intro lands the viewer **directly inside the night sky** (first-person, §7.5). There is no pull-back through the sky and no glass-hemisphere/floating-island view anywhere.
+>
+> - **§7.3 90–100%:** instead of the pull-back, the camera eases up from the horizon into the open sky (pitch ≈ 24°, FOV → ~62°) at the current heading, then the intro ends in phase `sky`.
+> - **"Home" / chapter 一 is the sky itself**, at a default orientation. The wordmark and chapter 一 return there.
+> - **§7.4 is cut.** Its hotspot labels may reappear inside the sky as a brief first-arrival hint.
+> - The App redirects any `'dome'` phase to `'sky'` as a safety net.
+
 | Topic | Decision | What it overrides |
 |---|---|---|
 | Opening | **Sakura dusk merge:** crimson-framed dusk → sunset → petals become the real stars → title morph → Moon rises → pull back to the dome | Guideline X2 (merged into this) |

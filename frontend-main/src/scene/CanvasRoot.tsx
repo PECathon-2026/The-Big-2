@@ -1,6 +1,7 @@
 /**
  * The ONE persistent R3F <Canvas> (§4.2). Mounted once under the router; never torn down.
- * Layers: SkyLayer (A), DomeLayer (A), IntroLayer (B). Camera is driven only by the Director's rig.
+ * Layers: SkyLayer (A), IntroLayer (B). Camera is driven only by the Director's rig.
+ * The dome exterior (scene/dome) is no longer mounted: product-owner decision, the intro lands inside the sky.
  */
 import { Suspense, useEffect, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
@@ -12,7 +13,6 @@ import { damp, nearestAngle } from '@/astro/coords';
 import { stepQuality, tierDpr } from './quality';
 import { skyClock, updateSkyClock } from './skyClock';
 import SkyLayer from './sky/SkyLayer';
-import DomeLayer from './dome/DomeLayer';
 import IntroLayer from './intro/IntroLayer';
 
 const clear = new THREE.Color();
@@ -131,7 +131,6 @@ export default function CanvasRoot() {
         <FrameloopSwitch />
         <Suspense fallback={null}>
           <SkyLayer />
-          <DomeLayer />
           <IntroLayer />
         </Suspense>
       </Canvas>
