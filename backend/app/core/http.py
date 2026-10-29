@@ -5,7 +5,7 @@ import asyncio
 import base64
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Callable
 
 import httpx
 
@@ -54,6 +54,7 @@ async def fetch(
     cache_name: str | None = None,
     retries: int = 2,
     timeout: float | None = None,
+    validate: Callable[[Any], bool] | None = None,
 ) -> Fetched:
     """Fetch with cache. Order: fresh cache → live call (retries) → stale cache → demo replay → ProviderError."""
     c = cache(cache_name or source)
@@ -74,6 +75,8 @@ async def fetch(
                 raise ProviderError(source, f"HTTP {r.status_code}")
             r.raise_for_status()
             value = base64.b64encode(r.content).decode("ascii") if binary else r.json()
+            if validate is not None and not validate(value):
+                raise ProviderError(source, "response failed validation (partial or error payload); not cached")
             c.set(key, value, ttl)
             replay_record(key, value)
             return Fetched(_decode(value, binary), Provenance(source=source, url=url, fetched_at=datetime.now(timezone.utc)))
