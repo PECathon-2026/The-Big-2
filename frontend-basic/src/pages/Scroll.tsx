@@ -3,6 +3,7 @@ import api, { EVENT_KINDS, type CalendarDay, type EventKind, type Pass, type Sho
 import { Card, Chip, Section } from '../components/Card';
 import { Controls } from '../components/Controls';
 import { MoonGlyph } from '../components/MoonGlyph';
+import { NotifyButton } from '../components/Notify';
 import { ProvenanceFooter } from '../components/Provenance';
 import { Await } from '../components/Status';
 import { useApp } from '../context/AppContext';
@@ -208,6 +209,12 @@ export default function Scroll() {
                     >
                       Add to calendar
                     </a>
+                    <NotifyButton
+                      schedule={async (endpoint) => {
+                        const r = await api.alerts.scheduleEvent({ endpoint, lat, lon, event_id: e.id, lead_minutes: 15 });
+                        return `push at ${fmtTime(r.fire_at, undefined, true)}: “${r.body}”`;
+                      }}
+                    />
                   </div>
                 </div>
               ))}
