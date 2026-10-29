@@ -35,6 +35,20 @@ Errors from a failed upstream provider return HTTP 502 `{ "error": "provider_una
 - `GET /events?lat&lon&days=7&types?&start?&bortle?` → `Event[] = { id, kind (moon|meteor|eclipse|satellite|launch|planet), title, jp, start, end, start_local, visible_from_here, direction, altitude_max, detail, alert, source }`
 - `GET /ics?title&start&end?&description?&location?` → `text/calendar` download.
 
+## Alerts (`/api/alerts`) — Web Push
+
+The browser registers `public/sw.js`, subscribes with the server's VAPID key and posts the subscription; the backend stores subscriptions and scheduled alerts in SQLite (`data/alerts.db`) and a background worker (started from the app lifespan) delivers due alerts every 30 s with `pywebpush`. `frontend-basic/src/push.ts` does the browser side; copy it.
+
+- `GET /vapid-public-key` → `{ public_key }` (base64url uncompressed P-256 point for `pushManager.subscribe`).
+- `POST /subscribe` body `{ subscription: PushSubscription.toJSON() }` → `201 { subscription_id, endpoint, created_at }`; `DELETE /subscribe?endpoint=` removes it.
+- `POST /schedule` body `{ endpoint, title, body, fire_at (ISO), url?, event_id? }` → `201 ScheduledAlert`.
+- `POST /schedule-event` body `{ endpoint, lat, lon, event_id, lead_minutes=15, days=7 }` → resolves the event from `/api/scroll/events` and schedules its `alert` text `lead_minutes` before `start` (immediately if already inside the window) → `201 ScheduledAlert & { event }`.
+- `POST /test` body `{ endpoint, delay_seconds=0, title?, body? }` → sends now (returns `delivery: {sent, failed, gone}`) or schedules.
+- `GET /scheduled?endpoint=&include_sent=false` → `ScheduledAlert[]`; `DELETE /scheduled/{id}?endpoint=` cancels.
+- `GET /stats` → counts by status.
+
+`ScheduledAlert = { id, subscription_id, title, body, url, event_id, fire_at, status: scheduled|sent|failed|cancelled, created_at, sent_at, error }`. A subscription the push service reports gone (404/410) is deleted automatically.
+
 ## Spirit Lens (`/api/lens`) — image pipeline contract
 
 Processing is asynchronous: upload creates a job, the job runs through named stages, results are fetched by id.
