@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import api, { LENS_STAGES, type Benchmark, type CatalogMatch, type Detection, type LensJob, type LensResult, type LensSample } from '../api';
 import { Card, Chip, KV, Label } from '../components/Card';
 import { JsonView } from '../components/JsonView';
+import { SpectrumView } from '../components/SpectrumView';
 import { ErrorBox, Loading } from '../components/Status';
 import { fmtInt, fmtNum, fmtPct, fmtTime } from '../format';
 import { asEnvelope, useApi } from '../hooks/useApi';
@@ -400,6 +401,11 @@ function Results({ job, onSolve, solving }: { job: LensJob; onSolve: () => void;
             />
             {wcsStage?.detail && <div className="muted small">{wcsStage.detail}</div>}
             {r.wcs.solved && <FieldAlerts id={id} />}
+            {r.wcs.solved && r.wcs.ra_center !== null && (
+              <div style={{ marginBottom: 12 }}>
+                <SpectrumView ra={Number(r.wcs.ra_center.toFixed(5))} dec={Number((r.wcs.dec_center as number).toFixed(5))} />
+              </div>
+            )}
             {r.wcs.solved && (
               <div>
                 <Label en="Catalog matches" jp="名" right={<button className="btn small ghost" onClick={() => void loadCatalog()} type="button">Reload</button>} />

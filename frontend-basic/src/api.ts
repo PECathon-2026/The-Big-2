@@ -730,6 +730,15 @@ export const api = {
       post<{ horizon: Horizon; report: PathReport; night: { sunset: string; sunrise: string } }>('/api/horizon/path', p),
   },
 
+  /** Spectra: the SDSS spectrum nearest to a sky position, with measured lines. */
+  spectra: {
+    near: (ra: number, dec: number, radiusArcmin = 1, limit = 5, signal?: AbortSignal) =>
+      get<{ ra: number; dec: number; radius_arcmin: number; objects: SpecObject[] }>('/api/spectra/near', { ra, dec, radius_arcmin: radiusArcmin, limit }, signal),
+    at: (ra: number, dec: number, radiusArcmin = 1, signal?: AbortSignal) => get<Spectrum>('/api/spectra/at', { ra, dec, radius_arcmin: radiusArcmin }, signal),
+    spectrum: (plate: number, mjd: number, fiberid: number, run2d: string, survey: string, signal?: AbortSignal) =>
+      get<Spectrum>(`/api/spectra/spectrum/${plate}/${mjd}/${fiberid}`, { run2d, survey }, signal),
+  },
+
   /** Honor points: observations verified against the sky before points are awarded. */
   honor: {
     ranks: (signal?: AbortSignal) => getRaw<{ ranks: HonorRank[]; points: Record<string, number>; photo_bonus: number }>('/api/honor/ranks', undefined, signal),
@@ -739,6 +748,58 @@ export const api = {
   },
 };
 
+export interface SpecObject {
+  spec_obj_id: string;
+  plate: number;
+  mjd: number;
+  fiberid: number;
+  class: string;
+  subclass: string;
+  z: number;
+  z_err: number | null;
+  ra: number;
+  dec: number;
+  survey: string;
+  run2d: string;
+  sn_median: number | null;
+  separation_arcsec: number;
+}
+export interface SpecLine {
+  name: string;
+  rest_wavelength: number;
+  observed_wavelength: number;
+  z?: number;
+  area?: number;
+  area_err?: number;
+  sigma_kms?: number;
+  equivalent_width?: number;
+  emission?: boolean;
+  significance?: number;
+}
+export interface Spectrum {
+  plate: number;
+  mjd: number;
+  fiberid: number;
+  ra: number;
+  dec: number;
+  class: string;
+  subclass: string;
+  z: number;
+  z_err: number;
+  sn_median: number | null;
+  exptime_s: number;
+  flux_unit: string;
+  wavelength: number[];
+  flux: number[];
+  model: number[];
+  n_pixels: number;
+  binned_to: number;
+  wavelength_range: [number, number];
+  lines_measured: SpecLine[];
+  lines_expected: SpecLine[];
+  note: string;
+  separation_arcsec?: number;
+}
 export interface MaskPoint {
   az: number;
   alt: number;

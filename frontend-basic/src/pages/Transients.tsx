@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api, { type SubtractionResult, type TransientDetail, type TransientObject } from '../api';
 import { Card, Chip, KV, Label } from '../components/Card';
 import { Controls } from '../components/Controls';
+import { SpectrumView } from '../components/SpectrumView';
 import { ProvenanceFooter } from '../components/Provenance';
 import { Await, ErrorBox } from '../components/Status';
 import { useApp } from '../context/AppContext';
@@ -172,6 +173,11 @@ export default function Transients() {
                     ]}
                   />
                   <LightcurveSvg d={r.lightcurve} />
+                  {r.ra !== null && r.dec !== null && (
+                    <div style={{ marginTop: 12 }}>
+                      <SpectrumView ra={Number(r.ra.toFixed(5))} dec={Number(r.dec.toFixed(5))} />
+                    </div>
+                  )}
                   <div className="muted small">{r.lightcurve.note}</div>
                   {(() => {
                     const withStamp = [...r.lightcurve.detections].reverse().find((d) => d.has_stamp) ?? r.lightcurve.detections[r.lightcurve.detections.length - 1];
