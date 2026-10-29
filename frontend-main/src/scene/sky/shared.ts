@@ -158,6 +158,7 @@ if (import.meta.env.DEV) {
       rig,
       live,
       debug,
+      app: useApp.getState,
       look(target: string | [number, number, number], fov = 30) {
         const w = typeof target === 'string' ? live.get(target)?.world : target;
         if (!w) return false;

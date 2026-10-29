@@ -15,6 +15,7 @@ import Meteors from './Meteors';
 import Objects from './Objects';
 import OverlayPainter from './OverlayPainter';
 import Picking from './Picking';
+import Post from './Post';
 import { useCatalog } from './shared';
 
 export default function SkyLayer() {
@@ -37,6 +38,7 @@ export default function SkyLayer() {
           <Picking cat={cat} />
         </>
       )}
+      <Post />
     </>
   );
 }

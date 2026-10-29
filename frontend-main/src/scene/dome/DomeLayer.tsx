@@ -1,5 +1,5 @@
 /**
- * The dome seen from outside (§7.4): a fresnel glass hemisphere (gold-silver rim, faint inner streak,
+ * The dome seen from outside (§7.4): a fresnel glass hemisphere (gold-silver fresnel rim,
  * gilded base ring) over a floating ink island — the sky's ridges and ground, a rocky underside fading
  * into mist, drifting mist sprites — and the landmarks at the real sunset azimuth.
  * Camera: while phase is 'dome' this layer owns an orbit around the dome through Director.set():
@@ -33,11 +33,8 @@ const glassFS = /* glsl */ `
     float ndv = abs(dot(normalize(vN), vV));
     float f = pow(1.0 - ndv, 3.0);
     vec3 rim = mix(uSilver, uRim, smoothstep(0.2, 0.9, f));
-    // a soft diagonal reflection streak across the glass
-    vec3 p = normalize(vW);
-    float streak = smoothstep(0.08, 0.0, abs(p.x * 0.8 + p.y * 0.55 - 0.35)) * 0.16 * (1.0 - f);
-    float a = f * 0.6 + streak + 0.035;
-    vec3 col = rim * (f + streak * 2.0) + uFill * 0.2 + uSilver * uFlash;
+    float a = gl_FrontFacing ? f * 0.6 + 0.03 : 0.0; // back faces only carry the pass-through shimmer
+    vec3 col = rim * f + uFill * 0.2 + uSilver * uFlash;
     gl_FragColor = vec4(col, a * uOpacity + uFlash * 0.18);
     #include <colorspace_fragment>
   }`;
@@ -192,7 +189,7 @@ export default function DomeLayer() {
     mats.glassMat.uniforms.uFlash.value = orbit.flash;
     if (glass.current) glass.current.visible = out > 0.001 || orbit.flash > 0;
     mats.rockMat.uniforms.uOpacity.value = out;
-    mats.mistMat.opacity = 0.22 * out;
+    mats.mistMat.opacity = 0.14 * out;
     const t = state.clock.elapsedTime;
     mist.forEach((m, i) => {
       const s = mistRefs.current[i];

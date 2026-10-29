@@ -19,7 +19,7 @@ import { landmarks, tokColor } from '@/scene/sky/shared';
 const fujiVS = /* glsl */ `
   varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
 const fujiFS = /* glsl */ `
-  uniform vec3 uInk; uniform vec3 uSnow; uniform vec3 uHaze; uniform float uHazeK; uniform float uH;
+  uniform vec3 uInk; uniform vec3 uSnow; uniform vec3 uHaze; uniform float uHazeK; uniform float uH; uniform float uSnowK;
   varying vec3 vP;
   float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   void main(){
@@ -27,10 +27,10 @@ const fujiFS = /* glsl */ `
     float ang = atan(vP.z, vP.x);
     // jagged snow line: gullies of snow running down the flanks
     float gully = 0.5 + 0.5 * sin(ang * 23.0) * sin(ang * 7.0 + 1.3);
-    float line = 0.68 - 0.16 * gully;
+    float line = 0.8 - 0.12 * gully;
     float snow = smoothstep(line - 0.02, line + 0.02, y);
     vec3 ink = mix(uInk, uHaze, uHazeK * (0.4 + 0.6 * y));
-    vec3 col = mix(ink, uSnow, snow * 0.9);
+    vec3 col = mix(ink, uSnow * uSnowK, snow * 0.9);
     gl_FragColor = vec4(col, 1.0);
     #include <colorspace_fragment>
   }`;
@@ -38,7 +38,7 @@ const fujiFS = /* glsl */ `
 function fujiGeometry(): THREE.BufferGeometry {
   // concave volcano profile with a flattened crater top
   const pts: THREE.Vector2[] = [];
-  const H = 24, B = 34, T = 3.2;
+  const H = 30, B = 40, T = 3.6;
   for (let i = 0; i <= 24; i++) {
     const t = i / 24;
     const r = T + (B - T) * Math.pow(1 - t, 1.9);
@@ -120,9 +120,22 @@ function sakura(bark: THREE.Material, colours: THREE.Color[]): { tree: THREE.Gro
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  const blossoms = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.42, vertexColors: true, sizeAttenuation: true, transparent: true, opacity: 0.95, depthWrite: false }));
+  const blossoms = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.5, map: dotTexture(), alphaTest: 0.35, vertexColors: true, sizeAttenuation: true, transparent: true, opacity: 0.95, depthWrite: false }));
   tree.add(blossoms);
   return { tree, blossoms };
+}
+
+function dotTexture(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = c.height = 32;
+  const g = c.getContext('2d')!;
+  const grd = g.createRadialGradient(16, 16, 0, 16, 16, 16);
+  grd.addColorStop(0, 'rgba(255,255,255,1)');
+  grd.addColorStop(0.6, 'rgba(255,255,255,0.9)');
+  grd.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 32, 32);
+  return new THREE.CanvasTexture(c);
 }
 
 /** World position of the pagoda (for hotspots / picking): set when built. */
@@ -151,7 +164,8 @@ export default function Landmarks() {
         uSnow: { value: tokColor('--kinu') },
         uHaze: { value: new THREE.Color() },
         uHazeK: { value: 0.3 },
-        uH: { value: 24 },
+        uH: { value: 30 },
+        uSnowK: { value: 0.6 },
       },
     });
     const fuji = new THREE.Mesh(fujiGeometry(), fujiMat);
@@ -165,10 +179,10 @@ export default function Landmarks() {
     const a = (az + dAz) * DEG;
     return [Math.sin(a) * dist, 0, -Math.cos(a) * dist];
   };
-  const fujiPos = at(80, 0);
-  const pgPos = at(46, -7);
-  const treePos = at(38, 9);
-  pagodaAt.set(pgPos[0], 7, pgPos[2]);
+  const fujiPos = at(84, 0);
+  const pgPos = at(28, -8);
+  const treePos = at(44, 12);
+  pagodaAt.set(pgPos[0], 6, pgPos[2]);
 
   let lastV = -1;
   useFrame(() => {
@@ -177,6 +191,8 @@ export default function Landmarks() {
     const u = built.fujiMat.uniforms;
     (u.uHaze.value as THREE.Color).setRGB(...skyClock.palette.horizonRgb, THREE.SRGBColorSpace);
     u.uHazeK.value = 0.25 + 0.4 * skyClock.palette.daylight;
+    // moonlit snow at night, bright by day
+    u.uSnowK.value = 0.45 + 0.25 * skyClock.moon.illumination * Math.max(0, skyClock.moon.dir[1]) + 0.4 * skyClock.palette.daylight;
   });
 
   return (
@@ -186,12 +202,13 @@ export default function Landmarks() {
         object={built.pg}
         position={[pgPos[0], -0.4, pgPos[2]]}
         rotation-y={-az * DEG}
+        scale={1.3}
         ref={(o: THREE.Object3D | null) => {
           if (o) landmarks.set('pagoda', o);
           else landmarks.delete('pagoda');
         }}
       />
-      <primitive object={built.tree} position={[treePos[0], -0.5, treePos[2]]} scale={1.6} />
+      <primitive object={built.tree} position={[treePos[0], -0.5, treePos[2]]} scale={1.15} />
     </group>
   );
 }

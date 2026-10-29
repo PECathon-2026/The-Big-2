@@ -35,6 +35,9 @@ const COMPASS: [string, string, number][] = [
   ['西', 'W', 270],
 ];
 
+/** The bottom-centre band the time compass (C) occupies: keep labels out of it. */
+const inBand = (x: number, y: number, W: number, H: number) => y > H * 0.72 && Math.abs(x - W / 2) < W * 0.27;
+
 /** Pixels per world unit at view depth d. */
 const pxPerUnit = (d: number, camera: THREE.PerspectiveCamera, h: number) => h / (2 * Math.tan((camera.fov * DEG) / 2) * Math.max(d, 1e-3));
 
@@ -79,7 +82,7 @@ export default function OverlayPainter({ cat }: { cat: Catalog }) {
     const t = state.clock.elapsedTime;
 
     /* ---------- constellation figures ---------- */
-    const conAlpha = reveal * night * (out > 0.5 ? 0.7 : 1);
+    const conAlpha = reveal * night * (out > 0.5 ? 0.45 : 1);
     if (conAlpha > 0.01) {
       const scr = geo.scr, v = geo.verts;
       for (let i = 0; i < geo.count; i++) {
@@ -129,7 +132,7 @@ export default function OverlayPainter({ cat }: { cat: Catalog }) {
           const c = geo.centers;
           eqToWorld(e, c[ci * 3], c[ci * 3 + 1], c[ci * 3 + 2], tmp, 0, R);
           if (tmp[1] < 6 || !project(tmp[0], tmp[1], tmp[2])) continue;
-          if (P.x < -80 || P.x > W + 80 || P.y < -40 || P.y > H + 40) continue;
+          if (P.x < -80 || P.x > W + 80 || P.y < -40 || P.y > H + 40 || inBand(P.x, P.y, W, H)) continue;
           const a = labelsOn * night * (hovered ? 1 : n.rank === 1 ? 0.85 : 0.6);
           ctx.fillStyle = tokA(hovered ? '--gold-bright' : '--gold', 0.85 * a);
           ctx.font = F.jp(hovered ? 17 : 14);
@@ -150,7 +153,7 @@ export default function OverlayPainter({ cat }: { cat: Catalog }) {
         const ra = cat.stars[b.i * STAR_STRIDE], dec = cat.stars[b.i * STAR_STRIDE + 1];
         eqToWorld(e, Math.cos(dec * DEG) * Math.cos(ra * DEG), Math.cos(dec * DEG) * Math.sin(ra * DEG), Math.sin(dec * DEG), tmp, 0, R);
         if (tmp[1] < 3 || !project(tmp[0], tmp[1], tmp[2])) continue;
-        if (P.x < -50 || P.x > W + 50 || P.y < -20 || P.y > H + 20) continue;
+        if (P.x < -50 || P.x > W + 50 || P.y < -20 || P.y > H + 20 || inBand(P.x, P.y, W, H)) continue;
         const a = labelsOn * skyClock.palette.starFade;
         ctx.fillStyle = tokA('--kinu', 0.7 * a);
         ctx.font = F.latin(14);
@@ -163,7 +166,7 @@ export default function OverlayPainter({ cat }: { cat: Catalog }) {
 
     /* ---------- planets ---------- */
     for (const p of skyClock.planets) {
-      if (p.dir[1] < 0.01 || !project(p.dir[0] * R, p.dir[1] * R, p.dir[2] * R)) continue;
+      if (p.dir[1] < 0.01 || !project(p.dir[0] * R, p.dir[1] * R, p.dir[2] * R) || inBand(P.x, P.y, W, H)) continue;
       const a = labelsOn * (0.4 + 0.6 * skyClock.palette.starFade);
       if (a < 0.02) continue;
       ctx.textAlign = 'left';
@@ -190,7 +193,7 @@ export default function OverlayPainter({ cat }: { cat: Catalog }) {
     if (labelsOn > 0.01) {
       for (const id of ['M42', 'M31', 'M45', 'lens-best']) {
         const o = live.get(id);
-        if (!o || o.world[1] < 2 || !project(o.world[0], o.world[1], o.world[2])) continue;
+        if (!o || o.world[1] < 2 || !project(o.world[0], o.world[1], o.world[2]) || inBand(P.x, P.y, W, H)) continue;
         if (id === 'lens-best' && ['M42', 'M31', 'M45'].includes(String(o.info?.id))) continue;
         const a = labelsOn * skyClock.palette.starFade;
         ctx.strokeStyle = tokA('--fuji', 0.55 * a);
@@ -226,7 +229,7 @@ export default function OverlayPainter({ cat }: { cat: Catalog }) {
           if (pen) ctx.lineTo(P.x, P.y);
           else ctx.moveTo(P.x, P.y);
           pen = true;
-          if (!have) {
+          if (!inBand(P.x, P.y, W, H) && P.x > 0 && P.x < W - 160 && (!have || P.y < ly)) {
             lx = P.x;
             ly = P.y;
             have = true;
@@ -246,9 +249,11 @@ export default function OverlayPainter({ cat }: { cat: Catalog }) {
         ctx.beginPath();
         ctx.arc(P.x, P.y, 7 + 3 * pulse, 0, Math.PI * 2);
         ctx.stroke();
-        lx = P.x;
-        ly = P.y;
-        have = true;
+        if (!inBand(P.x, P.y, W, H)) {
+          lx = P.x;
+          ly = P.y;
+          have = true;
+        }
       }
       if (have) {
         ctx.textAlign = 'left';
@@ -263,7 +268,7 @@ export default function OverlayPainter({ cat }: { cat: Catalog }) {
 
     /* ---------- meteor radiant ---------- */
     const rad = live.get('meteor-radiant');
-    if (rad && skyData.shower && rad.world[1] > 2 && labelsOn > 0.01 && project(rad.world[0], rad.world[1], rad.world[2])) {
+    if (rad && skyData.shower && rad.world[1] > 2 && labelsOn > 0.01 && project(rad.world[0], rad.world[1], rad.world[2]) && !inBand(P.x, P.y, W, H)) {
       const real = showerRateAt(skyData.shower, now);
       const a = labelsOn * (0.35 + 0.65 * skyClock.palette.starFade);
       ctx.strokeStyle = tokA('--sakura', 0.6 * a);
