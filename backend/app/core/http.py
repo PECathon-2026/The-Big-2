@@ -71,7 +71,11 @@ async def fetch(
                 r = await client().get(url, params=params, headers=headers, **kw)
             else:
                 r = await client().post(url, params=params, data=data, headers=headers, **kw)
-            if r.status_code == 429 or r.status_code >= 500:
+            if r.status_code == 429:
+                if attempt < retries:  # rate limited: wait longer before trying again
+                    await asyncio.sleep(2.0 * (attempt + 1))
+                raise ProviderError(source, "HTTP 429")
+            if r.status_code >= 500:
                 raise ProviderError(source, f"HTTP {r.status_code}")
             r.raise_for_status()
             value = base64.b64encode(r.content).decode("ascii") if binary else r.json()

@@ -133,5 +133,5 @@ async def ensemble_cloud_spread(lat: float, lon: float, days: int = 2) -> tuple[
 
 async def elevation(points: list[tuple[float, float]]) -> tuple[list[float], Provenance]:
     params = {"latitude": ",".join(_fmt(p[0]) for p in points), "longitude": ",".join(_fmt(p[1]) for p in points)}
-    f = await fetch("open-meteo-elevation", ELEVATION_URL, params=params, ttl=30 * 24 * 3600)
+    f = await fetch("open-meteo-elevation", ELEVATION_URL, params=params, ttl=30 * 24 * 3600, retries=4)
     return f.data["elevation"], f.provenance
