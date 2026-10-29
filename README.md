@@ -46,6 +46,25 @@ Open `http://localhost:5173`. It expects the backend at `http://localhost:8000` 
 
 See `frontend-main/README.md`. It talks to the same backend; copy `frontend-basic/src/api.ts` as the starting client.
 
+## What the backend does today
+
+| Endpoint group | Status | Highlights |
+|---|---|---|
+| `/api/watchtower/*` | working | Open-Meteo forecast, **Night Honor Score** with hourly trace and best window, VIIRS light-pollution sampling, OpenStreetMap spot discovery and ranking |
+| `/api/scroll/*` | working | Moon (phase, Japanese name, libration, rise/set), Sun, eclipses with local circumstances, meteor showers with expected rate from here, ISS passes (SGP4 + shadow test), launches, planets, 旧暦 calendar with 24 sekki / 72 kō, unified events feed, .ics export |
+| `/api/lens/*` | working | Upload or sample → background → detection → measured PSF → wavelet denoise → Richardson-Lucy deblur → **Proof of Honesty** (forward-model χ², SSIM/PSNR, flux conservation, position shift, invented pixels) → star/galaxy classification → WCS (FITS header or AVM) → SkyView cutout, SIMBAD matches, synthetic-star benchmark |
+
+Full contract: [`docs/API.md`](docs/API.md). Tests: `cd backend && python -m pytest -q`.
+
+### Verifying it yourself (5 minutes)
+
+1. Start the backend and the basic frontend (above).
+2. **Tonight**: the Moon card must show today's real phase and the moonrise alert; compare with any almanac.
+3. **Watchtower**: hover an hour in the chart to see the score breakdown; the spots list should name real hills near the chosen city (Bengaluru: Savanadurga, Nandi Hill).
+4. **Scroll**: the lunar calendar's new-moon days must match a published 旧暦 calendar; ISS passes marked *visible* are only those where you are dark and the station is sunlit.
+5. **Lens**: restore the synthetic sample. Expect a `noise-like` honesty verdict, χ² ≈ 1, SSIM > 0.95, and the benchmark recovering > 85 % of injected stars. Then restore the Andromeda sample: the WCS panel should read the coordinates from the image's AVM metadata and show the SkyView cutout of the same field.
+6. **Science**: call any endpoint and read the raw JSON, including `provenance` and `trace`.
+
 ## Environment variables (backend/.env)
 
 | Variable | Needed for | Default |
