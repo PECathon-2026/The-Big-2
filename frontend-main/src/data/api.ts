@@ -715,6 +715,13 @@ export const api = {
     subtractJobs: (jobOld: string, jobNew: string, nsigma = 5) => post<SubtractionResult>('/api/transients/subtract-jobs', undefined, { job_old: jobOld, job_new: jobNew, nsigma }),
   },
 
+  /** Observing planner: best place and time for a target, with the binding constraint per 15 min and what-if answers. */
+  planner: {
+    targets: (signal?: AbortSignal) => getRaw<{ targets: PlannerTarget[]; equipment: Record<string, { min_alt: number; label: string }> }>('/api/planner/targets', undefined, signal),
+    plan: (p: { lat: number; lon: number; target?: string; ra?: number; dec?: number; kind?: string; equipment: string; date?: string; earliest_local?: string; latest_local?: string; travel_limit_km: number; candidate_limit?: number }) =>
+      post<Plan>('/api/planner/plan', p),
+  },
+
   /** Honor points: observations verified against the sky before points are awarded. */
   honor: {
     ranks: (signal?: AbortSignal) => getRaw<{ ranks: HonorRank[]; points: Record<string, number>; photo_bonus: number }>('/api/honor/ranks', undefined, signal),
@@ -723,6 +730,73 @@ export const api = {
     ledger: (userId: string, signal?: AbortSignal) => getRaw<Ledger>('/api/honor/ledger', { user_id: userId }, signal),
   },
 };
+
+export interface PlannerTarget {
+  id: string;
+  name: string;
+  jp: string;
+  kind: string;
+  ra?: number;
+  dec?: number;
+  note: string;
+}
+export interface PlanStep {
+  time: string;
+  local: string;
+  status: 'usable' | 'daylight' | 'altitude' | 'moon' | 'cloud' | 'light_pollution';
+  target_alt: number;
+  moon_alt: number;
+  cloud: number | null;
+  quality: number;
+}
+export interface PlanWindow {
+  start: string;
+  end: string;
+  start_local: string;
+  end_local: string;
+  minutes: number;
+}
+export interface PlanCandidate {
+  name: string;
+  kind: string;
+  lat: number;
+  lon: number;
+  distance_km: number;
+  travel_minutes: number;
+  bortle: number | null;
+  usable_minutes: number;
+  mean_quality: number;
+  blocked_minutes: Record<string, number>;
+  windows: PlanWindow[];
+  net_score: number;
+  timeline: PlanStep[];
+}
+export interface Counterfactual {
+  question: string;
+  answer: string;
+  usable_minutes_best: number;
+  delta_minutes: number;
+  best_spot: string;
+  best_spot_changes: boolean;
+}
+export interface Plan {
+  target: { name: string; kind: string; ra: number | null; dec: number | null; note: string | null; source: string };
+  equipment: string;
+  min_altitude: number;
+  sun_limit: number;
+  date_local: string;
+  timezone: string;
+  night: Record<string, string>;
+  window: { start: string; end: string };
+  travel_limit_km: number;
+  candidates: PlanCandidate[];
+  best: PlanCandidate | null;
+  recommendation: string;
+  counterfactuals: Counterfactual[];
+  moonset_local: string | null;
+  forecast_spread_pct: number | null;
+  trace: Trace;
+}
 
 export interface TransientVisibility {
   observable_tonight: boolean;
