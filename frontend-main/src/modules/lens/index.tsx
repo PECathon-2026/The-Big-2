@@ -266,7 +266,7 @@ export default function Lens() {
             Draw the <em>blade</em>.
           </SectionHead>
           <div className="ln-result">
-            <KatanaSlider width={r.image.width} height={r.image.height} left={<img src={api.lens.imageUrl(job.job_id, 'original')} alt="Original" />} right={<img src={api.lens.imageUrl(job.job_id, 'restored')} alt="Restored" />} />
+            <KatanaSlider width={r.image.width} height={r.image.height} left={<img src={api.lens.imageUrl(job.job_id, 'original', r.image.is_fits ? 'asinh' : 'linear')} alt="Original" />} right={<img src={api.lens.imageUrl(job.job_id, 'restored', r.image.is_fits ? 'asinh' : 'linear')} alt="Restored" />} />
             <Card plain className="ln-summary">
               <div className="pg-stats">
                 <div className="pg-stat">

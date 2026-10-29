@@ -1,0 +1,31 @@
+/* /science */
+.sci-first { margin-top: 8px; }
+.sci-arch-card { padding: 22px; }
+.sci-arch { width: 100%; height: auto; display: block; }
+.sci-box { fill: rgba(232, 217, 181, .03); stroke: var(--card-line); }
+.sci-box.crimson { stroke: rgba(198, 41, 32, .55); }
+.sci-inner { fill: rgba(11, 11, 11, .7); stroke: var(--card-line-soft); }
+.sci-h { font-family: var(--font-display); font-size: 20px; letter-spacing: .08em; fill: var(--kinu); }
+.sci-ih { font-family: var(--font-display); font-size: 14px; letter-spacing: .06em; fill: var(--gold-bright); }
+.sci-s { font-family: var(--font-ui); font-size: 11.5px; fill: var(--washi-3); }
+.sci-flow { fill: none; stroke: var(--gold); stroke-width: 1.4; stroke-dasharray: 5 5; animation: sci-dash 1.6s linear infinite; }
+@keyframes sci-dash { to { stroke-dashoffset: -20; } }
+
+.sci-formula { height: 100%; }
+.sci-code { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: 12.5px; line-height: 1.6; color: var(--moon); background: rgba(0, 0, 0, .35); border: 1px solid var(--card-line-soft); border-radius: 6px; padding: 12px 14px; white-space: pre-wrap; margin: 0 0 12px; }
+.sci-notes { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 13.5px; color: rgba(239, 228, 205, .86); line-height: 1.55; }
+
+.sci-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.sci-table th { text-align: left; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--washi-3); font-weight: 600; padding: 8px 10px 8px 0; border-bottom: 1px solid var(--card-line); }
+.sci-table td { padding: 10px 10px 10px 0; border-bottom: 1px solid var(--card-line-soft); vertical-align: top; color: var(--washi-2); }
+.sci-table strong { color: var(--kinu); font-weight: 600; }
+
+.sci-sheet { padding: clamp(24px, 4vw, 48px); }
+.sci-honesty { list-style: none; margin: 0; padding: 0; display: grid; gap: 22px; }
+.sci-honesty li { display: grid; grid-template-columns: 52px 1fr; gap: 16px; align-items: start; }
+.sci-honesty li > .jp { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 4px; background: var(--shu); color: var(--kinu); font-size: 22px; font-weight: 700; transform: rotate(-4deg); }
+.sci-long, .sci-long-wrap { margin: 0; font-family: var(--font-accent); font-size: clamp(19px, 1.8vw, 23px); line-height: 1.45; color: var(--paper-ink); }
+
+.sci-credit { height: 100%; }
+.sci-credit .pg-name { margin-bottom: 12px; }
+.sci-md { white-space: pre-wrap; font-family: var(--font-ui); font-size: 12.5px; line-height: 1.55; color: var(--washi-2); margin: 0; max-height: 280px; overflow: auto; }

@@ -129,7 +129,11 @@ export default function Dojo() {
   const r: LensResult | null = isMock ? (mock?.result ?? null) : job?.status === 'done' ? job.result : null;
   const src = useMemo(() => {
     if (isMock && mock) return { original: mock.original, restored: mock.restored, residual: null as string | null };
-    if (job) return { original: api.lens.imageUrl(job.job_id, 'original'), restored: api.lens.imageUrl(job.job_id, 'restored'), residual: api.lens.imageUrl(job.job_id, 'residual') };
+    if (job) {
+      // press JPEGs are already display-stretched: show them linear; FITS data needs the asinh stretch
+      const st = job.result?.image.is_fits ? 'asinh' : 'linear';
+      return { original: api.lens.imageUrl(job.job_id, 'original', st), restored: api.lens.imageUrl(job.job_id, 'restored', st), residual: api.lens.imageUrl(job.job_id, 'residual') };
+    }
     return null;
   }, [isMock, mock, job]);
   const det = r?.detections.find((d) => d.id === sel) ?? null;
