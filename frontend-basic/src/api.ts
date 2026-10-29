@@ -681,6 +681,34 @@ export const api = {
     skyviewUrl: (id: string, survey = 'DSS2 Red') => buildUrl(`/api/lens/jobs/${encodeURIComponent(id)}/skyview`, { survey }),
     catalog: (id: string, signal?: AbortSignal) => getRaw<CatalogMatch[]>(`/api/lens/jobs/${encodeURIComponent(id)}/catalog`, undefined, signal),
   },
+
+  /** Web Push alerts. Subscribe through `src/push.ts` (it needs the service worker); these calls take the endpoint it returns. */
+  alerts: {
+    vapidPublicKey: () => getRaw<{ public_key: string }>('/api/alerts/vapid-public-key'),
+    schedule: (p: { endpoint: string; title: string; body: string; fire_at: string; url?: string; event_id?: string }) =>
+      post<ScheduledAlert>('/api/alerts/schedule', p),
+    scheduleEvent: (p: { endpoint: string; lat: number; lon: number; event_id: string; lead_minutes?: number; days?: number }) =>
+      post<ScheduledAlert & { event: SkyEvent }>('/api/alerts/schedule-event', p),
+    test: (endpoint: string, delaySeconds = 0) => post<ScheduledAlert & { delivery?: { sent: number; failed: number; gone: number } }>('/api/alerts/test', { endpoint, delay_seconds: delaySeconds }),
+    scheduled: (endpoint: string, includeSent = false, signal?: AbortSignal) =>
+      getRaw<ScheduledAlert[]>('/api/alerts/scheduled', { endpoint, include_sent: includeSent }, signal),
+    cancel: (alertId: number, endpoint: string) => request(buildUrl(`/api/alerts/scheduled/${alertId}`, { endpoint }), { method: 'DELETE' }),
+    stats: (signal?: AbortSignal) => getRaw<Record<string, number | string>>('/api/alerts/stats', undefined, signal),
+  },
 };
+
+export interface ScheduledAlert {
+  id: number;
+  subscription_id: number;
+  title: string;
+  body: string;
+  url: string | null;
+  event_id: string | null;
+  fire_at: string;
+  status: 'scheduled' | 'sent' | 'failed' | 'cancelled';
+  created_at: string;
+  sent_at: string | null;
+  error: string | null;
+}
 
 export default api;

@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .core.config import settings
+from .alerts.router import router as alerts_router
 from .core.http import ProviderError
 from .lens.router import router as lens_router
 from .scroll.router import router as scroll_router
@@ -28,9 +29,12 @@ async def lifespan(app: FastAPI):
             except Exception:  # noqa: BLE001
                 pass
 
-    task = asyncio.create_task(warm())
+    from .alerts import worker as alert_worker
+
+    tasks = [asyncio.create_task(warm()), asyncio.create_task(alert_worker.run_forever())]
     yield
-    task.cancel()
+    for t in tasks:
+        t.cancel()
 
 
 app = FastAPI(
@@ -67,3 +71,4 @@ async def health():
 app.include_router(watchtower_router, prefix="/api/watchtower", tags=["watchtower"])
 app.include_router(scroll_router, prefix="/api/scroll", tags=["scroll"])
 app.include_router(lens_router, prefix="/api/lens", tags=["lens"])
+app.include_router(alerts_router, prefix="/api/alerts", tags=["alerts"])

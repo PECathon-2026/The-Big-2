@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { API_BASE, ApiError, buildUrl } from '../api';
+import api, { API_BASE, ApiError, buildUrl } from '../api';
 import { Card } from '../components/Card';
+import { NotifyButton } from '../components/Notify';
 import { Controls } from '../components/Controls';
 import { JsonView } from '../components/JsonView';
 import { ErrorBox } from '../components/Status';
@@ -132,6 +133,30 @@ export default function Science() {
             </div>
           );
         })}
+      </Card>
+      <Card en="Push alerts" jp="知らせ">
+        <p className="muted small">
+          Subscribes this browser (service worker + VAPID) and asks the backend to send a notification. Works on localhost or HTTPS; the
+          backend's worker delivers scheduled alerts every 30 s.
+        </p>
+        <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
+          <NotifyButton
+            small={false}
+            label="Send test alert now"
+            schedule={async (endpoint) => {
+              const r = await api.alerts.test(endpoint, 0);
+              return r.status === 'sent' ? 'delivered to the push service' : `status ${r.status}${r.error ? `: ${r.error}` : ''}`;
+            }}
+          />
+          <NotifyButton
+            small={false}
+            label="Send test alert in 1 minute"
+            schedule={async (endpoint) => {
+              const r = await api.alerts.test(endpoint, 60);
+              return `scheduled for ${new Date(r.fire_at).toLocaleTimeString()}`;
+            }}
+          />
+        </div>
       </Card>
       <p className="muted small" style={{ marginTop: 14 }}>
         Lens POST endpoints (<code>/api/lens/jobs</code>, <code>/benchmark</code>, <code>/solve</code>) are exercised from the Lens page; image endpoints return PNG.

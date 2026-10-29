@@ -2,6 +2,7 @@ import api from '../api';
 import { Card, Chip, KV } from '../components/Card';
 import { Controls } from '../components/Controls';
 import { MoonGlyph } from '../components/MoonGlyph';
+import { NotifyButton } from '../components/Notify';
 import { ProvenanceFooter } from '../components/Provenance';
 import { Await } from '../components/Status';
 import { useApp } from '../context/AppContext';
@@ -65,7 +66,23 @@ export default function Tonight() {
                     ['Next', m.next_quarters.slice(0, 2).map((q) => `${q.name} ${fmtTime(q.time, m.timezone, true)}`).join(' · ')],
                   ]}
                 />
-                {m.alert && <div className="alert">{m.alert}</div>}
+                {m.alert && (
+                  <div className="alert">
+                    {m.alert}
+                    {m.rise && new Date(m.rise).getTime() > Date.now() && (
+                      <div style={{ marginTop: 8 }}>
+                        <NotifyButton
+                          label="Notify me 15 min before moonrise"
+                          schedule={async (endpoint) => {
+                            const fireAt = new Date(new Date(m.rise as string).getTime() - 15 * 60_000).toISOString();
+                            const r = await api.alerts.schedule({ endpoint, title: `Moonrise · ${m.name.kanji}`, body: m.alert ?? 'The Moon rises', fire_at: fireAt, event_id: `moonrise-${(m.rise as string).slice(0, 10)}` });
+                            return `push at ${fmtTime(r.fire_at, m.timezone, true)}`;
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </Await>
