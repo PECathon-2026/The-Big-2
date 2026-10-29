@@ -27,7 +27,8 @@ const ROUTE: Record<string, [string, string | null]> = {
   launch: ['/scroll#launches', null],
 };
 
-export default function Countdown() {
+/** `compact`: a single line ("MOONSET · 38m 21s") for narrow screens, shown under the location chip. */
+export default function Countdown({ compact = false }: { compact?: boolean }) {
   const events = useTonight((s) => s.events.data);
   const passes = useTonight((s) => s.passes.data);
   const tz = useApp((s) => s.tz);
@@ -73,6 +74,17 @@ export default function Countdown() {
     void Director.diveTo(obj, { x: r.left + r.width / 2, y: r.bottom - 10 }, next.route);
   };
 
+  if (compact) {
+    const short = d > 0 ? `${d}d ${pad(h)}h` : h > 0 ? `${h}h ${pad(m)}m` : `${m}m ${pad(s)}s`;
+    return (
+      <button className="hud-count-line hud-bar" onClick={dive} aria-label={`Next: ${next.title} in ${short}. Open in the Celestial Scroll`}>
+        {soon && <span className="beacon" aria-hidden="true" />}
+        <span className="t">{next.title}</span>
+        <span className="sep" aria-hidden="true">·</span>
+        <span className="num">{short}</span>
+      </button>
+    );
+  }
   return (
     <button className="hud-count hud-bar" onClick={dive} aria-label={`Next: ${next.title} at ${fmtClock(new Date(next.at), tz, true)}, in ${d} days ${h} hours ${m} minutes. Open in the Celestial Scroll`}>
       <span className="lbl">

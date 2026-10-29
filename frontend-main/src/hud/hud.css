@@ -9,9 +9,12 @@
 .hud.on-page .hud-loc, .hud.on-page .hud-count { display: none; }
 .hud-topbar {
   position: absolute; inset: 0 0 auto 0; height: 80px; pointer-events: none !important;
-  background: linear-gradient(180deg, var(--header-bg) 0, var(--header-bg) 70%, transparent);
-  border-bottom: 1px solid transparent;
+  /* pecfest navbar colour laid over the opaque page background: page text scrolling beneath never ghosts through */
+  background: linear-gradient(var(--header-bg), var(--header-bg)), var(--page-bg);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--card-line-soft);
 }
+.hud-topbar::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 18px; background: linear-gradient(180deg, rgba(11, 21, 28, .6), transparent); }
 
 /* ---------- top-left: wordmark + location ---------- */
 .hud-tl { position: absolute; top: 18px; left: 22px; display: grid; gap: 8px; justify-items: start; }
@@ -253,3 +256,25 @@ dialog.city-dialog { max-width: min(560px, calc(100vw - 32px)); }
 .dir-hl .hl-row { min-height: 52px; }
 .dir-hl .hl-row b { font-size: 15px; }
 .dir-hl .hl-row .g { font-size: 17px; }
+
+/* compact countdown line (narrow screens only) */
+.hud-count-line { display: none; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; max-width: calc(100vw - 32px); font-size: 11px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); }
+.hud-count-line .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 52vw; }
+.hud-count-line .sep { color: var(--card-line); }
+.hud-count-line .num { color: var(--kinu); font-family: var(--font-display); font-size: 14px; letter-spacing: .04em; text-transform: none; }
+
+/* Phone width (Lite / touch): no overlaps. */
+@media (max-width: 700px) {
+  .hud-tl { top: 12px; left: 12px; gap: 6px; }
+  .hud-tr { top: 12px; right: 12px; }
+  .hud-wordmark .latin { display: none; }
+  .hud-tr .hud-count { display: none; }
+  .hud-count-line { display: inline-flex; }
+  .hud.on-page .hud-count-line { display: none; }
+  .hud-dir-btn { width: 44px; min-width: 44px; padding: 0; }
+  .hud-dir-btn .lbl { display: none; }
+  .hud-loc { min-height: 40px; font-size: 12px; gap: 8px; max-width: calc(100vw - 80px); }
+  .hud-loc .coords { display: none; }
+  .sound { display: none; } /* the directory has the sound toggle */
+  .hud-topbar { height: 68px; }
+}

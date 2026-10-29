@@ -139,15 +139,19 @@ export default function HudRoot() {
                 <span className="jp" lang="ja">
                   月読
                 </span>
-                <span aria-hidden="true">·</span> TSUKUYOMI
+                <span className="latin">
+                  <span aria-hidden="true">·</span> TSUKUYOMI
+                </span>
               </button>
               <LocationChip />
+              <Countdown compact />
             </div>
             <div className="hud-tr">
               <Countdown />
               <Button
                 variant="primary"
                 className="hud-dir-btn"
+                aria-label="Open the chapters directory"
                 aria-haspopup="dialog"
                 onClick={() => {
                   cue('clack');
@@ -157,7 +161,7 @@ export default function HudRoot() {
                 <span className="star" aria-hidden="true">
                   ✦
                 </span>
-                Chapters
+                <span className="lbl">Chapters</span>
               </Button>
             </div>
             <ChapterRail />
