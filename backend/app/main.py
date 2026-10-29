@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from .core.config import settings
 from .alerts.router import router as alerts_router
 from .core.http import ProviderError
+from .honor.router import router as honor_router
 from .lens.router import router as lens_router
 from .scroll.router import router as scroll_router
 from .watchtower.router import router as watchtower_router
@@ -72,3 +73,4 @@ app.include_router(watchtower_router, prefix="/api/watchtower", tags=["watchtowe
 app.include_router(scroll_router, prefix="/api/scroll", tags=["scroll"])
 app.include_router(lens_router, prefix="/api/lens", tags=["lens"])
 app.include_router(alerts_router, prefix="/api/alerts", tags=["alerts"])
+app.include_router(honor_router, prefix="/api/honor", tags=["honor"])
