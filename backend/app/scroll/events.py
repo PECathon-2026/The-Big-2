@@ -1,13 +1,16 @@
 """Unified event feed: everything the Celestial Scroll lists, in one shape, localised to the observer."""
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 
 from pydantic import BaseModel, Field
 
 from ..core import astro
+from ..core.compute import in_thread
 from ..core.envelope import Provenance
 from ..core.http import ProviderError
+from ..core.memo import floor_time, memoize_async
 from . import eclipses as ecl
 from . import launches as ll
 from . import meteors as met
@@ -38,6 +41,18 @@ def _compass(az: float) -> str:
     return ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][int((az + 22.5) // 45) % 8]
 
 
+def _loc(zone) -> Callable[[datetime], str]:
+    def loc(d: datetime) -> str:
+        return d.astimezone(zone).strftime("%a %d %b %H:%M")
+
+    return loc
+
+
+def _events_key(lat: float, lon: float, days: int = 7, types: list[str] | None = None, start: datetime | None = None, bortle: float | None = None):
+    return round(lat, 2), round(lon, 2), days, tuple(sorted(types or ALL_TYPES)), bortle, floor_time(start or datetime.now(timezone.utc), 300)
+
+
+@memoize_async(ttl_s=5 * 60, key=_events_key, maxsize=128)
 async def events(
     lat: float,
     lon: float,
@@ -46,16 +61,77 @@ async def events(
     start: datetime | None = None,
     bortle: float | None = None,
 ) -> tuple[list[Event], list[Provenance]]:
+    """The feed has two halves: the computed one (Moon, showers, eclipses, planets) runs in a worker thread so it
+    never blocks the event loop; the upstream one (ISS passes, launches) is awaited here."""
     types = types or ALL_TYPES
     start = (start or datetime.now(timezone.utc)).astimezone(timezone.utc)
     end = start + timedelta(days=days)
     zone = astro.tz(lat, lon)
+    loc = _loc(zone)
 
-    def loc(d: datetime) -> str:
-        return d.astimezone(zone).strftime("%a %d %b %H:%M")
-
-    out: list[Event] = []
+    out: list[Event] = await in_thread(_computed_events, lat, lon, start, end, zone, types, bortle)
     prov: list[Provenance] = [Provenance(source="computed", note="astronomy-engine")]
+
+    if "satellite" in types:
+        try:
+            ps, p = await sat.passes(lat, lon, days=min(days, 5), sat="ISS", start=start)
+            prov.append(p)
+            for ps_ in ps:
+                if ps_.visible:
+                    out.append(
+                        Event(
+                            id=f"iss-{ps_.start.isoformat()}",
+                            kind="satellite",
+                            title="ISS pass",
+                            jp="国際宇宙ステーション",
+                            start=ps_.start,
+                            end=ps_.end,
+                            start_local=loc(ps_.start),
+                            visible_from_here=True,
+                            direction=f"{ps_.start_compass}→{ps_.end_compass}",
+                            altitude_max=ps_.max_alt,
+                            detail=f"Max {ps_.max_alt:.0f}°, {ps_.visible_seconds // 60} min visible, {ps_.brightness_hint}.",
+                            alert=ps_.alert,
+                            source="celestrak + sgp4",
+                        )
+                    )
+        except (ProviderError, ValueError) as e:
+            prov.append(Provenance(source="celestrak", note=str(e)))
+
+    if "launch" in types:
+        try:
+            ls, p = await ll.upcoming(lat, lon, limit=30)
+            prov.append(p)
+            for l in ls:
+                if l.net and start <= l.net < end:
+                    detail = f"{l.provider or ''} · {l.location or ''}"
+                    if l.distance_km is not None:
+                        detail += f" · {l.distance_km:.0f} km away · {l.visible_trail_hint}"
+                    out.append(
+                        Event(
+                            id=f"launch-{l.id}",
+                            kind="launch",
+                            title=l.name,
+                            jp="打上げ",
+                            start=l.net,
+                            end=l.window_end,
+                            start_local=loc(l.net),
+                            visible_from_here=(l.distance_km or 1e9) < 800,
+                            detail=detail,
+                            source="launch-library-2",
+                        )
+                    )
+        except ProviderError as e:
+            prov.append(Provenance(source="launch-library-2", note=str(e)))
+
+    out.sort(key=lambda e: e.start)
+    return out, prov
+
+
+def _computed_events(lat: float, lon: float, start: datetime, end: datetime, zone, types: list[str], bortle: float | None) -> list[Event]:
+    """Everything the feed can compute without the network. Pure CPU; called through `in_thread`."""
+    loc = _loc(zone)
+    out: list[Event] = []
 
     if "moon" in types:
         d = start
@@ -150,58 +226,6 @@ async def events(
                 )
             )
 
-    if "satellite" in types:
-        try:
-            ps, p = await sat.passes(lat, lon, days=min(days, 5), sat="ISS", start=start)
-            prov.append(p)
-            for ps_ in ps:
-                if ps_.visible:
-                    out.append(
-                        Event(
-                            id=f"iss-{ps_.start.isoformat()}",
-                            kind="satellite",
-                            title="ISS pass",
-                            jp="国際宇宙ステーション",
-                            start=ps_.start,
-                            end=ps_.end,
-                            start_local=loc(ps_.start),
-                            visible_from_here=True,
-                            direction=f"{ps_.start_compass}→{ps_.end_compass}",
-                            altitude_max=ps_.max_alt,
-                            detail=f"Max {ps_.max_alt:.0f}°, {ps_.visible_seconds // 60} min visible, {ps_.brightness_hint}.",
-                            alert=ps_.alert,
-                            source="celestrak + sgp4",
-                        )
-                    )
-        except (ProviderError, ValueError) as e:
-            prov.append(Provenance(source="celestrak", note=str(e)))
-
-    if "launch" in types:
-        try:
-            ls, p = await ll.upcoming(lat, lon, limit=30)
-            prov.append(p)
-            for l in ls:
-                if l.net and start <= l.net < end:
-                    detail = f"{l.provider or ''} · {l.location or ''}"
-                    if l.distance_km is not None:
-                        detail += f" · {l.distance_km:.0f} km away · {l.visible_trail_hint}"
-                    out.append(
-                        Event(
-                            id=f"launch-{l.id}",
-                            kind="launch",
-                            title=l.name,
-                            jp="打上げ",
-                            start=l.net,
-                            end=l.window_end,
-                            start_local=loc(l.net),
-                            visible_from_here=(l.distance_km or 1e9) < 800,
-                            detail=detail,
-                            source="launch-library-2",
-                        )
-                    )
-        except ProviderError as e:
-            prov.append(Provenance(source="launch-library-2", note=str(e)))
-
     if "planet" in types:
         evening = start.astimezone(zone).replace(hour=21, minute=0, second=0, microsecond=0)
         if evening < start.astimezone(zone):
@@ -224,5 +248,4 @@ async def events(
                     )
                 )
 
-    out.sort(key=lambda e: e.start)
-    return out, prov
+    return out

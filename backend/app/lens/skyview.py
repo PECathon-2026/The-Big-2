@@ -15,6 +15,9 @@ from PIL import Image
 
 from ..core.envelope import Provenance
 from ..core.http import ProviderError, fetch
+def _png_or_fits(b: bytes) -> bool:
+    return b[:8] == b"\x89PNG\r\n\x1a\n" or b[:6] == b"SIMPLE"
+
 
 SKYVIEW_URL = "https://skyview.gsfc.nasa.gov/current/cgi/runquery.pl"
 TTL_7_DAYS = 7 * 86400
@@ -51,7 +54,7 @@ async def fetch_cutout(ra: float, dec: float, fov_deg: float, survey: str = "DSS
         "Position": f"{ra:.6f},{dec:.6f}", "Survey": survey, "Pixels": str(pixels), "Size": f"{fov:.5f}",
         "Coordinates": "J2000", "Projection": "Tan", "Return": "PNG",
     }
-    got = await fetch("skyview", SKYVIEW_URL, params=params, ttl=TTL_7_DAYS, binary=True, retries=1)
+    got = await fetch("skyview", SKYVIEW_URL, params=params, ttl=TTL_7_DAYS, binary=True, retries=1, validate=_png_or_fits)
     data: bytes = got.data
     if data[:8] == b"\x89PNG\r\n\x1a\n":
         return data, got.provenance
@@ -59,7 +62,7 @@ async def fetch_cutout(ra: float, dec: float, fov_deg: float, survey: str = "DSS
         return _fits_to_png(data), got.provenance
     # PNG not honoured: ask for FITS explicitly and convert.
     params["Return"] = "FITS"
-    got = await fetch("skyview", SKYVIEW_URL, params=params, ttl=TTL_7_DAYS, binary=True, retries=1)
+    got = await fetch("skyview", SKYVIEW_URL, params=params, ttl=TTL_7_DAYS, binary=True, retries=1, validate=_png_or_fits)
     if got.data[:6] == b"SIMPLE":
         return _fits_to_png(got.data), got.provenance
     raise ProviderError("skyview", "unexpected response (neither PNG nor FITS); the survey name may be invalid")

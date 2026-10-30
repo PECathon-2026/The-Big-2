@@ -8,6 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from ..core.compute import in_thread
 from ..core.envelope import Provenance
 from ..core.http import ProviderError, fetch
 from . import lightpollution, openmeteo
@@ -200,8 +201,23 @@ async def rank_spots(lat: float, lon: float, radius_km: float = 60.0, limit: int
     lps = await asyncio.gather(*(lp(c) for c in chosen))
     prov.append(next((p for _, p in lps if p.source == "nasa-gibs" and p.fetched_at), lps[0][1]))
 
+    spots = await in_thread(_score_spots, chosen, fc, air, [b for b, _ in lps], ref)
+    return (
+        SpotsResult(
+            origin={"lat": lat, "lon": lon},
+            radius_km=radius_km,
+            candidates_found=len(cands),
+            spots=spots,
+            formula="rank = night_score × (0.5 + 0.5·(9−Bortle)/8) × (1 + min(0.15, (elev−600)/4000)) − min(25, 0.25·km)",
+        ),
+        prov,
+    )
+
+
+def _score_spots(chosen: list[dict[str, Any]], fc: list[dict[str, Any]], air: dict[str, Any] | None, bortles: list[float | None], ref: datetime | None) -> list[Spot]:
+    """Score every candidate for tonight and rank them. Pure computation; runs in a worker thread."""
     spots: list[Spot] = []
-    for c, f, (bortle, _) in zip(chosen, fc, lps):
+    for c, f, bortle in zip(chosen, fc, bortles):
         ns: NightScore = compute_night_score(c["lat"], c["lon"], f, air, None, bortle, ref=ref)
         night = ns.best_window.mean_score if ns.best_window else ns.verdict.score
         elev = c.get("ele") or f.get("elevation")
@@ -229,13 +245,4 @@ async def rank_spots(lat: float, lon: float, radius_km: float = 60.0, limit: int
             )
         )
     spots.sort(key=lambda s: s.rank_score, reverse=True)
-    return (
-        SpotsResult(
-            origin={"lat": lat, "lon": lon},
-            radius_km=radius_km,
-            candidates_found=len(cands),
-            spots=spots,
-            formula="rank = night_score × (0.5 + 0.5·(9−Bortle)/8) × (1 + min(0.15, (elev−600)/4000)) − min(25, 0.25·km)",
-        ),
-        prov,
-    )
+    return spots

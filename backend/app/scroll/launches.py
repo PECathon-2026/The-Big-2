@@ -46,7 +46,7 @@ class Launch(BaseModel):
 async def upcoming(lat: float | None = None, lon: float | None = None, limit: int = 20) -> tuple[list[Launch], Provenance]:
     params: dict = {"limit": limit, "mode": "detailed", "ordering": "net"}
     headers = {"Authorization": f"Token {settings.launch_library_key}"} if settings.launch_library_key else None
-    f = await fetch("launch-library-2", LL2, params=params, headers=headers, ttl=60 * 60, retries=0)
+    f = await fetch("launch-library-2", LL2, params=params, headers=headers, ttl=60 * 60, retries=0, validate=lambda d: isinstance(d, dict) and isinstance(d.get("results"), list))
     zone = astro.tz(lat, lon) if lat is not None and lon is not None else timezone.utc
     out: list[Launch] = []
     for r in f.data.get("results", []):

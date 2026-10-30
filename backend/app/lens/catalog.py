@@ -14,6 +14,10 @@ import numpy as np
 from ..core.envelope import Provenance
 from ..core.http import ProviderError, fetch
 from .models import CatalogMatch, Detection
+def tap_ok(d) -> bool:
+    """A TAP JSON reply always has a `data` table (possibly empty); anything else is an error page or a stub."""
+    return isinstance(d, dict) and isinstance(d.get("data"), list)
+
 
 SIMBAD_MIRRORS = (
     "https://simbad.cds.unistra.fr/simbad/sim-tap/sync",
@@ -49,7 +53,7 @@ async def _find_mirror() -> tuple[str | None, list[str]]:
     errors: list[str] = []
     for url in SIMBAD_MIRRORS:
         try:
-            await fetch("simbad", url, params=_params("SELECT TOP 1 main_id FROM basic"), ttl=3600, retries=0)
+            await fetch("simbad", url, params=_params("SELECT TOP 1 main_id FROM basic"), ttl=3600, retries=0, validate=tap_ok)
             _live_mirror = url
             return url, errors
         except ProviderError as e:
@@ -60,7 +64,7 @@ async def _find_mirror() -> tuple[str | None, list[str]]:
 async def _cone(url: str, d: Detection, r: float):
     adql = (f"SELECT main_id, otype, ra, dec FROM basic WHERE CONTAINS(POINT('ICRS', ra, dec), "
             f"CIRCLE('ICRS', {d.ra:.6f}, {d.dec:.6f}, {r:.6f})) = 1")
-    return await fetch("simbad", url, params=_params(adql), ttl=TTL_7_DAYS, retries=0)
+    return await fetch("simbad", url, params=_params(adql), ttl=TTL_7_DAYS, retries=0, validate=tap_ok)
 
 
 async def simbad_matches(dets: list[Detection], pixel_scale_arcsec: float, fwhm_px: float | None) -> tuple[list[CatalogMatch], str | None, Provenance | None]:

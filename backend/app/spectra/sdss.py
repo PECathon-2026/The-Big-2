@@ -28,7 +28,7 @@ async def nearest(ra: float, dec: float, radius_arcmin: float = 1.0, limit: int 
         f"s.snMedian, n.distance FROM SpecObj AS s JOIN dbo.fGetNearbySpecObjEq({ra:.6f}, {dec:.6f}, {radius_arcmin:.3f}) AS n "
         f"ON s.specObjID = n.specObjID ORDER BY n.distance"
     )
-    f = await fetch("sdss-skyserver", SQL_URL, params={"cmd": sql, "format": "json"}, ttl=7 * 86400)
+    f = await fetch("sdss-skyserver", SQL_URL, params={"cmd": sql, "format": "json"}, ttl=7 * 86400, validate=lambda d: isinstance(d, list) and bool(d) and isinstance(d[0], dict) and isinstance(d[0].get("Rows"), list))
     rows = []
     try:
         rows = f.data[0]["Rows"]
@@ -52,7 +52,7 @@ def fits_url(plate: int, mjd: int, fiberid: int, run2d: str, survey: str) -> str
 
 async def spectrum_fits(plate: int, mjd: int, fiberid: int, run2d: str, survey: str) -> tuple[bytes, Provenance]:
     url = fits_url(plate, mjd, fiberid, run2d, survey)
-    f = await fetch("sdss-sas", url, ttl=30 * 86400, binary=True, cache_name="sdss-spectra", retries=1)
+    f = await fetch("sdss-sas", url, ttl=30 * 86400, binary=True, cache_name="sdss-spectra", retries=1, validate=lambda b: b[:6] == b"SIMPLE" and len(b) > 2880)
     return f.data, f.provenance
 
 

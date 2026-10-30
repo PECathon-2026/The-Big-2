@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from ..core import astro
+from ..core.compute import in_thread
 from ..core.envelope import Envelope, Provenance
 from ..core.http import ProviderError
 from ..planner import targets
@@ -43,14 +44,14 @@ async def _terrain(lat: float, lon: float, use: bool) -> tuple[list[float], floa
 async def get_terrain(lat: float = Query(..., ge=-90, le=90), lon: float = Query(..., ge=-180, le=180)):
     """Terrain-only horizon for a point: the elevation angle of the land in every 5° direction."""
     t, h, prov = await _terrain(lat, lon, True)
-    return Envelope(data=terrain.build(lat, lon, t, h, []), provenance=prov)
+    return Envelope(data=await in_thread(terrain.build, lat, lon, t, h, []), provenance=prov)
 
 
 @router.post("/mask", response_model=Envelope[terrain.Horizon])
 async def mask(body: MaskBody):
     """Terrain horizon merged with the user's traced skyline."""
     t, h, prov = await _terrain(body.lat, body.lon, body.use_terrain)
-    return Envelope(data=terrain.build(body.lat, body.lon, t, h, body.points), provenance=prov)
+    return Envelope(data=await in_thread(terrain.build, body.lat, body.lon, t, h, body.points), provenance=prov)
 
 
 @router.post("/path")
@@ -61,8 +62,12 @@ async def path(body: PathBody):
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
     t, h, prov = await _terrain(body.lat, body.lon, body.use_terrain)
-    hz = terrain.build(body.lat, body.lon, t, h, body.points)
     ref = (body.date or datetime.now(timezone.utc)).astimezone(timezone.utc)
-    sunset, dusk, dawn, sunrise = astro.night_bounds(body.lat, body.lon, ref)
-    rep = terrain.path_vs_mask(target, body.lat, body.lon, hz.mask, sunset, sunrise)
+
+    def compute():
+        hz = terrain.build(body.lat, body.lon, t, h, body.points)
+        sunset, _dusk, _dawn, sunrise = astro.night_bounds(body.lat, body.lon, ref)
+        return hz, sunset, sunrise, terrain.path_vs_mask(target, body.lat, body.lon, hz.mask, sunset, sunrise)
+
+    hz, sunset, sunrise, rep = await in_thread(compute)
     return Envelope(data={"horizon": hz, "report": rep, "night": {"sunset": sunset, "sunrise": sunrise}}, provenance=[p0, *prov])

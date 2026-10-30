@@ -32,3 +32,7 @@ backend/data/honor.db
 .presentation-build/
 .graphify_*
 graphify-out/cache/
+
+# test and soak outputs
+backend/scripts/*-result.json
+backend/.hypothesis/

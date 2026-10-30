@@ -14,6 +14,9 @@ from PIL import Image
 
 from ..core.envelope import Provenance
 from ..core.http import fetch
+def _is_image(b: bytes) -> bool:
+    return b[:4] == b"\x89PNG" or b[:2] == b"\xff\xd8"  # PNG or JPEG; an HTML error page is neither
+
 
 GIBS_URL = "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/{layer}/default/{date}/{tms}/{z}/{y}/{x}.png"
 LAYER = "VIIRS_Black_Marble"
@@ -46,7 +49,7 @@ def brightness_to_bortle(b: float) -> float:
 async def sample(lat: float, lon: float) -> tuple[dict, Provenance]:
     x, y, px, py = tile_xy(lat, lon, ZOOM)
     url = GIBS_URL.format(layer=LAYER, date=DATE, tms=TMS, z=ZOOM, y=y, x=x)
-    f = await fetch("nasa-gibs", url, ttl=30 * 24 * 3600, binary=True, cache_name="gibs-tiles")
+    f = await fetch("nasa-gibs", url, ttl=30 * 24 * 3600, binary=True, cache_name="gibs-tiles", validate=_is_image)
     img = Image.open(io.BytesIO(f.data)).convert("RGB")
     w, h = img.size
     cx, cy = int(px), int(py)

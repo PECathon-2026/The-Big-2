@@ -8,7 +8,10 @@ from datetime import datetime, timedelta, timezone
 import astronomy as ae
 from pydantic import BaseModel
 
+from zoneinfo import ZoneInfo
+
 from ..core import astro
+from ..core.memo import memoize
 from .moon import moon_name
 
 SEKKI = [
@@ -116,6 +119,12 @@ def lunar_month_number(new_moon: datetime) -> int:
     return ((11 + n - 1) % 12) + 1
 
 
+def _calendar_key(lat: float, lon: float, year: int, month: int):
+    zone = astro.tz_name(lat, lon)
+    return zone, year, month, datetime.now(ZoneInfo(zone)).date()  # "today" is marked in the output
+
+
+@memoize(ttl_s=6 * 3600, key=_calendar_key, maxsize=64)
 def month_calendar(lat: float, lon: float, year: int, month: int) -> LunarCalendar:
     zone = astro.tz(lat, lon)
     today = datetime.now(zone).date()

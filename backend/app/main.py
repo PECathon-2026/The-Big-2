@@ -23,11 +23,13 @@ from .watchtower.router import router as watchtower_router
 async def lifespan(app: FastAPI):
     """Startup: make sure the Lens sample images exist, then warm the slow caches (Overpass spots for the
     demo cities) in the background; failures are harmless."""
+    from .core import memo
     from .core.cache import seed_replay_from_repo
     from .lens.router import _ensure_samples
     from .watchtower import spots
 
     seed_replay_from_repo()
+    memo.clear_all()  # computed answers never outlive a process start (and every TestClient starts fresh)
     await asyncio.to_thread(_ensure_samples)
 
     async def warm():

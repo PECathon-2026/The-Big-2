@@ -7,6 +7,7 @@ import astronomy as ae
 from pydantic import BaseModel
 
 from ..core import astro
+from ..core.memo import floor_time, memoize
 
 KIND = {
     ae.EclipseKind.Penumbral: "penumbral",
@@ -94,6 +95,12 @@ def solar_eclipses(lat: float, lon: float, start: datetime, count: int = 2) -> l
     return out
 
 
+def _eclipse_key(lat: float, lon: float, start: datetime | None = None, lunar: int = 3, solar: int = 2):
+    # a 0.01° move changes the peak altitude by 0.01°; the search start matters only to the hour
+    return round(lat, 2), round(lon, 2), floor_time(start or datetime.now(timezone.utc), 3600), lunar, solar
+
+
+@memoize(ttl_s=6 * 3600, key=_eclipse_key, maxsize=128)
 def eclipses(lat: float, lon: float, start: datetime | None = None, lunar: int = 3, solar: int = 2) -> list[Eclipse]:
     start = (start or datetime.now(timezone.utc)).astimezone(timezone.utc)
     ev = lunar_eclipses(lat, lon, start, lunar) + solar_eclipses(lat, lon, start, solar)

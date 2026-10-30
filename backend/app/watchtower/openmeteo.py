@@ -6,6 +6,11 @@ from typing import Any
 
 from ..core.envelope import Provenance
 from ..core.http import fetch
+def _hourly_ok(d) -> bool:
+    """Open-Meteo answers one dict per point (or a list of them); each must carry a non-empty hourly time axis."""
+    rows = d if isinstance(d, list) else [d]
+    return bool(rows) and all(isinstance(r, dict) and isinstance(r.get("hourly"), dict) and bool(r["hourly"].get("time")) for r in rows)
+
 
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 AIR_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
@@ -53,7 +58,7 @@ async def forecast(points: list[tuple[float, float]], days: int = 3) -> tuple[li
         "forecast_days": days,
         "timezone": "auto",
     }
-    f = await fetch("open-meteo", FORECAST_URL, params=params, ttl=15 * 60)
+    f = await fetch("open-meteo", FORECAST_URL, params=params, ttl=15 * 60, validate=_hourly_ok)
     raw = f.data if isinstance(f.data, list) else [f.data]
     out = []
     for r in raw:
@@ -80,7 +85,7 @@ async def air_quality(lat: float, lon: float, days: int = 3) -> tuple[dict[str, 
         "forecast_days": days,
         "timezone": "auto",
     }
-    f = await fetch("open-meteo-air-quality", AIR_URL, params=params, ttl=60 * 60)
+    f = await fetch("open-meteo-air-quality", AIR_URL, params=params, ttl=60 * 60, validate=_hourly_ok)
     h = f.data["hourly"]
     return (
         {
@@ -101,7 +106,7 @@ async def ensemble_cloud_spread(lat: float, lon: float, days: int = 2) -> tuple[
         "models": "icon_seamless,gfs_seamless",
         "forecast_days": days,
     }
-    f = await fetch("open-meteo-ensemble", ENSEMBLE_URL, params=params, ttl=60 * 60)
+    f = await fetch("open-meteo-ensemble", ENSEMBLE_URL, params=params, ttl=60 * 60, validate=_hourly_ok)
     raw = f.data if isinstance(f.data, list) else [f.data]
     times = raw[0]["hourly"]["time"]
     member_series: list[list[float | None]] = []
@@ -133,5 +138,5 @@ async def ensemble_cloud_spread(lat: float, lon: float, days: int = 2) -> tuple[
 
 async def elevation(points: list[tuple[float, float]]) -> tuple[list[float], Provenance]:
     params = {"latitude": ",".join(_fmt(p[0]) for p in points), "longitude": ",".join(_fmt(p[1]) for p in points)}
-    f = await fetch("open-meteo-elevation", ELEVATION_URL, params=params, ttl=30 * 24 * 3600, retries=4)
+    f = await fetch("open-meteo-elevation", ELEVATION_URL, params=params, ttl=30 * 24 * 3600, retries=4, validate=lambda d: isinstance(d, dict) and isinstance(d.get("elevation"), list) and len(d["elevation"]) == len(points))
     return f.data["elevation"], f.provenance
