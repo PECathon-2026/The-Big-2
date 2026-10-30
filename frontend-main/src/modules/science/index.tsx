@@ -13,6 +13,7 @@ import { useApp } from '@/state/store';
 import { Card, Chip, Kanji, Tag } from '@/ui';
 import PageFrame from '../_ui/PageFrame';
 import { Reveal, ScrollerCtx, SectionHead, useCalm } from '../_ui/kit';
+import { SpectraSection, TransientTools } from './Explore';
 import './science.css';
 
 /** Licences we can state with certainty, by provenance source id. Anything else links to its source. */
@@ -225,6 +226,10 @@ export default function Science() {
           </Reveal>
         </div>
       </section>
+
+      <SpectraSection />
+
+      <TransientTools />
 
       <section className="pg-section" id="sources">
         <SectionHead jp="出典" eyebrow={`Shutten · ${sources.length} live sources this session`}>

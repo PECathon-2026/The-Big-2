@@ -29,3 +29,53 @@
 .sci-credit { height: 100%; }
 .sci-credit .pg-name { margin-bottom: 12px; }
 .sci-md { white-space: pre-wrap; font-family: var(--font-ui); font-size: 12.5px; line-height: 1.55; color: var(--washi-2); margin: 0; max-height: 280px; overflow: auto; }
+
+/* spectra + transient tools (Explore.tsx) */
+.sci-controls { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: flex-end; justify-content: space-between; margin-bottom: 18px; }
+.sci-picks { display: flex; flex-wrap: wrap; gap: 8px; }
+.sci-fields { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 12px; }
+.sci-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.sci-field.grow { flex: 1 1 200px; }
+.sci-field input, .sci-field select { min-height: 40px; width: 100%; max-width: 100%; padding: 0 12px; border-radius: 6px; border: 1px solid var(--card-line); background: rgba(11, 11, 11, .7); color: var(--washi); font: inherit; font-size: 13.5px; }
+.sci-field input { width: 110px; }
+.sci-field.grow input { width: 100%; }
+.sci-field input:focus, .sci-field select:focus { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+.sci-dim { opacity: .5; transition: opacity var(--dur-micro); }
+
+.sci-spec-stats { margin: 6px 0 14px; }
+.sci-spec { width: 100%; height: auto; display: block; margin: 4px 0 6px; }
+.sci-spec-grid { stroke: var(--card-line-soft); }
+.sci-spec-axis { stroke: var(--card-line); }
+.sci-spec-exp { stroke: var(--washi-3); stroke-dasharray: 2 4; opacity: .5; }
+.sci-spec-model { fill: none; stroke: var(--gold-soft); stroke-width: 1; opacity: .7; }
+.sci-spec-flux { fill: none; stroke: var(--moon); stroke-width: 1.1; }
+.sci-spec-line { stroke-width: 1; }
+.sci-spec-lbl { font-family: var(--font-ui); font-size: 10.5px; letter-spacing: .02em; }
+.emi .sci-spec-line { stroke: var(--gold); }
+.emi .sci-spec-lbl { fill: var(--gold-bright); }
+.abs .sci-spec-line { stroke: var(--crimson-bright); }
+.abs .sci-spec-lbl { fill: var(--crimson-bright); }
+.sci-legend { margin: 0 0 14px; }
+.sci-legend .sw, .sci-tr-card .sw { display: inline-block; width: 14px; height: 3px; vertical-align: middle; border-radius: 2px; margin-right: 2px; }
+.sw.flux { background: var(--moon); }
+.sw.model { background: var(--gold-soft); }
+.sw.emi { background: var(--gold); }
+.sw.abs { background: var(--crimson-bright); }
+.sw.real { background: var(--gold-bright); height: 8px; width: 8px; border-radius: 50%; }
+.sw.rej { background: var(--washi-3); height: 8px; width: 8px; border-radius: 50%; }
+.sci-lines { margin-top: 16px; }
+
+.sci-tr-card { height: 100%; }
+.sci-tr-scroll { max-height: 340px; overflow: auto; }
+.sci-tr-scroll.short { max-height: 220px; margin-top: 8px; }
+.sci-tr-row { cursor: pointer; transition: background var(--dur-micro); }
+.sci-tr-row:hover, .sci-tr-row:focus-visible { background: rgba(232, 217, 181, .05); outline: none; }
+.sci-tr-row.sel { background: rgba(198, 41, 32, .14); }
+.sci-tr-row.sel strong { color: var(--gold-bright); }
+.sci-stamps { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 12px; margin: 6px 0 16px; }
+.sci-stamp { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.sci-stamp-img { position: relative; aspect-ratio: 1; border: 1px solid var(--card-line); border-radius: 4px; overflow: hidden; background: var(--ink); }
+.sci-stamp-img img, .sci-stamp-img svg { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+.sci-stamp-img circle { fill: none; stroke-width: .6; }
+.sci-stamp-img circle.real { stroke: var(--gold-bright); }
+.sci-stamp-img circle.rej { stroke: var(--washi-3); stroke-dasharray: 1 1; }
