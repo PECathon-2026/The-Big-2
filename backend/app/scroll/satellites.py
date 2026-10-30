@@ -14,8 +14,10 @@ from pydantic import BaseModel, Field
 from sgp4.api import Satrec, jday
 
 from ..core import astro
+from ..core.compute import in_thread
 from ..core.envelope import Provenance
 from ..core.http import fetch
+from ..core.memo import floor_time, memoize
 
 CELESTRAK = "https://celestrak.org/NORAD/elements/gp.php"
 SATELLITES = {
@@ -25,6 +27,9 @@ SATELLITES = {
 }
 R_EARTH = 6378.137
 F = 1 / 298.257223563
+OMEGA_EARTH = 7.2921158553e-5  # Earth's sidereal rotation rate, rad/s
+STEP_S = 10  # sampling step of the pass scan and of the published track
+SCAN_BUCKET_S = 600  # scans start on a 10-minute boundary and are memoised for 15 minutes
 
 
 async def tle(catnr: int) -> tuple[tuple[str, str, str], Provenance]:
@@ -115,47 +120,86 @@ class Pass(BaseModel):
 async def passes(lat: float, lon: float, days: float = 3.0, sat: str = "ISS", elev_m: float = 0.0, min_alt: float = 10.0, start: datetime | None = None) -> tuple[list[Pass], Provenance]:
     catnr = SATELLITES.get(sat.upper(), None) or int(sat)
     (name, l1, l2), prov = await tle(catnr)
-    satrec = Satrec.twoline2rv(l1, l2)
-    start = (start or datetime.now(timezone.utc)).astimezone(timezone.utc)
-    obs = astro.observer(lat, lon, elev_m)
-    zone = astro.tz(lat, lon)
-    step = timedelta(seconds=10)
-    t = start
-    end_t = start + timedelta(days=days)
-    out: list[Pass] = []
-    cur: list[tuple[datetime, float, float, bool]] = []
-    # coarse scan at 30 s, refine to 10 s when above horizon
-    coarse = timedelta(seconds=30)
-    while t < end_t:
-        jd, fr = jday(t.year, t.month, t.day, t.hour, t.minute, t.second + t.microsecond / 1e6)
-        err, r, _ = satrec.sgp4(jd, fr)
-        if err != 0:
-            t += coarse
-            continue
-        r = np.array(r)
-        alt, az, _ = _altaz(_teme_to_ecef(r, t), lat, lon, elev_m / 1000)
-        if alt > 0:
-            cur.append((t, alt, az, _sunlit(r, t)))
-            t += step
-        else:
-            if cur:
-                p = _finish(cur, name.strip(), catnr, obs, zone, min_alt)
-                if p:
-                    out.append(p)
-                cur = []
-            t += coarse
-    if cur:
-        p = _finish(cur, name.strip(), catnr, obs, zone, min_alt)
-        if p:
-            out.append(p)
+    # the scan window starts on a 10-minute boundary so that repeated requests share one memoised scan
+    start = datetime.fromtimestamp(floor_time(start or datetime.now(timezone.utc), SCAN_BUCKET_S), tz=timezone.utc)
+    out = await in_thread(_scan, name, catnr, l1, l2, lat, lon, days, elev_m, min_alt, start)
     return out, prov
 
 
-def _finish(cur, name, catnr, obs, zone, min_alt) -> Pass | None:
+def _scan_key(name: str, catnr: int, l1: str, l2: str, lat: float, lon: float, days: float, elev_m: float, min_alt: float, start: datetime):
+    return l1, l2, round(lat, 3), round(lon, 3), days, elev_m, min_alt, start.timestamp()
+
+
+@memoize(ttl_s=15 * 60, key=_scan_key, maxsize=128)
+def _scan(name: str, catnr: int, l1: str, l2: str, lat: float, lon: float, days: float, elev_m: float, min_alt: float, start: datetime) -> list[Pass]:
+    """Propagate the orbit through the whole window at 10 s steps in one vectorised sweep, then cut the samples
+    above the horizon into passes. Pure CPU; runs in a worker thread.
+
+    The sweep is numpy end to end: SGP4 for every sample in one C call, Earth rotation as GMST at the start plus
+    the sidereal rate, ENU/alt-az algebra on arrays, and the Sun's direction sampled hourly from astronomy-engine
+    and interpolated (it moves 0.04°/h, far below what the cylindrical shadow test can resolve). The observer's
+    darkness uses the geometric Sun altitude from the same vectors (no refraction; the −6° threshold is coarse).
+    """
+    satrec = Satrec.twoline2rv(l1, l2)
+    zone = astro.tz(lat, lon)
+    n = int(days * 86400 // STEP_S) + 1
+    secs = np.arange(n, dtype=float) * STEP_S
+
+    # satellite position, TEME frame, km
+    jd0, fr0 = jday(start.year, start.month, start.day, start.hour, start.minute, start.second + start.microsecond / 1e6)
+    fr = fr0 + secs / 86400.0
+    whole = np.floor(fr)
+    err, r, _ = satrec.sgp4_array(np.full(n, jd0) + whole, fr - whole)
+    ok = err == 0
+
+    # Earth rotation: TEME → ECEF
+    theta = _gmst_rad(start) + OMEGA_EARTH * secs
+    c, s = np.cos(theta), np.sin(theta)
+    x = c * r[:, 0] + s * r[:, 1]
+    y = -s * r[:, 0] + c * r[:, 1]
+    z = r[:, 2]
+
+    # topocentric alt/az
+    la, lo = math.radians(lat), math.radians(lon)
+    o = _observer_ecef(lat, lon, elev_m / 1000)
+    dx, dy, dz = x - o[0], y - o[1], z - o[2]
+    east = -math.sin(lo) * dx + math.cos(lo) * dy
+    north = -math.sin(la) * math.cos(lo) * dx - math.sin(la) * math.sin(lo) * dy + math.cos(la) * dz
+    up = math.cos(la) * math.cos(lo) * dx + math.cos(la) * math.sin(lo) * dy + math.sin(la) * dz
+    rng = np.sqrt(east * east + north * north + up * up)
+    alt = np.degrees(np.arcsin(np.clip(up / rng, -1, 1)))
+    az = np.degrees(np.arctan2(east, north)) % 360
+
+    # Sun direction (geocentric, equator of date ≈ TEME), hourly samples interpolated to every step
+    hours = np.arange(0, secs[-1] + 3600, 3600.0)
+    sun = np.array([(v.x, v.y, v.z) for v in (ae.GeoVector(ae.Body.Sun, astro.to_time(start + timedelta(seconds=float(h))), True) for h in hours)])
+    sx, sy, sz = (np.interp(secs, hours, sun[:, k]) for k in range(3))
+    norm = np.sqrt(sx * sx + sy * sy + sz * sz)
+    sx, sy, sz = sx / norm, sy / norm, sz / norm
+    proj = r[:, 0] * sx + r[:, 1] * sy + r[:, 2] * sz
+    perp = np.sqrt(np.maximum((r[:, 0] - proj * sx) ** 2 + (r[:, 1] - proj * sy) ** 2 + (r[:, 2] - proj * sz) ** 2, 0))
+    sunlit = (proj > 0) | (perp > R_EARTH)
+    # observer darkness: Sun altitude from the same unit vectors rotated into ECEF
+    sun_up = math.cos(la) * math.cos(lo) * (c * sx + s * sy) + math.cos(la) * math.sin(lo) * (-s * sx + c * sy) + math.sin(la) * sz
+    dark = np.degrees(np.arcsin(np.clip(sun_up, -1, 1))) < -6
+
+    # contiguous runs of samples above the horizon are passes
+    above = ok & (alt > 0)
+    edges = np.flatnonzero(np.diff(np.concatenate(([0], above.astype(np.int8), [0]))))
+    out: list[Pass] = []
+    for a, b in zip(edges[::2], edges[1::2]):
+        cur = [(start + timedelta(seconds=float(secs[i])), float(alt[i]), float(az[i]), bool(sunlit[i])) for i in range(a, b)]
+        p = _finish(cur, name.strip(), catnr, dark[a:b].tolist(), zone, min_alt)
+        if p:
+            out.append(p)
+    return out
+
+
+def _finish(cur, name, catnr, dark, zone, min_alt) -> Pass | None:
     max_pt = max(cur, key=lambda x: x[1])
     if max_pt[1] < min_alt:
         return None
-    vis_pts = [p for p in cur if p[3] and astro.sun_alt(p[0], obs) < -6]
+    vis_pts = [p for p, d in zip(cur, dark) if p[3] and d]
     visible = len(vis_pts) > 0
     vstart = vis_pts[0][0] if visible else cur[0][0]
     vend = vis_pts[-1][0] if visible else cur[-1][0]
