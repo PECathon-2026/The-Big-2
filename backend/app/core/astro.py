@@ -88,28 +88,74 @@ def search_altitude(body: ae.Body, obs: ae.Observer, direction: int, start: date
     return from_time(t) if t else None
 
 
-def night_bounds(lat: float, lon: float, ref: datetime) -> tuple[datetime, datetime, datetime, datetime]:
-    """(sunset, astronomical dusk, astronomical dawn, sunrise) for the night that contains or follows `ref`.
+class NightBounds(tuple):
+    """(sunset, astronomical dusk, astronomical dawn, sunrise) that also says what kind of night it is.
 
-    If the Sun is below the horizon at `ref` we are already in that night; otherwise it is the coming night.
+    Unpacks like the plain 4-tuple every caller expects; `kind` is one of
+    "normal", "no_astronomical_night" (the Sun sets but never reaches −18°), "polar_day" (it never sets) or
+    "polar_night" (it never rises). In the degenerate kinds the four times are still ordered and never invented:
+    with no darkness, dusk and dawn coincide at the darkest moment so the dark window has zero length.
     """
+
+    kind: str
+
+    def __new__(cls, sunset: datetime, dusk: datetime, dawn: datetime, sunrise: datetime, kind: str = "normal"):
+        obj = super().__new__(cls, (sunset, dusk, dawn, sunrise))
+        obj.kind = kind
+        return obj
+
+
+def _culmination(obs: ae.Observer, start: datetime, lower: bool) -> datetime:
+    """The Sun's next lower (midnight) or upper (noon) culmination after `start`."""
+    return from_time(ae.SearchHourAngle(ae.Body.Sun, obs, 12.0 if lower else 0.0, to_time(start)).time)
+
+
+def night_bounds(lat: float, lon: float, ref: datetime) -> NightBounds:
+    """The night that contains or follows `ref`: if the Sun is below the horizon at `ref` we are already in it,
+    otherwise it is the coming night. See `NightBounds` for the polar and no-darkness cases."""
+    sun = ae.Body.Sun
     obs = observer(lat, lon)
-    if sun_alt(ref, obs) < 0:
-        start = ref - timedelta(hours=14)
-        sunset = search_altitude(ae.Body.Sun, obs, -1, start, -0.833) or ref
-        # the sunset before ref
-        while True:
-            nxt = search_altitude(ae.Body.Sun, obs, -1, sunset + timedelta(minutes=1), -0.833)
-            if nxt and nxt < ref:
-                sunset = nxt
-            else:
+    up_now = sun_alt(ref, obs) >= -0.833
+    if up_now:
+        sunset = search_altitude(sun, obs, -1, ref, -0.833)
+    else:  # the sunset that began this night: the last one before ref
+        sunset = search_altitude(sun, obs, -1, ref - timedelta(hours=30), -0.833)
+        while sunset is not None:
+            nxt = search_altitude(sun, obs, -1, sunset + timedelta(minutes=1), -0.833)
+            if nxt is None or nxt >= ref:
                 break
+            sunset = nxt
+        if sunset is not None and sunset < ref - timedelta(hours=26):
+            sunset = None  # that sunset was days ago: the Sun has not risen since, this is polar night
+
+    if sunset is None and up_now:  # polar day: no night at all
+        low = _culmination(obs, ref, lower=True)
+        return NightBounds(low, low, low, low, "polar_day")
+    if sunset is None:  # polar night: the "night" runs from one local noon to the next
+        noon = _culmination(obs, ref - timedelta(hours=25), lower=False)
+        while True:
+            nxt = _culmination(obs, noon + timedelta(minutes=1), lower=False)
+            if nxt >= ref:
+                break
+            noon = nxt
+        sunset, sunrise, kind = noon, _culmination(obs, noon + timedelta(minutes=1), lower=False), "polar_night"
     else:
-        sunset = search_altitude(ae.Body.Sun, obs, -1, ref, -0.833) or ref
-    dusk = search_altitude(ae.Body.Sun, obs, -1, sunset, -18.0) or sunset
-    sunrise = search_altitude(ae.Body.Sun, obs, +1, sunset, -0.833) or (sunset + timedelta(hours=12))
-    dawn = search_altitude(ae.Body.Sun, obs, +1, sunset, -18.0) or sunrise
-    return sunset, dusk, dawn, sunrise
+        sunrise = search_altitude(sun, obs, +1, sunset, -0.833) or _culmination(obs, sunset, lower=False)
+        kind = "normal"
+
+    dusk = search_altitude(sun, obs, -1, sunset, -18.0)
+    dawn = search_altitude(sun, obs, +1, dusk, -18.0) if dusk is not None else None
+    if dusk is None or dawn is None or dusk > sunrise or dawn > sunrise:
+        if kind == "polar_night" and sun_alt(sunset, obs) < -18.0:  # dark the whole way round
+            dusk, dawn = sunset, sunrise
+        else:  # never astronomically dark tonight: a zero-length window at the darkest moment
+            low = _culmination(obs, sunset, lower=True)
+            if low > sunrise:
+                low = sunset
+            dusk = dawn = low
+            if kind == "normal":
+                kind = "no_astronomical_night"
+    return NightBounds(sunset, dusk, dawn, sunrise, kind)
 
 
 def angular_separation(ra1_h: float, dec1: float, ra2_h: float, dec2: float) -> float:

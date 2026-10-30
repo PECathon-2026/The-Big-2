@@ -195,7 +195,8 @@ def compute_night_score(
 ) -> NightScore:
     ref = ref or datetime.now(timezone.utc)
     obs = astro.observer(lat, lon, float(forecast.get("elevation") or 0.0))
-    sunset, dusk, dawn, sunrise = astro.night_bounds(lat, lon, ref)
+    night = astro.night_bounds(lat, lon, ref)
+    sunset, dusk, dawn, sunrise = night
     zone = astro.tz(lat, lon)
     times: list[datetime] = forecast["time"]
     hours: list[HourScore] = []
@@ -299,6 +300,10 @@ def compute_night_score(
         warnings.append(f"Wind: gusts near {windy:.0f} km/h will shake a tripod.")
     if bortle is None:
         warnings.append("Light pollution not sampled for this point; score excludes it.")
+    if night.kind == "polar_day":
+        warnings.insert(0, "No night here today: the Sun does not set (polar day), so there is nothing to score.")
+    elif night.kind == "no_astronomical_night":
+        warnings.insert(0, "The sky never gets fully dark tonight (the Sun stays above 18° below the horizon); deep twilight at best.")
 
     trace = Trace(
         formula=FORMULA,

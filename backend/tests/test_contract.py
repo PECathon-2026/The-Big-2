@@ -297,8 +297,14 @@ def inv_sun(d: dict) -> None:
 def inv_sun_order(d: dict) -> None:
     chain = ["sunset", "civil_dusk", "nautical_dusk", "astronomical_dusk", "astronomical_dawn", "nautical_dawn", "civil_dawn", "sunrise"]
     seq = [(k, parse_dt(d[k])) for k in chain if d.get(k) is not None]
+    # Equality is allowed: where the sky never gets fully dark the app reports a zero-length dark window
+    # (astronomical dusk == dawn at the darkest moment) rather than inventing one; see `night_kind`.
     for (ka, a), (kb, b) in zip(seq, seq[1:]):
-        assert a < b, f"{ka} {a.isoformat()} is not before {kb} {b.isoformat()}"
+        assert a <= b, f"{ka} {a.isoformat()} is after {kb} {b.isoformat()}"
+    if d.get("night_kind", "normal") == "normal":
+        assert parse_dt(d["astronomical_dusk"]) < parse_dt(d["astronomical_dawn"]), "a normal night must have a dark window"
+    else:
+        assert d.get("note"), "a degenerate night must explain itself"
 
 
 def inv_moon(d: dict) -> None:
