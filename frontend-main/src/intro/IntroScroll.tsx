@@ -1,19 +1,18 @@
 /**
- * The master intro timeline (§6.5, §7.3): one ScrollTrigger (scrub 1) over a ~650vh track, driven by
+ * The master intro timeline (§6.5, §7.3): one ScrollTrigger over a ~650vh track, driven by
  * Lenis. Everything — camera, real time-lapse, frame, captions, clock, the in-canvas scene — is a pure
- * function of one progress value, so scrubbing backwards is exact. Return visitors get an 8 s autoplay.
+ * function of one progress value, so scrubbing backwards is exact on every visit.
  */
-import { useEffect, useMemo, useRef } from 'react';
-import { gsap, ScrollTrigger, lenis } from '@/app/lenis';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { ScrollTrigger, lenis } from '@/app/lenis';
 import { useApp } from '@/state/store';
 import { Director, EYE } from '@/scene/Director';
 import { skyClock } from '@/scene/skyClock';
 import { compass16 } from '@/astro/coords';
-import { fmtClock, kokuAt, moonState } from '@/astro/skytime';
-import { moonName } from '@/astro/moonNames';
+import { fmtClock, kokuAt } from '@/astro/skytime';
 import { Button, Kanji } from '@/ui';
 import { P, intro, landForMag, lerp, smooth, timeAt } from '@/scene/intro/introBus';
-import { finishIntro, introSeen, startIntro } from './flow';
+import { finishIntro, startIntro } from './flow';
 import IntroFrame, { type FrameHandle } from './IntroFrame';
 
 const D = Math.PI / 180;
@@ -35,12 +34,12 @@ const SKY_FOV = 62;
 
 /**
  * The camera at progress p: eye height at the origin the whole time, facing the real sunset azimuth,
- * lifting toward the stars; the last 10% eases into the open sky (pitch 24°, FOV 62°) at the same heading.
+ * lifting toward the stars and meeting the open sky as the last petals land.
  */
 function cameraAt(p: number, yaw0: number) {
-  const pitch = keys(p, [[0, 6], [P.frameEnd, 7], [P.sunEnd, 8.5], [P.streamEnd, 30], [P.landEnd, 38], [P.titleEnd, 36], [P.moonEnd, 30], [1, SKY_PITCH]]) * D;
-  const yaw = yaw0 + keys(p, [[0, 0], [P.sunEnd, 2], [P.landEnd, -4], [P.moonEnd, -6]]) * D;
-  const fov = keys(p, [[0, 38], [P.frameEnd, 55], [P.streamEnd, 58], [P.moonEnd, 58], [1, SKY_FOV]]);
+  const pitch = keys(p, [[0, 6], [P.frameEnd, 7], [P.sunEnd, 8.5], [P.streamEnd, 30], [P.sceneEnd, SKY_PITCH]]) * D;
+  const yaw = yaw0 + keys(p, [[0, 0], [P.sunEnd, 2], [P.streamEnd, -4], [P.sceneEnd, -6]]) * D;
+  const fov = keys(p, [[0, 38], [P.frameEnd, 55], [P.streamEnd, 58], [P.sceneEnd, SKY_FOV]]);
   return { pos: EYE, yaw, pitch, fov };
 }
 
@@ -58,6 +57,7 @@ interface Cap {
 export default function IntroScroll() {
   const track = useRef<HTMLDivElement>(null);
   const frame = useRef<FrameHandle>(null);
+  const ui = useRef<HTMLDivElement>(null);
   const clockT = useRef<HTMLSpanElement>(null);
   const clockK = useRef<HTMLSpanElement>(null);
   const clockS = useRef<HTMLSpanElement>(null);
@@ -66,14 +66,13 @@ export default function IntroScroll() {
   const fade = useRef<HTMLDivElement>(null);
   const place = useApp((s) => s.place);
   const reduced = useApp((s) => s.reducedMotion);
-  const auto = useMemo(() => introSeen(), []);
 
   const caps = useMemo<Cap[]>(() => {
     const tz = () => useApp.getState().tz;
     const city = (place?.label ?? 'you').replace(/^≈\s*/, '');
     return [
       {
-        from: 0.1,
+        from: 0.18,
         to: 0.28,
         eyebrow: 'Sunset',
         jp: '日没',
@@ -104,29 +103,10 @@ export default function IntroScroll() {
           return `${k.toLocaleString('en')} of ${t.count.toLocaleString('en')} real stars lit, brightest first`;
         },
       },
-      {
-        from: 0.83,
-        to: 0.895,
-        eyebrow: 'Tonight',
-        jp: '月',
-        text: () => {
-          const ms = moonState(intro.time, place ?? { lat: skyClock.lat, lon: skyClock.lon });
-          const mn = moonName(ms.ageDays);
-          const up = ms.alt > 0 ? `${Math.round(ms.alt)}° up` : 'below the horizon';
-          return `${mn.kanji} · ${mn.romaji} · ${Math.round(ms.illumination * 100)}% lit · ${up}`;
-        },
-      },
-      {
-        from: 0.915,
-        to: 0.985,
-        eyebrow: 'Your sky',
-        jp: '夜空',
-        text: () => `Tonight over ${city} · every point of light is real`,
-      },
     ];
   }, [place]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!intro.active) startIntro(); // ?dev=intro enters without the gate
     const tl = intro.timeline;
     const yaw0 = (tl?.sunsetAz ?? 270) * D;
@@ -145,7 +125,8 @@ export default function IntroScroll() {
       const c = cameraAt(p, yaw0);
       Director.set(c, true);
       frame.current?.update(p);
-      if (Math.abs(p - lastStore) > 0.002 || p === 1) {
+      if (ui.current) ui.current.style.opacity = (1 - smooth(P.landEnd, P.sceneEnd, p)).toFixed(3);
+      if (Math.abs(p - lastStore) > 0.002 || p >= P.sceneEnd) {
         lastStore = p;
         s.setIntroProgress(p);
       }
@@ -164,46 +145,49 @@ export default function IntroScroll() {
         if (!el) return;
         const a = smooth(cap.from, cap.from + 0.025, p) * (1 - smooth(cap.to - 0.025, cap.to, p));
         el.style.opacity = a.toFixed(3);
-        el.style.transform = `translate(-50%, ${(1 - a) * 14}px)`;
+        el.style.transform = `translate(-50%, ${reduced ? 0 : (1 - a) * 14}px)`;
         if (a > 0.01 && capText.current[i]) {
           const txt = cap.text();
           if (capText.current[i]!.textContent !== txt) capText.current[i]!.textContent = txt;
         }
       });
-      if (p >= 0.998) {
+    };
+
+    // Let completion follow the actual scroll position rather than tween interpolation.
+    // Finish within the last pixel so fractional viewport heights cannot strand the intro.
+    const update = (self: ScrollTrigger) => {
+      if (done) return;
+      const atEnd = self.progress > 0 && self.scroll() >= self.end - 1;
+      apply(atEnd ? P.sceneEnd : self.progress * P.sceneEnd);
+      if (atEnd) {
         done = true;
         finishIntro();
       }
     };
 
+    window.scrollTo(0, 0);
+    lenis().scrollTo(0, { immediate: true });
     apply(0);
-    const proxy = { p: 0 };
-    let tween: gsap.core.Tween | gsap.core.Timeline;
-    if (auto) {
-      // Return visit: the same timeline, auto-played in 8 s (Skip stays visible).
-      tween = gsap.to(proxy, { p: 1, duration: reduced ? 2 : 8, ease: 'power1.inOut', delay: 0.4, onUpdate: () => apply(proxy.p) });
-    } else {
-      window.scrollTo(0, 0);
-      lenis().scrollTo(0, { immediate: true });
-      tween = gsap
-        .timeline({
-          scrollTrigger: {
-            trigger: track.current,
-            start: 'top top',
-            end: 'bottom bottom',
-            scrub: reduced ? true : 1,
-          },
-        })
-        .to(proxy, { p: 1, ease: 'none', duration: 1, onUpdate: () => apply(proxy.p) });
-      requestAnimationFrame(() => ScrollTrigger.refresh());
-    }
+    const scroll = ScrollTrigger.create({
+      trigger: track.current,
+      start: 'top top',
+      end: 'max',
+      onUpdate: update,
+      onRefresh: update,
+    });
+    // The intro mounts before PhaseSync releases the window's scroll lock.
+    const refresh = requestAnimationFrame(() => {
+      lenis().resize();
+      ScrollTrigger.refresh();
+    });
     return () => {
-      tween.scrollTrigger?.kill();
-      tween.kill();
+      done = true;
+      cancelAnimationFrame(refresh);
+      scroll.kill();
       const root = document.getElementById('canvas-root');
       if (root) root.style.clipPath = '';
     };
-  }, [auto, caps, reduced]);
+  }, [caps, reduced]);
 
   const skip = () => {
     if (reduced && fade.current) {
@@ -227,8 +211,8 @@ export default function IntroScroll() {
 
   return (
     <>
-      {!auto && <div ref={track} className="tw-intro-track" style={{ height: `${TRACK_VH}vh` }} aria-hidden="true" />}
-      <div className="tw-intro-ui">
+      <div ref={track} className="tw-intro-track" style={{ height: `${TRACK_VH}svh` }} aria-hidden="true" />
+      <div ref={ui} className="tw-intro-ui">
         <IntroFrame ref={frame} />
         <div className="tw-intro-clock" aria-live="off">
           <span ref={clockT} className="t num" />

@@ -1,12 +1,28 @@
-/** The sakura dusk (§7.3): landscape at the real sunset azimuth, two cherry trees, petals → stars, title morph. */
-import { useEffect, useState } from 'react';
+/** The sakura dusk: a printed-ink landscape, the original cherry trees and petals → stars. */
+import { useEffect, useRef, useState } from 'react';
+import { useFrame } from '@react-three/fiber';
+import { openLoadingScreen } from '@/intro/loadingScreen';
 import DuskLandscape from './DuskLandscape';
 import SakuraTrees from './SakuraTrees';
 import Petals from './Petals';
-import StarMorph from './StarMorph';
+import DuskAtmosphere from './DuskAtmosphere';
 import { intro } from './introBus';
 
 export default function IntroScene() {
+  const rendered = useRef(false);
+  const revealFrame = useRef<number | null>(null);
+  // A mounted lazy chunk may not have drawn yet. Keep the panels closed until
+  // the canvas has rendered the landscape, then reveal it on the next frame.
+  useFrame(() => {
+    if (rendered.current) return;
+    rendered.current = true;
+    revealFrame.current = requestAnimationFrame(openLoadingScreen);
+  });
+  useEffect(() => () => {
+    if (revealFrame.current !== null) cancelAnimationFrame(revealFrame.current);
+    rendered.current = false;
+  }, []);
+
   // The star targets are computed behind the gate; rebuild the petal assignment once they exist.
   const [targetsKey, setKey] = useState(intro.targets ? 1 : 0);
   useEffect(() => {
@@ -16,10 +32,10 @@ export default function IntroScene() {
   }, [targetsKey]);
   return (
     <>
+      <DuskAtmosphere />
       <DuskLandscape />
       <SakuraTrees />
       <Petals targetsKey={targetsKey} />
-      <StarMorph targetsKey={targetsKey} />
     </>
   );
 }

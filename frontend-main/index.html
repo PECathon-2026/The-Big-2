@@ -7,8 +7,30 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="description" content="Tsukuyomi Watch — your real sky, tonight, where you stand." />
     <title>月読 · Tsukuyomi Watch</title>
+    <link rel="preload" as="image" href="/art/passage-dragon.webp" />
+    <link rel="stylesheet" href="/loading-screen.css" />
+    <style>html,body{margin:0;background:#07090c;color:#efe4cd}</style>
   </head>
   <body>
+    <div id="loading-screen" class="imperial-passage" role="status" aria-label="Loading Tsukuyomi Watch" aria-hidden="true" tabindex="-1">
+      <div class="passage-door passage-door-left" aria-hidden="true">
+        <div class="passage-painting">
+          <span class="passage-sun"></span><div class="passage-cloud passage-cloud-one"></div><div class="passage-cloud passage-cloud-two"></div>
+          <img class="ink-dragon" src="/art/passage-dragon.webp" alt="" width="1000" height="820" fetchpriority="high" draggable="false" />
+          <span class="passage-inscription">A MYSTIC<br />MIKADO</span>
+          <div class="passage-petals"><i></i><i></i><i></i><i></i><i></i></div>
+        </div><span class="passage-handle"></span>
+      </div>
+      <div class="passage-door passage-door-right" aria-hidden="true">
+        <div class="passage-painting">
+          <span class="passage-sun"></span><div class="passage-cloud passage-cloud-one"></div><div class="passage-cloud passage-cloud-two"></div>
+          <img class="ink-dragon" src="/art/passage-dragon.webp" alt="" width="1000" height="820" fetchpriority="high" draggable="false" />
+          <span class="passage-inscription">A MYSTIC<br />MIKADO</span>
+          <div class="passage-petals"><i></i><i></i><i></i><i></i><i></i></div>
+        </div><span class="passage-handle"></span>
+      </div>
+    </div>
+    <noscript><style>#loading-screen{display:none}</style><p style="color:#efe4cd;background:#07090c">Enable JavaScript to explore your sky.</p></noscript>
     <div id="root"></div>
     <script type="module" src="/src/app/main.tsx"></script>
   </body>

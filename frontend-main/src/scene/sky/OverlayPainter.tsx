@@ -18,6 +18,7 @@ import { hintSpots, eqToWorld, hoverRef, live, outside, overlay, P, project, ref
 import { moonDraw } from './Moon';
 import { issArcAt, issPointAt, METEOR_SCALE, showerRateAt, skyData } from './skyData';
 import { meteorStats } from './Meteors';
+import { P as INTRO_P } from '@/scene/intro/introBus';
 
 const F = {
   jp: (px: number, w = 500) => `${w} ${px}px "Shippori Mincho", "Yu Mincho", serif`,
@@ -77,13 +78,14 @@ export default function OverlayPainter({ cat }: { cat: Catalog }) {
 
     const out = outside();
     const inside = 1 - out;
-    // constellations ink themselves in during the intro (82–90%), then stay
-    // intro 82–90 %: each constellation's strokes draw in (staggered), names follow; complete at 0.90
+    // Draw the sky's figures onto the landed stars during the final settling window.
+    // Keep the existing stagger, but finish it before the intro hands over to the sky.
     const introP = phase === 'intro' ? s.introProgress : 1;
-    strokeP = introP;
-    const reveal = introP >= 0.82 ? 1 : 0;
-    const labelsOn = phase === 'sky' || phase === 'diving' ? 1 : 0;
-    const namesOn = phase === 'intro' ? (introP >= 0.82 ? 1 : 0) : labelsOn;
+    const arrival = THREE.MathUtils.smoothstep(introP, INTRO_P.landEnd, INTRO_P.sceneEnd);
+    strokeP = phase === 'intro' ? THREE.MathUtils.lerp(0.82, 0.9, arrival) : 1;
+    const reveal = arrival;
+    const labelsOn = arrival;
+    const namesOn = arrival;
     const night = 0.25 + 0.75 * skyClock.palette.starFade;
     const e = skyClock.eqMatrix.elements;
     const zoom = Math.min(2, 62 / Math.max(12, camera.fov));

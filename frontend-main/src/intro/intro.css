@@ -2,7 +2,7 @@
 
 /* ---------- Gate (§7.1) ---------- */
 .tw-gate {
-  --gate-paper: color-mix(in srgb, var(--ivory) 30%, white);
+  --gate-paper: var(--washi);
   --gate-text: var(--paper-ink);
   --gate-muted: color-mix(in srgb, var(--paper-ink) 80%, var(--gate-paper));
   position: fixed;
@@ -19,10 +19,9 @@
 .tw-gate-ink {
   position: absolute;
   inset: 0;
+  z-index: 0;
   mix-blend-mode: multiply;
-  opacity: .7;
-  /* Preserve quiet paper under the copy while ink gathers at the card's edges. */
-  mask-image: radial-gradient(ellipse at center, rgb(0 0 0 / .12) 28%, #000 85%);
+  opacity: .9;
   pointer-events: none;
 }
 .tw-gate-card {
@@ -34,7 +33,7 @@
   overflow: auto;
   isolation: isolate;
   text-align: center;
-  background: var(--gate-paper);
+  background: color-mix(in srgb, var(--ivory) 15%, white);
   border-radius: var(--r-dialog);
   box-shadow: 0 24px 60px -32px color-mix(in srgb, var(--crimson-deep) 35%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--crimson) 24%, var(--gate-paper));
   scrollbar-color: var(--crimson) var(--gate-paper);
@@ -187,43 +186,45 @@
 /* ---------- Intro (§7.3) ---------- */
 .tw-intro-track { position: relative; width: 1px; pointer-events: none; }
 .tw-intro-ui { position: fixed; inset: 0; z-index: var(--z-gate); pointer-events: none; }
-.tw-intro-frame { position: absolute; inset: 0; width: 100%; height: 100%; }
-.tw-intro-hero {
-  position: absolute;
-  left: 0;
-  right: 0;
-  text-align: center;
-  color: var(--kinu);
-  will-change: opacity, transform;
-}
-.tw-intro-hero .eyebrow { color: var(--gold-bright); letter-spacing: .5em; }
-.tw-intro-hero h1 {
-  margin: .25em 0 0;
-  font-family: var(--font-display);
-  font-weight: 500;
-  font-size: clamp(30px, 3.6vw, 60px);
-  letter-spacing: -0.02em;
+/* The resting view reads like a landscape print on an ink-black mount. */
+.tw-intro-expand { position: absolute; inset: 0; }
+.tw-intro-expand [data-scroll-expand-title] {
+  inset: 6% 5% auto;
+  padding: 0;
   color: var(--ivory);
-  text-shadow: 0 2px 18px color-mix(in srgb, var(--sumi) 60%, transparent);
+  text-shadow: none;
 }
-.tw-intro-hero h1 em { font-family: var(--font-accent); font-style: italic; color: var(--gold-accent); letter-spacing: 0; }
-.tw-intro-hint {
-  position: absolute;
-  left: 0;
-  right: 0;
-  text-align: center;
-  font-size: 12px;
-  letter-spacing: .27em;
+.tw-intro-title {
+  margin: 0;
+  font-family: var(--font-accent);
+  font-size: clamp(38px, 4.8vw, 76px);
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -.025em;
+  text-transform: none;
+  text-wrap: balance;
+  color: var(--ivory);
+}
+.tw-intro-title em { font-style: italic; color: var(--gold-accent); }
+.tw-intro-expand [data-scroll-expand-hint] {
+  bottom: 10%;
+  color: var(--kinu);
+  font-size: 11px;
+  letter-spacing: .22em;
   text-transform: uppercase;
-  color: var(--sakura);
-  will-change: opacity, transform;
+  text-shadow: 0 1px 6px var(--sumi);
 }
-.tw-intro-hint i { display: inline-block; font-style: normal; animation: tw-bob 1.8s var(--ease-breath) infinite; }
-@keyframes tw-bob { 50% { transform: translateY(5px); } }
+@media (max-width: 640px) {
+  .tw-intro-expand [data-scroll-expand-title] { top: 12%; }
+  .tw-intro-title { max-width: 330px; font-size: clamp(36px, 9.5vw, 52px); }
+  .tw-intro-expand [data-scroll-expand-hint] { bottom: 13%; }
+}
 .tw-intro-clock {
   position: absolute;
   top: 22px;
   right: 26px;
+  padding: 8px 12px;
+  background: var(--sumi);
   text-align: right;
   color: var(--washi);
   text-shadow: 0 1px 10px color-mix(in srgb, var(--sumi) 70%, transparent);
@@ -241,13 +242,15 @@
   opacity: 0;
   color: var(--washi);
   text-shadow: 0 1px 14px color-mix(in srgb, var(--sumi) 85%, transparent);
+  padding: 12px 20px;
+  background: color-mix(in srgb, var(--sumi) 94%, transparent);
   will-change: opacity, transform;
 }
 .tw-intro-cap .eyebrow { color: var(--gold-bright); }
 .tw-intro-cap p { margin: .4em 0 0; font-family: var(--font-display); font-size: clamp(18px, 1.8vw, 26px); letter-spacing: .02em; color: var(--ivory); }
 .tw-intro-cap p em { font-family: var(--font-accent); font-style: italic; color: var(--gold-accent); }
 .tw-intro-skip { position: absolute; right: 24px; bottom: 22px; pointer-events: auto; }
-.tw-intro-skip .tw-btn { color: var(--kinu); text-shadow: 0 1px 8px color-mix(in srgb, var(--sumi) 80%, transparent); }
+.tw-intro-skip .tw-btn { background: var(--sumi); color: var(--kinu); text-shadow: 0 1px 8px color-mix(in srgb, var(--sumi) 80%, transparent); }
 .tw-intro-fade { position: fixed; inset: 0; z-index: var(--z-gate); background: var(--sumi); opacity: 0; pointer-events: none; transition: opacity 320ms linear; }
 .tw-intro-fade.on { opacity: 1; }
 html[data-phase='intro'] { scrollbar-width: none; }

@@ -20,11 +20,11 @@ import { rig } from '@/scene/Director';
 import { useTier } from '@/scene/quality';
 import { app } from '@/state/store';
 import { buildTrees } from './trees';
-import { LAND_FADE, intro, landForMag, smooth, token } from './introBus';
+import { LAND_FADE, intro, landForMag, sceneOpacity, sceneryOpacity, smooth, token } from './introBus';
 
 const vs = /* glsl */ `
   attribute vec3 aBranch; attribute vec4 aSeed; attribute vec4 aTimes; attribute vec3 aStar; attribute vec3 aStarCol; attribute float aPink;
-  uniform float uP; uniform float uTime; uniform float uPx; uniform float uLandFade; uniform float uNight; uniform float uFade;
+  uniform float uP; uniform float uTime; uniform float uPx; uniform float uLandFade; uniform float uNight; uniform float uFade; uniform float uSceneryFade;
   uniform mat4 uEq; uniform vec3 uWind; uniform vec3 uBack; uniform vec3 uSakura; uniform vec3 uBeni;
   varying vec2 vUv; varying vec3 vCol; varying float vGlow; varying float vA;
 
@@ -85,7 +85,9 @@ const vs = /* glsl */ `
     gl_Position = projectionMatrix * mvFinal;
     vUv = position.xy + 0.5;
     // fade out exactly as the real star fades in (handoff), and with the whole intro at the pull-back
-    vA = (1.0 - smoothstep(land, land + uLandFade, p)) * uFade;
+    // Blossoms still on branches leave with the tree; detached petals keep their original handoff.
+    float attached = 1.0 - step(det, p);
+    vA = (1.0 - smoothstep(land, land + uLandFade, p)) * uFade * mix(1.0, uSceneryFade, attached);
     if (vA < 0.002) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
   }`;
 
@@ -200,6 +202,7 @@ export default function Petals({ targetsKey }: { targetsKey: number }) {
         uLandFade: { value: LAND_FADE },
         uNight: { value: 0 },
         uFade: { value: 1 },
+        uSceneryFade: { value: 1 },
         uEq: { value: skyClock.eqMatrix },
         uWind: { value: new THREE.Vector3(Math.cos(azr), 0.05, Math.sin(azr)).normalize() },
         uBack: { value: new THREE.Vector3(-Math.sin(azr), 0, Math.cos(azr)) },
@@ -225,13 +228,15 @@ export default function Petals({ targetsKey }: { targetsKey: number }) {
     [mesh, mat],
   );
 
-  useFrame((state) => {
+  useFrame(() => {
     const u = mat.uniforms;
     u.uP.value = intro.progress;
-    u.uTime.value = app().reducedMotion ? 0 : state.clock.elapsedTime;
+    u.uTime.value = app().reducedMotion ? 0 : intro.progress * 30;
     u.uPx.value = (2 * Math.tan((rig.cur.fov * Math.PI) / 360)) / Math.max(1, size.height);
     u.uNight.value = smooth(2, -10, skyClock.sun.alt);
-    u.uFade.value = 1 - smooth(0.9, 0.96, intro.progress);
+    u.uFade.value = sceneOpacity(intro.progress);
+    u.uSceneryFade.value = sceneryOpacity(intro.progress);
+    mesh.visible = u.uFade.value > 0.001;
     u.uEq.value = skyClock.eqMatrix;
   });
 

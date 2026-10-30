@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "frontend-main/public/loading-screen.css"
+        ],
+        "createdAt": "2026-10-29T23:41:00.986Z",
+        "reason": "Agent: these are the timber seams copied from pecfest.in; user explicitly requested this exact panel design."
+      },
+      {
+        "rule": "overused-font",
+        "value": "plus jakarta sans",
+        "files": [
+          "frontend-main/public/loading-screen.css"
+        ],
+        "createdAt": "2026-10-29T23:41:01.036Z",
+        "reason": "Agent: font copied from pecfest.in to fulfill the explicit exact-match request."
+      }
+    ]
+  }
+}

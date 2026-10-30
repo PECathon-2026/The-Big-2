@@ -1,0 +1,40 @@
+/* Panel artwork and dimensions from pecfest.in. Motion is controlled by loadingScreen.ts. */
+@font-face{font-family:Cinzel;src:url('/fonts/cinzel-latin-400-normal.woff2') format('woff2');font-style:normal;font-weight:400;font-display:swap}
+.imperial-passage,.imperial-passage *,.imperial-passage *:after{box-sizing:border-box}
+.imperial-passage[aria-hidden=true] .passage-petals i{animation-play-state:paused}
+.imperial-passage{position:fixed;inset:0;z-index:500;visibility:hidden;pointer-events:none;overflow:hidden;font-family:Plus Jakarta Sans,sans-serif;color:#efe4cd;isolation:isolate}
+.passage-door{position:absolute;inset:0 auto 0 0;width:calc(50% + 1px);overflow:hidden;background:#e7ddc7;border:clamp(9px,1.3vw,20px) solid #3b3027;box-shadow:inset 0 0 0 2px #a98d5c,inset 0 0 80px #765e3b30,0 0 28px #17231d55;will-change:transform}
+.passage-door-left{transform:translateX(-102%);border-right-width:9px}
+.passage-door-right{left:auto;right:0;transform:translateX(102%);border-left-width:9px}
+.passage-door:after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent 0 3px,#7b643608 3px 4px),repeating-linear-gradient(90deg,transparent 0 7px,#7b643605 7px 8px);box-shadow:inset 0 0 80px #8e714036}
+.passage-painting{position:absolute;width:100vw;height:100%;top:0;left:-1.3vw;overflow:hidden;color:#293f36;--dragon-paper:#e7ddc7}
+.passage-door-right .passage-painting{left:auto;right:-1.3vw}
+.passage-painting>.ink-dragon{position:absolute;width:min(86vw,1020px);height:85%;left:50%;top:0;transform:translateX(-50%) rotate(-8deg);opacity:.93;object-fit:contain;max-width:none;pointer-events:none}
+.passage-sun{width:min(33vw,380px);aspect-ratio:1;background:#a84c37;top:12%;right:18%;opacity:.88;box-shadow:0 0 60px #b1693b22}
+.passage-cloud,.passage-sun{position:absolute;border-radius:50%}
+.passage-cloud{border-top:1px solid #86795066;border-bottom:1px solid #86795044;height:38px;width:36%;transform:rotate(-8deg)}
+.passage-cloud-one{left:7%;top:31%}
+.passage-cloud-two{right:0;top:60%}
+.passage-inscription{position:absolute;top:11%;left:8%;font:clamp(12px,1.5vw,20px)/1.7 Cinzel,serif;letter-spacing:.22em;writing-mode:vertical-rl}
+
+.passage-handle{position:absolute;right:14px;top:48%;width:22px;height:46px;border:3px solid #a88b54;background:#342d25;border-radius:50%;box-shadow:inset 2px 0 5px #0008}
+.passage-door-right .passage-handle{right:auto;left:14px}
+.passage-petals i{position:absolute;left:25%;top:15%;width:10px;height:17px;border-radius:80% 10% 80% 20%;background:#a84c3780;animation:passage-petal 6s ease-in-out infinite}
+.passage-petals i:nth-child(2){left:65%;top:28%;animation-delay:-2s}
+.passage-petals i:nth-child(3){left:80%;top:12%;animation-delay:-4s}
+.passage-petals i:nth-child(4){left:34%;top:62%;animation-delay:-1s}
+.passage-petals i:nth-child(5){left:14%;top:49%;animation-delay:-3s}
+@keyframes passage-petal{50%{transform:translate(35px,55px) rotate(110deg)}}
+
+
+
+
+
+@media(max-width:700px){.passage-painting{left:-9px}
+.passage-door-right .passage-painting{right:-9px}
+.passage-painting>.ink-dragon{width:120vw;height:72%;top:7%;left:47%}
+.passage-sun{width:54vw;right:8%;top:20%}
+.passage-inscription{top:7%;left:9%}
+
+}
+@media(prefers-reduced-motion:reduce){.passage-petals i{animation:none}}

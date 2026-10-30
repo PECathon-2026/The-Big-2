@@ -114,6 +114,8 @@ export default function CanvasRoot() {
         position: 'fixed',
         inset: 0,
         zIndex: 0,
+        // Hide the idle sky while the gate or loader is still covering the dusk scene.
+        visibility: phase === 'gate' || phase === 'loading' ? 'hidden' : 'visible',
         // pages mount over the dimmed sky (§9.1)
         filter: dimmed ? 'brightness(.35) blur(6px)' : 'none',
         transition: 'filter 900ms var(--ease-cinematic)',

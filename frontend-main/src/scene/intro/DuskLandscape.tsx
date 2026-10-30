@@ -9,10 +9,9 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { fbm1, rng } from '@/scene/noise';
 import { skyClock } from '@/scene/skyClock';
-import { intro, smooth, token } from './introBus';
+import { intro, P, sceneryOpacity, smooth, token } from './introBus';
 
 const D = Math.PI / 180;
-const WHITE = new THREE.Color(1, 1, 1);
 
 /* ---------- painted textures ---------- */
 
@@ -69,7 +68,7 @@ function fujiTex(body: string, snow: string) {
     const r = rng(42);
     ctx.fillStyle = snow;
     ctx.beginPath();
-    const snowLine = top + (h - top) * 0.3;
+    const snowLine = top + (h - top) * 0.21;
     ctx.moveTo(cx - half(snowLine) - 4, snowLine);
     for (let x = -1; x <= 1.001; x += 0.02) {
       const y = snowLine + (fbm1(x * 9 + 3, 3) - 0.5) * 30 + (Math.abs(Math.sin(x * 17)) * 26) * (1 - Math.abs(x));
@@ -80,11 +79,11 @@ function fujiTex(body: string, snow: string) {
     ctx.closePath();
     ctx.globalAlpha = 0.92;
     ctx.fill();
-    for (let i = 0; i < 26; i++) {
+    for (let i = 0; i < 16; i++) {
       const x = (r() * 2 - 1) * 0.9;
       const y0 = snowLine - 10;
-      const len = 20 + r() * 70;
-      ctx.globalAlpha = 0.35 + r() * 0.4;
+      const len = 12 + r() * 36;
+      ctx.globalAlpha = 0.18 + r() * 0.25;
       ctx.beginPath();
       ctx.moveTo(cx + x * half(y0), y0);
       ctx.lineTo(cx + x * half(y0 + len) * 1.02 - 1.5, y0 + len);
@@ -171,6 +170,7 @@ const layerFS = /* glsl */ `
     float edge = smoothstep(0.0, 0.1, vUv.x) * smoothstep(1.0, 0.9, vUv.x);
     gl_FragColor = vec4(col, c.a * uOpacity * mix(1.0, edge, uFeather));
     if (gl_FragColor.a < 0.004) discard;
+    #include <colorspace_fragment>
   }`;
 
 const ridgeFS = /* glsl */ `
@@ -185,7 +185,7 @@ const ridgeFS = /* glsl */ `
     float top = prof(vUv.x);
     float body = smoothstep(top + 0.006, top - 0.006, vUv.y);
     // ink-wash: dense at the crest, thinning into mist below
-    float a = body * mix(0.3, 1.0, smoothstep(top - 0.55, top - 0.04, vUv.y));
+    float a = body * smoothstep(0.0, max(0.04, top * 0.85), vUv.y);
     // ink bleed (demo): a wet halo creeps above the crest and dark drips run down as dusk deepens
     float wet = smoothstep(top + 0.06 * uBleed + 0.001, top, vUv.y) * (0.22 + 0.25 * n1(vUv.x * 160.0 + uSeed)) * uBleed;
     float col1 = vUv.x * 90.0 + uSeed * 3.0;
@@ -198,6 +198,7 @@ const ridgeFS = /* glsl */ `
     a *= smoothstep(0.0, 0.1, vUv.x) * smoothstep(1.0, 0.9, vUv.x) * uOpacity;
     if (a < 0.004) discard;
     gl_FragColor = vec4(col, a);
+    #include <colorspace_fragment>
   }`;
 
 const mistFS = /* glsl */ `
@@ -214,6 +215,7 @@ const mistFS = /* glsl */ `
     a *= smoothstep(0.0, 0.12, vUv.x) * smoothstep(1.0, 0.88, vUv.x);
     gl_FragColor = vec4(uColor, a);
     if (a < 0.003) discard;
+    #include <colorspace_fragment>
   }`;
 
 const sunFS = /* glsl */ `
@@ -229,11 +231,12 @@ const sunFS = /* glsl */ `
     float edge = 0.2 + 0.012 * (vn(vec2(ang * 6.0, uTime * 0.2)) - 0.5); // ink-bled rim
     float disc = 1.0 - smoothstep(edge - 0.008, edge + 0.006, r);
     vec3 dc = mix(uCore, uRim, smoothstep(0.0, edge, r));
-    float glow = exp(-pow(max(r - edge * 0.6, 0.0) * 3.2, 1.4)) * 0.75 + exp(-r * 9.0) * 0.4;
+    float glow = exp(-r * 12.0) * 0.12;
     vec3 col = dc * disc + uGlow * glow * (1.0 - disc);
     float a = max(disc, glow * 0.85) * uAlpha;
     gl_FragColor = vec4(col, a);
     if (a < 0.003) discard;
+    #include <colorspace_fragment>
   }`;
 
 const glowFS = /* glsl */ `
@@ -244,6 +247,7 @@ const glowFS = /* glsl */ `
     float a = exp(-dot(p * vec2(1.0, 3.2), p * vec2(1.0, 3.2)) * 2.2) * uAlpha;
     a *= smoothstep(-0.05, 0.25, -p.y + 0.25);
     gl_FragColor = vec4(uColor * a, a);
+    #include <colorspace_fragment>
   }`;
 
 /* ---------- component ---------- */
@@ -267,20 +271,20 @@ export default function DuskLandscape() {
   const glow = useRef<THREE.Mesh>(null);
   const az = (intro.timeline?.sunsetAz ?? 270) * D;
 
-  const { layers, mats, mists, sunMat, glowMat } = useMemo(() => {
+  const { layers, mats, mists, sunMat, glowMat, hazeColor } = useMemo(() => {
     const sumi = token('--sumi', '#090A0C');
     const ink = token('--ink', '#141416');
-    const indigo = token('--indigo', '#101B2B');
-    const nebula = token('--nebula', '#2C1B4E');
+    const distantInk = token('--washi-3', '#A79B85');
     const washi = token('--washi', '#EFE4CD');
     const beni = token('--crimson-deep', '#61070D');
+    const hazeColor = new THREE.Color(token('--kinu', '#E8D9B5'));
     const layers: Layer[] = [
       // Kept inside r < 34 so the sky's own horizon ridge ring never hides it.
-      { tex: fujiTex(nebula, washi), z: -32.5, x: -5.5, w: 38, h: 11.5, y: -0.6, haze: 0.45, bleed: 0.2, seed: 1 },
-      { ridge: { ink: indigo, amp: 0.22, freq: 3.1 }, z: -29, x: 0, w: 72, h: 6.2, y: -1.9, haze: 0.36, bleed: 0.5, seed: 2 },
-      { ridge: { ink, amp: 0.2, freq: 4.0 }, z: -24, x: 2, w: 58, h: 4.2, y: -1.6, haze: 0.2, bleed: 0.8, seed: 3 },
-      { tex: pagodaTex(sumi, beni), z: -18, x: 4.4, w: 3.4, h: 6.8, y: -0.5, haze: 0.06, bleed: 0, seed: 4 },
-      { ridge: { ink: sumi, amp: 0.18, freq: 5.5 }, z: -16, x: -1.5, w: 48, h: 2.6, y: -1.35, haze: 0.04, bleed: 1, seed: 5 },
+      { tex: fujiTex(ink, washi), z: -32.5, x: -5.5, w: 42, h: 10, y: -0.6, haze: 0.06, bleed: 0.08, seed: 1 },
+      { ridge: { ink: distantInk, amp: 0.22, freq: 3.1 }, z: -29, x: 0, w: 72, h: 6.2, y: -1.9, haze: 0.12, bleed: 0.2, seed: 2 },
+      { ridge: { ink, amp: 0.2, freq: 4.0 }, z: -24, x: 2, w: 58, h: 4.2, y: -1.6, haze: 0.1, bleed: 0.3, seed: 3 },
+      { tex: pagodaTex(sumi, beni), z: -18, x: 4.4, w: 3.4, h: 6.8, y: -0.5, haze: 0.02, bleed: 0, seed: 4 },
+      { ridge: { ink: sumi, amp: 0.18, freq: 5.5 }, z: -16, x: -1.5, w: 48, h: 2.6, y: -1.35, haze: 0.02, bleed: 0.3, seed: 5 },
     ];
     const nightInk = new THREE.Color(sumi);
     const mats = layers.map((l) =>
@@ -323,9 +327,9 @@ export default function DuskLandscape() {
     );
     const mistCol = new THREE.Color(washi);
     const mists = [
-      { z: -27, w: 80, h: 2.2, y: -0.9, a: 0.14, seed: 1 },
-      { z: -21, w: 60, h: 1.5, y: -0.9, a: 0.1, seed: 5 },
-      { z: -14, w: 40, h: 1, y: -0.7, a: 0.07, seed: 9 },
+      { z: -27, w: 80, h: 2.2, y: -0.9, a: 0.07, seed: 1 },
+      { z: -21, w: 60, h: 1.5, y: -0.9, a: 0.045, seed: 5 },
+      { z: -14, w: 40, h: 1, y: -0.7, a: 0.025, seed: 9 },
     ].map(
       (m) =>
         ({
@@ -344,9 +348,9 @@ export default function DuskLandscape() {
       fragmentShader: sunFS,
       depthTest: false,
       uniforms: {
-        uCore: { value: new THREE.Color(token('--sun-1', '#D3572E')) },
-        uRim: { value: new THREE.Color(token('--crimson', '#A70D16')) },
-        uGlow: { value: new THREE.Color(token('--sun-2', '#9E3329')) },
+        uCore: { value: new THREE.Color(token('--crimson', '#A70D16')) },
+        uRim: { value: new THREE.Color(token('--crimson-deep', '#61070D')) },
+        uGlow: { value: new THREE.Color(token('--crimson', '#A70D16')) },
         uAlpha: { value: 1 },
         uTime: { value: 0 },
       },
@@ -362,45 +366,45 @@ export default function DuskLandscape() {
       depthWrite: false,
       blending: THREE.AdditiveBlending,
     });
-    return { layers, mats, mists, sunMat, glowMat };
+    return { layers, mats, mists, sunMat, glowMat, hazeColor };
   }, []);
 
-  useFrame((state) => {
+  useFrame(() => {
     if (import.meta.env.DEV) Object.assign(window, { __sky: skyClock, __land: group.current, __sun: sun.current, __glow: glow.current });
     const p = intro.progress;
     const alt = skyClock.sun.alt;
-    const night = smooth(3, -12, alt);
+    const night = smooth(P.frameEnd, P.streamEnd, p);
     const bleed = smooth(0.12, 0.62, p);
-    const fadeOut = 1 - smooth(0.9, 0.97, p);
-    const [hr, hg, hb] = skyClock.palette.horizonRgb;
+    const fadeOut = sceneryOpacity(p);
+    if (group.current) group.current.visible = fadeOut > 0.001;
     mats.forEach((m, i) => {
       const u = m.uniforms;
-      (u.uHaze.value as THREE.Color).setRGB(hr, hg, hb, THREE.SRGBColorSpace);
+      (u.uHaze.value as THREE.Color).copy(hazeColor).lerp(u.uNightInk.value as THREE.Color, night);
       u.uNight.value = night;
       u.uBleed.value = bleed * layers[i].bleed;
       u.uOpacity.value = fadeOut;
     });
-    const t = state.clock.elapsedTime;
+    const t = intro.progress * 30;
     for (const m of mists) {
       m.mat.uniforms.uTime.value = t;
       m.mat.uniforms.uOpacity.value = fadeOut * (1 - night * 0.55);
-      (m.mat.uniforms.uColor.value as THREE.Color).setRGB(hr, hg, hb, THREE.SRGBColorSpace).lerp(WHITE, 0.25 * (1 - night));
+      (m.mat.uniforms.uColor.value as THREE.Color).copy(hazeColor);
     }
     // the real Sun (time-lapse via skyClock.override): crimson ink disc + glow
     const sd = skyClock.sun.dir;
     if (sun.current) {
       sun.current.position.set(sd[0] * 96, sd[1] * 96, sd[2] * 96);
       sun.current.lookAt(0, 1.6, 0);
-      sun.current.visible = alt > -4;
+      sun.current.visible = alt > -4 && fadeOut > 0.001;
       sunMat.uniforms.uTime.value = t;
-      sunMat.uniforms.uAlpha.value = smooth(-4, -0.5, alt);
+      sunMat.uniforms.uAlpha.value = smooth(-4, -0.5, alt) * fadeOut;
     }
     if (glow.current) {
       const g = alt > -14 ? 1 : 0;
-      glow.current.visible = g > 0;
+      glow.current.visible = g > 0 && fadeOut > 0.001;
       glow.current.position.set(Math.sin(az) * 97, 2, -Math.cos(az) * 97);
       glow.current.lookAt(0, 1.6, 0);
-      glowMat.uniforms.uAlpha.value = smooth(-14, -2, alt) * (1 - smooth(4, 12, alt)) * 0.55 * fadeOut;
+      glowMat.uniforms.uAlpha.value = smooth(-14, -2, alt) * (1 - smooth(4, 12, alt)) * 0.08 * fadeOut;
     }
   });
 

@@ -1,5 +1,5 @@
 /**
- * The gate (§7.1): ivory paper, crimson and sumi ink confined behind the card content,
+ * The gate (§7.1): ivory paper, crimson and sumi ink behind an opaque card,
  * the sound choice (the user gesture) and the location flow GPS (6 s) → IP → Chandigarh.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -28,8 +28,7 @@ export default function Gate() {
   const [searchOpen, setSearchOpen] = useState(false);
   const busyRef = useRef(false);
 
-  // Carbon-black sumi and crimson pigment, without the cool indigo cast.
-  const inkColors = useMemo(() => [token('--paper-ink', '#1B1A20'), token('--crimson-deep', '#61070D'), token('--crimson', '#A70D16')], []);
+  const inkColors = useMemo(() => [token('--crimson', '#A70D16'), token('--paper-ink', '#1B1A20')], []);
 
   useEffect(() => {
     startPreload();
@@ -86,25 +85,26 @@ export default function Gate() {
 
   return (
     <div className="tw-gate" role="dialog" aria-modal="true" aria-labelledby="gate-title">
+      {!lite && !reduced && (
+        <div className="tw-gate-ink" aria-hidden="true">
+          <LiquidEther
+            colors={inkColors}
+            lightMode
+            inkMode
+            inkRedRatio={0.6}
+            intensity={1.05}
+            mouseForce={6}
+            cursorSize={135}
+            persistence={0.94}
+            viscosity={0.82}
+            resolution={tierCfg.liquidResolution}
+            autoDemo={false}
+            clickBurst={false}
+            maxDevicePixelRatio={1.5}
+          />
+        </div>
+      )}
       <main className="tw-gate-card reveal-ink">
-        {!lite && !reduced && (
-          <div className="tw-gate-ink" aria-hidden="true">
-            <LiquidEther
-              colors={inkColors}
-              lightMode
-              inkMode
-              intensity={1.05}
-              mouseForce={10}
-              cursorSize={64}
-              persistence={0.94}
-              viscosity={0.55}
-              resolution={tierCfg.liquidResolution}
-              autoDemo={false}
-              clickBurst={false}
-              maxDevicePixelRatio={1.5}
-            />
-          </div>
-        )}
         <div className="tw-gate-content">
           <span className="tw-gate-corner tl" aria-hidden="true" />
           <span className="tw-gate-corner tr" aria-hidden="true" />

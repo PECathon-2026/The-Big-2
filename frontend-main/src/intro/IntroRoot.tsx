@@ -10,8 +10,14 @@ import './intro.css';
 
 export default function IntroRoot() {
   const phase = useApp((s) => s.phase);
-  if (phase === 'gate') return <Gate />;
-  if (phase === 'loading') return <Loader />;
+  if (phase === 'gate' || phase === 'loading') {
+    return (
+      <>
+        <Gate />
+        {phase === 'loading' && <Loader />}
+      </>
+    );
+  }
   if (phase === 'intro') return <IntroScroll />;
   return null;
 }

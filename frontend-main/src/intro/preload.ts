@@ -75,6 +75,7 @@ export function startPreload() {
         document.fonts.load('700 64px "Shippori Mincho"', '月読'),
         document.fonts.load('500 16px "Shippori Mincho"', '月読の見張り'),
         document.fonts.load('italic 500 24px "Cormorant Garamond"'),
+        document.fonts.load('500 64px "Cormorant Garamond"'),
         document.fonts.load('500 15px "Plus Jakarta Sans Variable"'),
       ])
     : Promise.resolve();

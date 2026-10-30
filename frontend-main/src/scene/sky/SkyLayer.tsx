@@ -6,17 +6,16 @@
  */
 import { Suspense } from 'react';
 import Stars from './Stars';
+import StarDepth from './StarDepth';
 import SkyGradient from './SkyGradient';
 import MilkyWay from './MilkyWay';
 import MoonAndSun from './Moon';
-import Horizon from './Horizon';
 import Planets from './Planets';
 import Meteors from './Meteors';
 import Objects from './Objects';
 import OverlayPainter from './OverlayPainter';
 import Picking from './Picking';
 import Post from './Post';
-import Landmarks from './Landmarks';
 import { useCatalog } from './shared';
 
 export default function SkyLayer() {
@@ -26,12 +25,11 @@ export default function SkyLayer() {
       <SkyGradient />
       <MilkyWay />
       {cat && <Stars cat={cat} />}
+      <StarDepth />
       <Planets />
       <Suspense fallback={null}>
         <MoonAndSun />
       </Suspense>
-      <Horizon />
-      <Landmarks />
       <Meteors />
       {cat && (
         <>

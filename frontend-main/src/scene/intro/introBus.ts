@@ -3,24 +3,29 @@
  * ScrollTrigger timeline; the canvas side (scene/intro) reads it inside useFrame. Never React state.
  *
  * Scroll map (§7.3):
- *   0–.08 frame opens · .08–.30 sunset · .30–.55 petals stream · .55–.72 petals land on stars
- *   .72–.82 title morph · .82–.90 Moon + constellations · .90–1 ease up into the open sky
+ *   0–.16 frame expands · .16–.30 sunset · .30–.55 petals stream · .55–.72 petals land on stars
+ *   .48–.49 scenery clears in the dark; petals land until .718, then the view settles into the sky.
  */
 import type { StarTargets } from '@/astro/catalog';
 
 export const P = {
-  frameEnd: 0.08,
+  frameEnd: 0.16,
   sunEnd: 0.3,
   streamEnd: 0.55,
   landEnd: 0.72,
   titleEnd: 0.82,
   moonEnd: 0.9,
+  sceneEnd: 0.82,
 } as const;
 
 /** Landing window of the petal → star handoff. Brightest stars land first. */
 export const LAND0 = 0.555;
 export const LAND1 = 0.712;
 export const LAND_FADE = 0.006;
+/** Clear the dark silhouettes in about 1% of the scroll, without interrupting detached petals. */
+export const sceneryOpacity = (p: number) => 1 - smooth(0.48, 0.49, p);
+/** Keep every petal landing intact, including the original petal-to-star crossfade. */
+export const sceneOpacity = (p: number) => 1 - smooth(LAND1 + LAND_FADE, P.sceneEnd, p);
 const MAG_MIN = -1.5;
 
 export interface IntroTimeline {
@@ -72,7 +77,8 @@ export const introRevealProgress = () => (intro.active ? intro.progress : 1);
 
 /**
  * Real time-lapse: key points (progress → minutes after timeline.start). The rate is not uniform, so the
- * sun sets during 8–30% and the night deepens over the rest, but every instant shown is a real time.
+ * sun sets during 8–30% and reaches tonight before the petals land on stars. Hold that time through
+ * the flight and handoff so the catalogue does not rotate against the foreground's travel.
  */
 export function timeAt(p: number, tl: IntroTimeline): Date {
   const total = (tl.end.getTime() - tl.start.getTime()) / 60_000;
@@ -81,8 +87,8 @@ export function timeAt(p: number, tl: IntroTimeline): Date {
     [0, 0],
     [P.frameEnd, Math.min(total * 0.05, sunsetMin * 0.3)],
     [P.sunEnd, Math.min(total * 0.35, sunsetMin + 12)],
-    [P.streamEnd, Math.min(total * 0.7, Math.max(sunsetMin + 40, total * 0.5))],
-    [P.moonEnd, total],
+    [P.streamEnd, total],
+    [P.landEnd, total],
     [1, total],
   ];
   let i = 0;

@@ -45,15 +45,16 @@ export function startIntro() {
   intro.progress = 0;
   intro.active = true;
   if (tl) {
+    intro.time = tl.start;
     skyClock.override = tl.start;
     updateSkyClock(true);
   }
   s.setIntroProgress(0);
-  if (s.phase !== 'intro') s.setPhase('intro');
   Director.station('intro', { instant: true, yaw: (tl?.sunsetAz ?? 270) * D, pitch: 6 * D, fov: 38 });
+  if (s.phase !== 'intro') s.setPhase('intro');
 }
 
-/** Leave the intro straight into the open sky at the current heading (end of scroll, Skip, Esc, autoplay end). */
+/** Leave the intro straight into the open sky at the current heading (end of scroll, Skip, Esc). */
 export function finishIntro() {
   if (!intro.active) return;
   const s = useApp.getState();

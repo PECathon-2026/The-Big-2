@@ -19,6 +19,8 @@ export interface LiquidEtherProps {
   intro?: boolean;
   lightMode?: boolean;
   inkMode?: boolean;
+  /** Proportion of red pigment deposits; the remainder use black. */
+  inkRedRatio?: number;
   backgroundColor?: string;
   maxDevicePixelRatio?: number;
   className?: string;
@@ -43,6 +45,7 @@ interface Settings {
   intro: boolean;
   light: boolean;
   ink: boolean;
+  redRatio: number;
   background: number[];
   maxRatio: number;
 }
@@ -65,11 +68,13 @@ interface Splat {
   vx: number;
   vy: number;
   radius: number;
+  pigment?: number;
+  amount?: number;
 }
 
 type Point = [number, number];
-type TargetName = 'velocity' | 'velocityNext' | 'divergence' | 'pressure' | 'pressureNext';
-type ProgramName = 'splat' | 'smooth' | 'divergence' | 'pressure' | 'project' | 'advect' | 'display';
+type TargetName = 'velocity' | 'velocityNext' | 'divergence' | 'pressure' | 'pressureNext' | 'curl' | 'dye' | 'dyeNext';
+type ProgramName = 'splat' | 'smooth' | 'divergence' | 'pressure' | 'project' | 'advect' | 'display' | 'curl' | 'vorticity' | 'dyeSplat' | 'dyeAdvect' | 'copy';
 
 const PIXEL_BUDGET = 2.4e6;
 const MAX_CELLS = 140000;
@@ -204,8 +209,72 @@ void main() {
   fragColor = vec4(velocity * uKeep, 0.0, 1.0);
 }`;
 
+const CURL = `${HEADER}
+uniform sampler2D uVelocity;
+void main() {
+  float l = texture(uVelocity, vUv - vec2(uTexel.x, 0.0)).y;
+  float r = texture(uVelocity, vUv + vec2(uTexel.x, 0.0)).y;
+  float b = texture(uVelocity, vUv - vec2(0.0, uTexel.y)).x;
+  float t = texture(uVelocity, vUv + vec2(0.0, uTexel.y)).x;
+  fragColor = vec4(0.5 * (r - l - t + b), 0.0, 0.0, 1.0);
+}`;
+
+const VORTICITY = `${HEADER}
+uniform sampler2D uVelocity;
+uniform sampler2D uCurl;
+uniform float uDt;
+uniform float uStrength;
+void main() {
+  float l = abs(texture(uCurl, vUv - vec2(uTexel.x, 0.0)).r);
+  float r = abs(texture(uCurl, vUv + vec2(uTexel.x, 0.0)).r);
+  float b = abs(texture(uCurl, vUv - vec2(0.0, uTexel.y)).r);
+  float t = abs(texture(uCurl, vUv + vec2(0.0, uTexel.y)).r);
+  vec2 gradient = vec2(r - l, t - b);
+  vec2 normal = gradient / (length(gradient) + 0.0001);
+  vec2 force = vec2(normal.y, -normal.x) * texture(uCurl, vUv).r * uStrength;
+  vec2 velocity = texture(uVelocity, vUv).rg + force * uDt;
+  fragColor = vec4(clamp(velocity, vec2(-4000.0), vec2(4000.0)), 0.0, 1.0);
+}`;
+
+const DYE_SPLAT = `${HEADER}
+uniform sampler2D uDye;
+uniform vec2 uSize;
+uniform vec4 uSegment;
+uniform float uRadius;
+uniform vec2 uPigment;
+void main() {
+  vec2 p = vUv * uSize;
+  vec2 ab = uSegment.zw - uSegment.xy;
+  float k = clamp(dot(p - uSegment.xy, ab) / max(dot(ab, ab), 0.0001), 0.0, 1.0);
+  float d = length(p - uSegment.xy - k * ab) / uRadius;
+  float brush = smoothstep(0.06, 0.9, exp(-d * d * 6.0));
+  vec2 dye = texture(uDye, vUv).rg + uPigment * brush;
+  fragColor = vec4(min(dye, vec2(4.0)), 0.0, 1.0);
+}`;
+
+const DYE_ADVECT = `${HEADER}
+uniform sampler2D uVelocity;
+uniform sampler2D uDye;
+uniform vec2 uStep;
+uniform float uKeep;
+void main() {
+  vec2 velocity = texture(uVelocity, vUv).rg;
+  vec2 midpoint = vUv - velocity * uStep * 0.5;
+  vec2 origin = vUv - texture(uVelocity, midpoint).rg * uStep;
+  vec2 dye = texture(uDye, origin).rg * uKeep;
+  fragColor = vec4(dye, 0.0, 1.0);
+}`;
+
+const COPY = `${HEADER}
+uniform sampler2D uSource;
+uniform vec2 uScale;
+void main() {
+  fragColor = texture(uSource, vUv) * vec4(uScale, 1.0, 1.0);
+}`;
+
 const DISPLAY = `${HEADER}
 uniform sampler2D uVelocity;
+uniform sampler2D uDye;
 uniform sampler2D uPalette;
 uniform vec2 uSimSize;
 uniform float uSpeedScale;
@@ -247,28 +316,29 @@ vec2 velocityAt(vec2 uv) {
 }
 
 void main() {
+  if (uInk > 0.5) {
+    // Two advected pigment concentrations, composited as absorbance on paper.
+    vec2 pigment = max(texture(uDye, vUv).rg, vec2(0.0));
+    // Trim the faint outer haze while retaining a small, soft pigment edge.
+    pigment *= smoothstep(0.025, 0.13, pigment.r + pigment.g);
+    vec3 red = 1.055 * pow(texture(uPalette, vec2(0.0, 0.5)).rgb, vec3(1.0 / 2.4)) - 0.055;
+    vec3 black = 1.055 * pow(texture(uPalette, vec2(1.0, 0.5)).rgb, vec3(1.0 / 2.4)) - 0.055;
+    vec3 absorption = -log(max(red, vec3(0.02))) * pigment.r
+      - log(max(black, vec3(0.02))) * pigment.g;
+    float fiber = paperNoise(gl_FragCoord.xy * 0.45);
+    vec3 transmission = exp(-absorption * uSpeedScale * (0.97 + fiber * 0.06));
+    float alpha = 1.0 - min(min(transmission.r, transmission.g), transmission.b);
+    // Premultiplied alpha preserves paper in gaps without whitening the backdrop.
+    vec3 color = transmission - vec3(1.0 - alpha);
+    color += uBackground.rgb * uBackground.a * (1.0 - alpha);
+    fragColor = vec4(max(color, vec3(0.0)), alpha + uBackground.a * (1.0 - alpha));
+    return;
+  }
   float speed = length(velocityAt(vUv)) * uSpeedScale;
   float level = speed < 0.75 ? speed : 0.75 + 0.25 * tanh((speed - 0.75) * 4.0);
   vec3 ink = texture(uPalette, vec2(level, 0.5)).rgb;
   float alpha = level;
-  if (uInk > 0.5) {
-    // Pigment settles in soft washes and darker, irregular suminagashi ridges.
-    vec2 paper = vUv * uSimSize;
-    float fiber = paperNoise(paper * 0.7) * 0.65 + paperNoise(paper * 2.8) * 0.35;
-    float density = max(0.0, speed + (fiber - 0.5) * 0.012);
-    float wash = smoothstep(0.025, 0.45, density);
-    float rings = 0.5 + 0.5 * sin(sqrt(density) * 32.0 + fiber * 0.7);
-    float ridge = pow(rings, 8.0) * smoothstep(0.04, 0.18, density);
-    alpha = clamp(wash * 0.58 + ridge * 0.3, 0.0, 0.88);
-    float pigment = clamp(0.3 + level * 0.7 + (paperNoise(vUv * 4.0) - 0.5) * 0.4, 0.0, 1.0);
-    ink = texture(uPalette, vec2(pigment, 0.5)).rgb;
-    // Palette textures contain linear RGB; paper pigment needs its sRGB colour.
-    ink = 1.055 * pow(max(ink, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055;
-    vec3 carbon = texture(uPalette, vec2(0.0, 0.5)).rgb;
-    carbon = 1.055 * pow(max(carbon, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055;
-    ink = mix(ink, carbon, ridge * 0.65);
-    alpha *= 0.9 + fiber * 0.1;
-  } else if (uLight > 0.5) {
+  if (uLight > 0.5) {
     float hollow = smoothstep(0.7, 1.6, speed);
     alpha = smoothstep(0.08, 0.5, level) * mix(0.85, 0.1, hollow);
   } else {
@@ -382,6 +452,7 @@ const LiquidEther = ({
   intro = true,
   lightMode = false,
   inkMode = false,
+  inkRedRatio = 0.6,
   backgroundColor = 'transparent',
   maxDevicePixelRatio = 2,
   className = '',
@@ -412,6 +483,7 @@ const LiquidEther = ({
     intro,
     light: lightMode,
     ink: inkMode,
+    redRatio: clamp(inkRedRatio, 0, 1),
     background: background ? [...background, 1] : [0, 0, 0, 0],
     maxRatio: clamp(maxDevicePixelRatio, 0.5, 3)
   };
@@ -445,7 +517,12 @@ const LiquidEther = ({
       pressure: link(gl, PRESSURE),
       project: link(gl, PROJECT),
       advect: link(gl, ADVECT),
-      display: link(gl, DISPLAY)
+      display: link(gl, DISPLAY),
+      curl: link(gl, CURL),
+      vorticity: link(gl, VORTICITY),
+      dyeSplat: link(gl, DYE_SPLAT),
+      dyeAdvect: link(gl, DYE_ADVECT),
+      copy: link(gl, COPY)
     } as Record<ProgramName, Program>;
     if (Object.values(programs).some(entry => !entry)) return;
 
@@ -453,6 +530,7 @@ const LiquidEther = ({
     const vao = gl.createVertexArray();
     const size = { width: 1, height: 1 };
     const grid = { width: 0, height: 0 };
+    const dyeGrid = { width: 0, height: 0 };
     const targets = {} as Record<TargetName, Target>;
     const pointer = {
       x: 0,
@@ -467,7 +545,7 @@ const LiquidEther = ({
       last: 0
     };
     const auto = { phase: Math.random() * 100, x: 0, y: 0, ready: false, ramp: 0 };
-    const opening = { active: settingsRef.current.intro && !reduced && generation === 0, time: 0 };
+    const opening = { active: settingsRef.current.intro && !settingsRef.current.ink && !reduced && generation === 0, time: 0 };
     const splats: Splat[] = [];
     const puffs: Splat[] = [];
     let energy = 1;
@@ -478,6 +556,13 @@ const LiquidEther = ({
     let pageVisible = document.visibilityState !== 'hidden';
     let lost = false;
     let paletteKey = '';
+    let pigmentDistance = 0;
+
+    // Equal-distance bands give three red deposits for every two black deposits.
+    const pigmentAt = (distance: number, ratio: number) => {
+      const band = Math.floor(distance / 180);
+      return Math.floor((band + 1) * ratio + 0.4 + 1e-6) > Math.floor(band * ratio + 0.4 + 1e-6) ? 0 : 1;
+    };
 
     const paletteTexture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, paletteTexture);
@@ -539,26 +624,96 @@ const LiquidEther = ({
       );
       const width = Math.max(1, Math.round(cssWidth * ratio));
       const height = Math.max(1, Math.round(cssHeight * ratio));
-      if (canvas.width !== width || canvas.height !== height) {
+      const canvasChanged = canvas.width !== width || canvas.height !== height;
+      if (canvasChanged) {
         canvas.width = width;
         canvas.height = height;
       }
+      const previousSize = { ...size };
       size.width = cssWidth;
       size.height = cssHeight;
       const base = s.resolution * 0.5;
       const scale = base * Math.min(1, Math.sqrt(MAX_CELLS / (cssWidth * cssHeight * base * base)));
       const gridWidth = clamp(Math.round(cssWidth * scale), 16, 1024);
       const gridHeight = clamp(Math.round(cssHeight * scale), 16, 1024);
-      if (gridWidth === grid.width && gridHeight === grid.height) return;
-      dropTargets();
+      const dyeScale = Math.min(s.resolution * 2, Math.sqrt(800000 / (cssWidth * cssHeight)));
+      const dyeWidth = clamp(Math.round(cssWidth * dyeScale), 16, 1536);
+      const dyeHeight = clamp(Math.round(cssHeight * dyeScale), 16, 1536);
+      if (gridWidth === grid.width && gridHeight === grid.height && dyeWidth === dyeGrid.width && dyeHeight === dyeGrid.height) {
+        if (canvasChanged) {
+          gl.bindVertexArray(vao);
+          updatePalette(s);
+          render(s);
+        }
+        return;
+      }
+      const previous = { ...targets };
       grid.width = gridWidth;
       grid.height = gridHeight;
+      dyeGrid.width = dyeWidth;
+      dyeGrid.height = dyeHeight;
       targets.velocity = makeTarget(gridWidth, gridHeight, 2);
       targets.velocityNext = makeTarget(gridWidth, gridHeight, 2);
       targets.divergence = makeTarget(gridWidth, gridHeight, 1);
       targets.pressure = makeTarget(gridWidth, gridHeight, 1);
       targets.pressureNext = makeTarget(gridWidth, gridHeight, 1);
+      if (s.ink) {
+        targets.curl = makeTarget(gridWidth, gridHeight, 1);
+        targets.dye = makeTarget(dyeWidth, dyeHeight, 2);
+        targets.dyeNext = makeTarget(dyeWidth, dyeHeight, 2);
+        // Seed once; quality changes and viewport resizes must keep the existing ink.
+        if (!previous.velocity && s.intro && !reduced) {
+          const drops: Point[] = [[0.16, 0.66], [0.84, 0.35], [0.82, 0.7], [0.18, 0.3], [0.72, 0.88]];
+          drops.forEach(([x, y], index) => {
+            const px = x * cssWidth;
+            const py = y * cssHeight;
+            const angle = index * 2.4;
+            puffs.push({ ax: px, ay: py, bx: px, by: py,
+              vx: Math.cos(angle) * 30, vy: Math.sin(angle) * 30,
+              radius: s.radius * 0.95, pigment: pigmentAt(index * 180, s.redRatio), amount: 0.6 });
+          });
+          energy = 1;
+        }
+      }
+      if (previous.velocity) {
+        gl.bindVertexArray(vao);
+        gl.disable(gl.BLEND);
+        const copy = (source: Target, output: Target, width: number, height: number, scaleX = 1, scaleY = 1) => {
+          gl.viewport(0, 0, width, height);
+          run(programs.copy, output, u => {
+            bindTexture(0, source.texture, u.uSource);
+            gl.uniform2f(u.uScale, scaleX, scaleY);
+          });
+        };
+        const scaleX = cssWidth / previousSize.width;
+        const scaleY = cssHeight / previousSize.height;
+        // Sample the old textures before freeing them, including when stepping down quality.
+        copy(previous.velocity, targets.velocity, gridWidth, gridHeight, scaleX, scaleY);
+        copy(previous.pressure, targets.pressure, gridWidth, gridHeight);
+        if (s.ink && previous.dye) copy(previous.dye, targets.dye, dyeWidth, dyeHeight);
+        Object.values(previous).forEach(target => {
+          gl.deleteTexture(target.texture);
+          gl.deleteFramebuffer(target.framebuffer);
+        });
+        if (cssWidth !== previousSize.width || cssHeight !== previousSize.height) {
+          pointer.ready = false;
+          pointer.moved = false;
+          auto.ready = false;
+          puffs.forEach(puff => {
+            puff.ax *= scaleX;
+            puff.bx *= scaleX;
+            puff.ay *= scaleY;
+            puff.by *= scaleY;
+            puff.vx *= scaleX;
+            puff.vy *= scaleY;
+          });
+        }
+      }
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      // Canvas resizing clears its drawing buffer. Repaint before the browser presents it.
+      gl.bindVertexArray(vao);
+      updatePalette(s);
+      render(s);
     };
 
     const swap = (a: TargetName, b: TargetName) => {
@@ -594,12 +749,23 @@ const LiquidEther = ({
         });
         swap('velocity', 'velocityNext');
       });
-      splats.length = 0;
       const passes = Math.ceil(s.viscosity * 4);
       for (let pass = 0; pass < passes; pass++) {
         run(programs.smooth, targets.velocityNext, u => {
           bindTexture(0, targets.velocity.texture, u.uVelocity);
           gl.uniform1f(u.uAmount, Math.min(1, s.viscosity * 4 - pass) * 0.9);
+        });
+        swap('velocity', 'velocityNext');
+      }
+      if (s.ink) {
+        run(programs.curl, targets.curl, u => {
+          bindTexture(0, targets.velocity.texture, u.uVelocity);
+        });
+        run(programs.vorticity, targets.velocityNext, u => {
+          bindTexture(0, targets.velocity.texture, u.uVelocity);
+          bindTexture(1, targets.curl.texture, u.uCurl);
+          gl.uniform1f(u.uDt, dt);
+          gl.uniform1f(u.uStrength, 14 * Math.pow(1 - s.viscosity, 2));
         });
         swap('velocity', 'velocityNext');
       }
@@ -624,10 +790,35 @@ const LiquidEther = ({
       run(programs.advect, targets.velocityNext, u => {
         bindTexture(0, targets.velocity.texture, u.uVelocity);
         gl.uniform2f(u.uStep, dt / size.width, dt / size.height);
-        gl.uniform1f(u.uKeep, keepFor(s.persistence, dt));
+        // More viscous ink loses momentum instead of continuing to race away.
+        gl.uniform1f(u.uKeep, s.ink ? Math.exp(-(0.16 + s.viscosity * 0.9) * dt) : keepFor(s.persistence, dt));
         gl.uniform1f(u.uWalls, walls);
       });
       swap('velocity', 'velocityNext');
+      if (s.ink) {
+        gl.viewport(0, 0, dyeGrid.width, dyeGrid.height);
+        splats.forEach(splat => {
+          const amount = splat.amount ?? 0.14;
+          if (amount <= 0) return;
+          run(programs.dyeSplat, targets.dyeNext, u => {
+            bindTexture(0, targets.dye.texture, u.uDye);
+            gl.uniform2f(u.uSize, size.width, size.height);
+            gl.uniform4f(u.uSegment, splat.ax, splat.ay, splat.bx, splat.by);
+            gl.uniform1f(u.uRadius, splat.radius);
+            const pigment = splat.pigment ?? pigmentAt(pigmentDistance, s.redRatio);
+            gl.uniform2f(u.uPigment, pigment === 0 ? amount : 0, pigment === 1 ? amount : 0);
+          });
+          swap('dye', 'dyeNext');
+        });
+        run(programs.dyeAdvect, targets.dyeNext, u => {
+          bindTexture(0, targets.velocity.texture, u.uVelocity);
+          bindTexture(1, targets.dye.texture, u.uDye);
+          gl.uniform2f(u.uStep, dt / size.width, dt / size.height);
+          gl.uniform1f(u.uKeep, Math.exp(-0.07 * dt));
+        });
+        swap('dye', 'dyeNext');
+      }
+      splats.length = 0;
     };
 
     const render = (s: Settings) => {
@@ -635,8 +826,9 @@ const LiquidEther = ({
       run(programs.display, null, u => {
         bindTexture(0, targets.velocity.texture, u.uVelocity);
         bindTexture(1, paletteTexture, u.uPalette);
+        if (s.ink) bindTexture(2, targets.dye.texture, u.uDye);
         gl.uniform2f(u.uSimSize, grid.width, grid.height);
-        gl.uniform1f(u.uSpeedScale, (1.25 * s.intensity) / (0.84 * Math.max(size.width, size.height)));
+        gl.uniform1f(u.uSpeedScale, s.ink ? s.intensity : (1.25 * s.intensity) / (0.84 * Math.max(size.width, size.height)));
         gl.uniform1f(u.uLight, s.light ? 1 : 0);
         gl.uniform1f(u.uInk, s.ink ? 1 : 0);
         gl.uniform4f(u.uBackground, s.background[0], s.background[1], s.background[2], s.background[3]);
@@ -661,15 +853,20 @@ const LiquidEther = ({
     };
 
     const addStroke = (from: Point, to: Point, dt: number, scale: number, radius: number) => {
+      const s = settingsRef.current;
+      const travel = Math.hypot(to[0] - from[0], to[1] - from[1]);
       splats.push({
         ax: from[0],
         ay: from[1],
         bx: to[0],
         by: to[1],
-        vx: clamp(((to[0] - from[0]) / dt) * scale, -6000, 6000),
-        vy: clamp(((to[1] - from[1]) / dt) * scale, -6000, 6000),
-        radius
+        vx: clamp(((to[0] - from[0]) / dt) * scale, s.ink ? -260 : -6000, s.ink ? 260 : 6000),
+        vy: clamp(((to[1] - from[1]) / dt) * scale, s.ink ? -260 : -6000, s.ink ? 260 : 6000),
+        radius,
+        pigment: pigmentAt(pigmentDistance + travel * 0.5, s.redRatio),
+        amount: Math.min(travel / 22, 1) * 0.14
       });
+      pigmentDistance += travel;
     };
 
     const frame = (now: number) => {
@@ -709,7 +906,7 @@ const LiquidEther = ({
       if (pointer.moved && dt > 0) {
         pointer.moved = false;
         const span = Math.max(now - pointer.last, 8) / 1000;
-        addStroke([pointer.fromX, pointer.fromY], [pointer.x, pointer.y], span, (s.force / 20) * 0.15 * pace, s.radius);
+        addStroke([pointer.fromX, pointer.fromY], [pointer.x, pointer.y], span, (s.force / 20) * (s.ink ? 0.18 : 0.15) * pace, s.radius);
         pointer.fromX = pointer.x;
         pointer.fromY = pointer.y;
         pointer.last = now;
@@ -724,7 +921,7 @@ const LiquidEther = ({
       if (dt > 0) simulate(s, dt);
       render(s);
 
-      energy *= keepFor(s.persistence, dt);
+      energy *= s.ink ? Math.exp(-0.07 * dt) : keepFor(s.persistence, dt);
       const busy = opening.active || (s.autoDemo && !reduced) || energy > 0.002 || puffs.length > 0 || pointer.moved;
       if (busy && visible && pageVisible) raf = requestAnimationFrame(frame);
     };
@@ -873,7 +1070,7 @@ const LiquidEther = ({
         Object.values(programs).forEach(entry => gl.deleteProgram(entry.program));
       }
     };
-  }, [generation]);
+  }, [generation, inkMode]);
 
   return (
     <div ref={containerRef} className={`relative h-full w-full overflow-hidden ${className}`.trim()} style={style}>

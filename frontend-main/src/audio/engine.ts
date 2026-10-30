@@ -1,8 +1,9 @@
 /**
  * Sound (§10.5). One AudioContext, unlocked by a user gesture (the gate's "Enter with sound", or the
- * sound toggle). Master gain 0.6. A low night-wind bed fades in over 2 s and ducks under whooshes.
- * Every cue is synthesized in Web Audio (filtered noise bursts, plucked partials) — no files needed,
- * so nothing can 404 and the venue Wi-Fi does not matter. Nothing plays before the gate choice.
+ * sound toggle). Master gain 0.6. A serene, motivational Japanese background music bed (koto, shakuhachi
+ * flute, and subtle traditional percussion) fades in over 2.5 s at gentle low volume and ducks under whooshes.
+ * Every UI cue is synthesized in Web Audio (koto plucks, katana shing, hyoshigi clacks) — fast and responsive.
+ * Nothing plays before the gate choice.
  *
  * Contract other workstreams rely on (keep these signatures):
  *   unlockAudio()  — call inside a click handler (user gesture) when sound was chosen.
@@ -17,9 +18,12 @@ let master: GainNode | null = null;
 let bed: GainNode | null = null;
 let noiseBuf: AudioBuffer | null = null;
 let bedStarted = false;
+let bgmAudio: HTMLAudioElement | null = null;
+let bgmSource: MediaElementAudioSourceNode | null = null;
+let proceduralBedRunning = false;
 
 const MASTER = 0.6;
-const BED = 0.55;
+const BED = 0.22; // Low volume cultural Japanese ambient bed
 
 function build(c: AudioContext) {
   master = c.createGain();
@@ -28,45 +32,120 @@ function build(c: AudioContext) {
   bed = c.createGain();
   bed.gain.value = 0;
   bed.connect(master);
-  // 2 s of white noise, shared by every noise-based cue and the wind bed
+  // 2 s of white noise, shared by noise-based UI cues (whoosh, tick, clack, thud, shing)
   noiseBuf = c.createBuffer(1, c.sampleRate * 2, c.sampleRate);
   const d = noiseBuf.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
 }
 
-/** Night wind: two band-limited noise layers with slow LFOs on their filters and levels. */
+/**
+ * Cultural & motivational Japanese background music.
+ * Streams `/audio/bgm-japanese.mp3` (traditional koto, shakuhachi flute, and Japanese percussion)
+ * routed through the bed GainNode into master.
+ * Automatically falls back to a synthesized in-sen modal koto/drone bed if offline or unsupported.
+ */
 function startBed(c: AudioContext) {
-  if (bedStarted || !bed || !noiseBuf) return;
+  if (bedStarted) {
+    if (bgmAudio && bgmAudio.paused && app().sound) {
+      bgmAudio.play().catch(() => {});
+    }
+    return;
+  }
   bedStarted = true;
-  const layer = (freq: number, q: number, level: number, lfoHz: number, depth: number) => {
-    const src = c.createBufferSource();
-    src.buffer = noiseBuf;
-    src.loop = true;
-    src.playbackRate.value = 0.5 + Math.random() * 0.2;
-    const f = c.createBiquadFilter();
-    f.type = 'bandpass';
-    f.frequency.value = freq;
-    f.Q.value = q;
-    const g = c.createGain();
-    g.gain.value = level;
-    const lfo = c.createOscillator();
-    lfo.frequency.value = lfoHz;
-    const lfoGain = c.createGain();
-    lfoGain.gain.value = depth;
-    lfo.connect(lfoGain).connect(f.frequency);
-    const lfo2 = c.createOscillator();
-    lfo2.frequency.value = lfoHz * 0.61;
-    const lfo2Gain = c.createGain();
-    lfo2Gain.gain.value = level * 0.5;
-    lfo2.connect(lfo2Gain).connect(g.gain);
-    src.connect(f).connect(g).connect(bed!);
-    src.start();
-    lfo.start();
-    lfo2.start();
+
+  if (typeof window !== 'undefined' && typeof Audio !== 'undefined') {
+    if (!bgmAudio) {
+      bgmAudio = new Audio('/audio/bgm-japanese.mp3');
+      bgmAudio.loop = true;
+      bgmAudio.preload = 'auto';
+      bgmAudio.crossOrigin = 'anonymous';
+
+      bgmAudio.addEventListener('error', () => {
+        console.warn('Japanese BGM track could not be loaded; switching to procedural Japanese ambient bed.');
+        startProceduralBed(c);
+      });
+    }
+
+    if (!bgmSource && bed) {
+      try {
+        bgmSource = c.createMediaElementSource(bgmAudio);
+        bgmSource.connect(bed);
+      } catch (err) {
+        // Fallback: connect directly via element volume
+        console.warn('Audio routing notice:', err);
+        if (bgmAudio) bgmAudio.volume = BED * MASTER;
+      }
+    }
+
+    if (app().sound) {
+      const playPromise = bgmAudio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          // Deferred until user interaction
+          const onInteract = () => {
+            if (app().sound && bgmAudio && bgmAudio.paused) {
+              bgmAudio.play().catch(() => {});
+            }
+            window.removeEventListener('pointerdown', onInteract);
+            window.removeEventListener('keydown', onInteract);
+          };
+          window.addEventListener('pointerdown', onInteract, { once: true });
+          window.addEventListener('keydown', onInteract, { once: true });
+        });
+      }
+    }
+  } else {
+    startProceduralBed(c);
+  }
+}
+
+/** Procedural fallback: gentle in-sen pentatonic drone and soft koto resonance */
+function startProceduralBed(c: AudioContext) {
+  if (proceduralBedRunning || !bed) return;
+  proceduralBedRunning = true;
+
+  // Root drone (D3 = 146.83Hz, A3 = 220Hz)
+  const d3 = c.createOscillator();
+  d3.type = 'triangle';
+  d3.frequency.value = 146.83;
+
+  const a3 = c.createOscillator();
+  a3.type = 'sine';
+  a3.frequency.value = 220.0;
+
+  const droneFilter = c.createBiquadFilter();
+  droneFilter.type = 'lowpass';
+  droneFilter.frequency.value = 450;
+
+  const droneGain = c.createGain();
+  droneGain.gain.value = 0.08;
+
+  d3.connect(droneFilter);
+  a3.connect(droneFilter);
+  droneFilter.connect(droneGain).connect(bed);
+
+  d3.start();
+  a3.start();
+
+  // Gentle periodic in-sen plucks every few seconds
+  const INSEN_BED = [293.66, 311.13, 392.0, 440.0, 466.16, 587.33];
+  const step = () => {
+    if (!proceduralBedRunning || !ctx || !bed || !app().sound) return;
+    const t = ctx.currentTime;
+    const f = INSEN_BED[Math.floor(Math.random() * INSEN_BED.length)];
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(f, t);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.04, t + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 3.0);
+    osc.connect(g).connect(bed);
+    osc.start(t);
+    osc.stop(t + 3.1);
+    window.setTimeout(step, 4000 + Math.random() * 5000);
   };
-  layer(320, 0.7, 0.07, 0.05, 140);
-  layer(900, 1.4, 0.025, 0.083, 380);
-  layer(140, 0.5, 0.05, 0.031, 40);
+  window.setTimeout(step, 2000);
 }
 
 function ramp(p: AudioParam, to: number, sec: number) {
@@ -82,11 +161,19 @@ function apply(on: boolean) {
   if (on) {
     if (ctx.state === 'suspended') void ctx.resume();
     startBed(ctx);
+    if (bgmAudio && bgmAudio.paused) {
+      bgmAudio.play().catch(() => {});
+    }
     ramp(master.gain, MASTER, 0.4);
-    ramp(bed.gain, BED, 2);
+    ramp(bed.gain, BED, 2.5);
   } else {
     ramp(bed.gain, 0, 0.5);
     ramp(master.gain, 0, 0.6);
+    setTimeout(() => {
+      if (!app().sound && bgmAudio && !bgmAudio.paused) {
+        bgmAudio.pause();
+      }
+    }, 600);
   }
 }
 
