@@ -19,9 +19,9 @@ def tap_ok(d) -> bool:
     return isinstance(d, dict) and isinstance(d.get("data"), list)
 
 
-SIMBAD_MIRRORS = (
-    "https://simbad.cds.unistra.fr/simbad/sim-tap/sync",
+SIMBAD_MIRRORS = (  # Harvard first: it is the mirror the demo recordings hold, and the CDS hosts refuse some networks
     "https://simbad.harvard.edu/simbad/sim-tap/sync",
+    "https://simbad.cds.unistra.fr/simbad/sim-tap/sync",
     "https://simbad.u-strasbg.fr/simbad/sim-tap/sync",
 )
 TTL_7_DAYS = 7 * 86400
