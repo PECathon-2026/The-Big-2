@@ -6,6 +6,13 @@ from typing import Any
 
 from ..core.envelope import Provenance
 from ..core.http import fetch
+def _items_ok(d) -> bool:
+    return isinstance(d, dict) and isinstance(d.get("items"), list)
+
+
+def _stamp_ok(b: bytes) -> bool:
+    return len(b) > 64 and not b.lstrip()[:1] == b"<"  # a cutout, not an HTML error page
+
 
 API = "https://api.alerce.online/ztf/v1"
 STAMPS = "https://avro.alerce.online/get_stamp"
@@ -38,23 +45,23 @@ def _obj(o: dict[str, Any]) -> dict[str, Any]:
 
 async def cone(ra: float, dec: float, radius_arcsec: float = 600, limit: int = 20) -> tuple[list[dict[str, Any]], Provenance]:
     params = {"ra": ra, "dec": dec, "radius": radius_arcsec, "page_size": limit, "order_by": "ndet", "order_mode": "DESC"}
-    f = await fetch("alerce", f"{API}/objects/", params=params, ttl=6 * 3600)
+    f = await fetch("alerce", f"{API}/objects/", params=params, ttl=6 * 3600, validate=_items_ok)
     return [_obj(o) for o in f.data.get("items", [])], f.provenance
 
 
 async def recent(class_name: str = "SNIa", min_probability: float = 0.5, limit: int = 20, classifier: str = "lc_classifier") -> tuple[list[dict[str, Any]], Provenance]:
     params = {"classifier": classifier, "class": class_name, "probability": min_probability, "page_size": limit, "order_by": "lastmjd", "order_mode": "DESC"}
-    f = await fetch("alerce", f"{API}/objects/", params=params, ttl=3600)
+    f = await fetch("alerce", f"{API}/objects/", params=params, ttl=3600, validate=_items_ok)
     return [_obj(o) for o in f.data.get("items", [])], f.provenance
 
 
 async def obj(oid: str) -> tuple[dict[str, Any], Provenance]:
-    f = await fetch("alerce", f"{API}/objects/{oid}", ttl=6 * 3600)
+    f = await fetch("alerce", f"{API}/objects/{oid}", ttl=6 * 3600, validate=lambda d: isinstance(d, dict) and bool(d.get("oid")))
     return _obj(f.data), f.provenance
 
 
 async def lightcurve(oid: str) -> tuple[dict[str, Any], Provenance]:
-    f = await fetch("alerce", f"{API}/objects/{oid}/lightcurve", ttl=6 * 3600)
+    f = await fetch("alerce", f"{API}/objects/{oid}/lightcurve", ttl=6 * 3600, validate=lambda d: isinstance(d, dict) and isinstance(d.get("detections"), list))
     dets = []
     for d in f.data.get("detections", []):
         if d.get("magpsf") is None:
@@ -93,12 +100,12 @@ async def lightcurve(oid: str) -> tuple[dict[str, Any], Provenance]:
 
 
 async def probabilities(oid: str) -> tuple[list[dict[str, Any]], Provenance]:
-    f = await fetch("alerce", f"{API}/objects/{oid}/probabilities", ttl=24 * 3600)
+    f = await fetch("alerce", f"{API}/objects/{oid}/probabilities", ttl=24 * 3600, validate=lambda d: isinstance(d, list))
     rows = [p for p in f.data if p.get("classifier_name") == "lc_classifier"]
     rows.sort(key=lambda p: -p.get("probability", 0))
     return [{"class": p["class_name"], "probability": round(p["probability"], 4), "classifier": p["classifier_name"], "version": p.get("classifier_version")} for p in rows[:5]], f.provenance
 
 
 async def stamp(oid: str, candid: str, kind: str = "science", fmt: str = "png") -> tuple[bytes, Provenance]:
-    f = await fetch("alerce-stamps", STAMPS, params={"oid": oid, "candid": candid, "format": fmt, "type": kind}, ttl=30 * 24 * 3600, binary=True)
+    f = await fetch("alerce-stamps", STAMPS, params={"oid": oid, "candid": candid, "format": fmt, "type": kind}, ttl=30 * 24 * 3600, binary=True, validate=_stamp_ok)
     return f.data, f.provenance

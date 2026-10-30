@@ -17,6 +17,9 @@ from pydantic import BaseModel, Field
 from ..core import astro
 from ..core.envelope import Provenance, Trace
 from ..core.http import ProviderError, fetch
+def _rows_ok(d) -> bool:
+    return isinstance(d, list) and all(isinstance(r, dict) for r in d[:3])
+
 
 KP_FORECAST = "https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json"
 KP_1M = "https://services.swpc.noaa.gov/json/planetary_k_index_1m.json"
@@ -83,7 +86,7 @@ class Aurora(BaseModel):
 
 
 async def current_kp() -> tuple[tuple[float, datetime] | None, Provenance]:
-    f = await fetch("noaa-swpc", KP_1M, ttl=120)
+    f = await fetch("noaa-swpc", KP_1M, ttl=120, validate=_rows_ok)
     rows = [r for r in f.data if r.get("estimated_kp") is not None]
     if not rows:
         return None, f.provenance
@@ -92,7 +95,7 @@ async def current_kp() -> tuple[tuple[float, datetime] | None, Provenance]:
 
 
 async def kp_forecast() -> tuple[list[KpPoint], Provenance]:
-    f = await fetch("noaa-swpc", KP_FORECAST, ttl=15 * 60)
+    f = await fetch("noaa-swpc", KP_FORECAST, ttl=15 * 60, validate=_rows_ok)
     out = []
     for r in f.data:
         try:
@@ -106,7 +109,7 @@ async def kp_forecast() -> tuple[list[KpPoint], Provenance]:
 
 async def g_scale_now() -> tuple[str | None, Provenance | None]:
     try:
-        f = await fetch("noaa-swpc", SCALES, ttl=15 * 60)
+        f = await fetch("noaa-swpc", SCALES, ttl=15 * 60, validate=lambda d: isinstance(d, dict) and "0" in d)
         g = (f.data.get("0") or {}).get("G") or {}
         s = g.get("Scale")
         return (f"G{s} {g.get('Text')}" if s is not None else None), f.provenance

@@ -18,6 +18,10 @@ from ..core.compute import in_thread
 from ..core.envelope import Provenance
 from ..core.http import fetch
 from ..core.memo import floor_time, memoize
+def _tle_ok(b: bytes) -> bool:
+    lines = [l.strip() for l in b.decode("ascii", "ignore").splitlines() if l.strip()]
+    return len(lines) >= 3 and lines[1].startswith("1 ") and lines[2].startswith("2 ")
+
 
 CELESTRAK = "https://celestrak.org/NORAD/elements/gp.php"
 SATELLITES = {
@@ -33,7 +37,7 @@ SCAN_BUCKET_S = 600  # scans start on a 10-minute boundary and are memoised for 
 
 
 async def tle(catnr: int) -> tuple[tuple[str, str, str], Provenance]:
-    f = await fetch("celestrak", CELESTRAK, params={"CATNR": catnr, "FORMAT": "TLE"}, ttl=6 * 3600, binary=True)
+    f = await fetch("celestrak", CELESTRAK, params={"CATNR": catnr, "FORMAT": "TLE"}, ttl=6 * 3600, binary=True, validate=_tle_ok)
     lines = [l.strip() for l in f.data.decode("ascii", "ignore").splitlines() if l.strip()]
     if len(lines) < 3:
         raise ValueError(f"bad TLE for {catnr}: {lines}")

@@ -37,6 +37,9 @@ async def at(ra: float = Query(..., ge=0, le=360), dec: float = Query(..., ge=-9
         raise HTTPException(404, f"no SDSS spectrum within {radius_arcmin}′ of ({ra:.4f}, {dec:+.4f}); SDSS covers mainly the northern sky away from the Milky Way")
     o = objs[0]
     data, p2 = await sdss.spectrum_fits(o["plate"], o["mjd"], o["fiberid"], o["run2d"], o["survey"])
-    spec = await asyncio.to_thread(sdss.parse, data)
+    try:
+        spec = await asyncio.to_thread(sdss.parse, data)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(502, f"could not parse the SDSS spectrum: {e}") from e
     spec["separation_arcsec"] = o["separation_arcsec"]
     return Envelope(data=spec, provenance=[p1, p2])

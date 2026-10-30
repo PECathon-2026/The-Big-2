@@ -9,7 +9,7 @@ import astronomy as ae
 from ..core import astro
 from ..core.envelope import Provenance
 from ..core.http import ProviderError, fetch
-from ..lens.catalog import SIMBAD_MIRRORS, _find_mirror, _params
+from ..lens.catalog import SIMBAD_MIRRORS, _find_mirror, _params, tap_ok
 
 # name, jp, kind, ra_deg, dec_deg, note  (J2000; the planner needs degree-level accuracy only)
 BUILTIN: list[dict[str, Any]] = [
@@ -82,7 +82,7 @@ async def resolve(name: str | None, ra: float | None, dec: float | None, kind: s
     variants = [name.strip(), name.strip().upper(), " ".join(name.split()), "NAME " + name.strip()]
     for v in dict.fromkeys(variants):
         adql = f"SELECT TOP 1 b.ra, b.dec, b.main_id, b.otype FROM basic AS b JOIN ident AS i ON b.oid = i.oidref WHERE i.id = '{v.replace(chr(39), '')}'"
-        f = await fetch("simbad", url, params=_params(adql), ttl=30 * 86400, retries=0)
+        f = await fetch("simbad", url, params=_params(adql), ttl=30 * 86400, retries=0, validate=tap_ok)
         rows = f.data.get("data") or []
         if rows and rows[0][0] is not None:
             r_ra, r_dec, main_id, otype = rows[0]
