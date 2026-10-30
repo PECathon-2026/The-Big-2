@@ -2,6 +2,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Query
 
+from ..core.compute import in_thread
 from ..core.envelope import Envelope, Provenance
 from ..core.http import ProviderError
 from . import lightpollution, openmeteo, spots
@@ -56,7 +57,7 @@ async def score(
         except ProviderError as e:
             prov.append(Provenance(source="nasa-gibs", note=str(e)))
     prov.append(Provenance(source="computed", note="astronomy-engine for Sun/Moon; Night Honor model in app/watchtower/score.py"))
-    ns = compute_night_score(lat, lon, fc[0], air, ens, bortle, ref=at, window_hours=window_hours)
+    ns = await in_thread(compute_night_score, lat, lon, fc[0], air, ens, bortle, ref=at, window_hours=window_hours)
     return Envelope(data=ns, provenance=prov)
 
 

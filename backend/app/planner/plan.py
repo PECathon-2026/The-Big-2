@@ -17,6 +17,7 @@ import astronomy as ae
 from pydantic import BaseModel, Field
 
 from ..core import astro
+from ..core.compute import in_thread
 from ..core.envelope import Provenance, Trace
 from ..core.http import ProviderError
 from ..watchtower import lightpollution, openmeteo, spots
@@ -209,7 +210,7 @@ async def make_plan(
     min_alt, sun_limit = eq["min_alt"], SUN_LIMIT.get(kind, -18.0)
     zone = astro.tz(lat, lon)
     ref = (date or datetime.now(timezone.utc)).astimezone(timezone.utc)
-    sunset, dusk, dawn, sunrise = astro.night_bounds(lat, lon, ref)
+    sunset, dusk, dawn, sunrise = await in_thread(astro.night_bounds, lat, lon, ref)
 
     def local_clock(hhmm: str, base: datetime, after: datetime | None = None) -> datetime:
         h, m = (int(x) for x in hhmm.split(":"))
@@ -287,12 +288,19 @@ async def make_plan(
         out.sort(key=lambda x: x.net_score, reverse=True)
         return out
 
-    ranked = evaluate_all(t0, t1, travel_limit_km)
+    # the base ranking, the two "leave later" and the two "drive farther" what-ifs: five sweeps of every candidate
+    # at 15-minute steps, all pure astronomy, so they run together in one worker thread
+    def sweep_all():
+        base = evaluate_all(t0, t1, travel_limit_km)
+        later = {hours: evaluate_all(t0 + timedelta(hours=hours), t1, travel_limit_km) for hours in (1, 2)}
+        farther = {extra: evaluate_all(t0, t1, travel_limit_km + extra) for extra in (20, 50)}
+        _, moonset = astro.rise_set(ae.Body.Moon, astro.observer(lat, lon), t0, 1.0)
+        return base, later, farther, moonset
+
+    ranked, later_runs, farther_runs, moonset = await in_thread(sweep_all)
     best = ranked[0] if ranked and ranked[0].usable_minutes > 0 else None
 
     # moonset tonight, if the Moon is up during the window
-    obs = astro.observer(lat, lon)
-    _, moonset = astro.rise_set(ae.Body.Moon, obs, t0, 1.0)
     moonset_local = moonset.astimezone(zone).strftime("%H:%M") if moonset and t0 <= moonset <= t1 else None
 
     # counterfactuals
@@ -301,7 +309,7 @@ async def make_plan(
     base_min = best.usable_minutes if best else 0
 
     for hours in (1, 2):
-        alt = evaluate_all(t0 + timedelta(hours=hours), t1, travel_limit_km)
+        alt = later_runs[hours]
         ab = alt[0] if alt and alt[0].usable_minutes > 0 else None
         amin = ab.usable_minutes if ab else 0
         cfs.append(Counterfactual(
@@ -310,7 +318,7 @@ async def make_plan(
             usable_minutes_best=amin, delta_minutes=amin - base_min, best_spot=ab.name if ab else "nowhere", best_spot_changes=(ab.name if ab else "nowhere") != base_best_name,
         ))
     for extra in (20, 50):
-        alt = evaluate_all(t0, t1, travel_limit_km + extra)
+        alt = farther_runs[extra]
         ab = alt[0] if alt and alt[0].usable_minutes > 0 else None
         amin = ab.usable_minutes if ab else 0
         changes = (ab.name if ab else "nowhere") != base_best_name
