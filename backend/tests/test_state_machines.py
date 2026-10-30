@@ -233,6 +233,10 @@ class HonorMachine(RuleBasedStateMachine):
         assert row["kind"] == eff and row["user_id"] == user
         t = _parse(row["claimed_at"])
         ok, margin = sky_oracle(eff, loc[0], loc[1], t)
+        # honor is earned once per sighting: same kind and title within 12 h of an earlier verified claim scores 0
+        key = (eff, (row["title"] or "").strip().lower())
+        if any(x["verified"] and x.get("key") == key and abs((x["t"] - t).total_seconds()) < 12 * 3600 for x in self.rows[user].values()):
+            ok = False
         pts = b["points_awarded"]
         assert pts == (rules.POINTS[eff] if b["accepted"] else 0), b
         assert row["points"] == pts and row["verified"] == b["accepted"]
@@ -240,7 +244,7 @@ class HonorMachine(RuleBasedStateMachine):
             assert b["accepted"] == ok, f"sky oracle says {ok} (margin {margin:.2f} deg) for {req}: {b['reason']} {row['evidence']}"
         if not ok and margin > BORDERLINE_DEG:
             assert pts == 0, f"points for a claim the sky forbids: {req}"
-        self.rows[user][row["id"]] = {"points": pts, "verified": b["accepted"]}
+        self.rows[user][row["id"]] = {"points": pts, "verified": b["accepted"], "key": key, "t": t}
         total = sum(x["points"] for x in self.rows[user].values())
         assert b["rank"]["points"] == total
         assert b["rank"]["romaji"] == expected_rank(total)[1]

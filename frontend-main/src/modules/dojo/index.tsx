@@ -6,7 +6,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { api, type Benchmark, type Detection, type LensJob, type LensResult } from '@/data/api';
+import { api, type Benchmark, type CatalogResult, type Detection, type LensJob, type LensResult } from '@/data/api';
 import { makeMockLens, MOCK_PROVENANCE, type MockLens } from '@/data/mocks/lens';
 import { fmtNum, fmtPct } from '@/data/format';
 import { Button, Card, Chip, Divider, InfoPopover, Kanji, Tag } from '@/ui';
@@ -98,6 +98,9 @@ export default function Dojo() {
   const [seams, setSeams] = useState<{ seamPx: number; hotFrac: number } | null>(null);
   const [bench, setBench] = useState<{ status: 'idle' | 'loading' | 'ok' | 'error'; data?: Benchmark; error?: string }>({ status: 'idle' });
   const [skyErr, setSkyErr] = useState(false);
+  const [cat, setCat] = useState<{ status: 'idle' | 'loading' | 'ok' | 'error'; data?: CatalogResult; error?: string }>({ status: 'idle' });
+  const [solve, setSolve] = useState<{ status: 'idle' | 'loading' | 'started' | 'error'; error?: string }>({ status: 'idle' });
+  const [poke, setPoke] = useState(0); // re-polls the job after a plate solve starts
 
   useEffect(() => {
     if (isMock) {
@@ -112,7 +115,8 @@ export default function Dojo() {
         if (!alive) return;
         setJob(j);
         setErr(null);
-        if (j.status === 'done' || j.status === 'failed') return;
+        const solving = j.stages.find((s) => s.name === 'wcs')?.status === 'running';
+        if ((j.status === 'done' && !solving) || j.status === 'failed') return;
       } catch (e) {
         if (!alive) return;
         setErr(e instanceof Error ? e.message : String(e));
@@ -125,7 +129,28 @@ export default function Dojo() {
       alive = false;
       window.clearTimeout(h);
     };
-  }, [id, isMock]);
+  }, [id, isMock, poke]);
+
+  const runCatalog = async () => {
+    if (!job) return;
+    setCat({ status: 'loading' });
+    try {
+      setCat({ status: 'ok', data: (await api.lens.catalog(job.job_id)).data });
+    } catch (e) {
+      setCat({ status: 'error', error: e instanceof Error ? e.message : String(e) });
+    }
+  };
+  const runSolve = async () => {
+    if (!job) return;
+    setSolve({ status: 'loading' });
+    try {
+      await api.lens.solve(job.job_id);
+      setSolve({ status: 'started' });
+      setPoke((n) => n + 1);
+    } catch (e) {
+      setSolve({ status: 'error', error: e instanceof Error ? e.message : String(e) });
+    }
+  };
 
   const r: LensResult | null = isMock ? (mock?.result ?? null) : job?.status === 'done' ? job.result : null;
   const src = useMemo(() => {
@@ -164,7 +189,15 @@ export default function Dojo() {
       }
       lede="Drag the katana, click anywhere to cut there, or use the arrow keys. Wheel to zoom, drag to pan once zoomed. Detections live only on the restored side."
       wide
-      actions={isMock ? <Chip variant="mock" /> : undefined}
+      actions={
+        isMock ? (
+          <Chip variant="mock" />
+        ) : (
+          <Button variant="primary" onClick={() => nav('/dojo')}>
+            ← All cuts
+          </Button>
+        )
+      }
     >
       {err && !job && (
         <Card plain>
@@ -273,9 +306,52 @@ export default function Dojo() {
                         <figcaption className="pg-quiet">NASA SkyView · DSS2 Red, the same patch of sky</figcaption>
                       </figure>
                     )}
+                    {skyErr && <p className="pg-quiet">NASA SkyView did not answer for this field.</p>}
+                    {job && (
+                      <div style={{ marginTop: 12 }}>
+                        <Button variant="primary" onClick={() => void runCatalog()} disabled={cat.status === 'loading'}>
+                          {cat.status === 'loading' ? 'Asking SIMBAD…' : 'Name the brightest · SIMBAD'}
+                        </Button>
+                        {cat.status === 'error' && <p className="pg-error">{cat.error}</p>}
+                        {cat.data && (
+                          <>
+                            {cat.data.matches.length ? (
+                              <dl className="pg-kv" style={{ marginTop: 10 }}>
+                                {cat.data.matches.map((m) => (
+                                  <span key={`${m.detection_id}-${m.name}`} style={{ display: 'contents' }}>
+                                    <dt>
+                                      <button className="dj-link" onClick={() => (setMode('restored'), setSel(m.detection_id))}>
+                                        #{m.detection_id}
+                                      </button>
+                                    </dt>
+                                    <dd>
+                                      {m.name} {m.otype && <Tag>{m.otype}</Tag>} <span className="pg-quiet num">{fmtNum(m.separation_arcsec, 1)}″</span>
+                                    </dd>
+                                  </span>
+                                ))}
+                              </dl>
+                            ) : (
+                              <p className="pg-quiet">SIMBAD had no object within reach of the {cat.data.queried} brightest detections.</p>
+                            )}
+                            {cat.data.note && <p className="pg-quiet">{cat.data.note}</p>}
+                          </>
+                        )}
+                      </div>
+                    )}
                   </>
                 ) : (
-                  <p className="pg-quiet">No sky coordinates: the image carries no FITS WCS or AVM tags{isMock ? ' (mock)' : ''}.</p>
+                  <>
+                    <p className="pg-quiet">No sky coordinates: the image carries no FITS WCS or AVM tags{isMock ? ' (mock)' : ''}.</p>
+                    {job && (
+                      <>
+                        <Button variant="primary" onClick={() => void runSolve()} disabled={solve.status === 'loading' || job.stages.find((s) => s.name === 'wcs')?.status === 'running'}>
+                          {job.stages.find((s) => s.name === 'wcs')?.status === 'running' ? 'Plate-solving…' : 'Plate-solve · astrometry.net'}
+                        </Button>
+                        {job.stages.find((s) => s.name === 'wcs')?.detail && <p className="pg-quiet">{job.stages.find((s) => s.name === 'wcs')?.detail}</p>}
+                        {solve.status === 'error' && <p className="pg-error">{solve.error}</p>}
+                      </>
+                    )}
+                  </>
                 )}
                 <Divider />
                 <p className="pg-quiet">

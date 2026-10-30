@@ -610,6 +610,34 @@ export interface CatalogMatch {
   [k: string]: unknown;
 }
 
+export interface CatalogResult {
+  matches: { detection_id: number; name: string; otype: string | null; ra: number; dec: number; separation_arcsec: number }[];
+  queried: number;
+  note: string | null;
+}
+
+/** One row of the Dojo dashboard (GET /api/lens/jobs). */
+export interface LensJobSummary {
+  job_id: string;
+  status: 'queued' | 'running' | 'done' | 'failed';
+  created_at: string;
+  filename: string;
+  sample_id: string | null;
+  width: number | null;
+  height: number | null;
+  verdict: string | null;
+  ssim: number | null;
+  psnr_db: number | null;
+  chi2_reduced: number | null;
+  invented_pixels: number | null;
+  stars: number | null;
+  galaxies: number | null;
+  unknown: number | null;
+  psf_fwhm_px: number | null;
+  wcs_solved: boolean;
+  error: string | null;
+}
+
 export type LensImageKind = 'original' | 'denoised' | 'restored' | 'residual' | 'psf' | 'noise' | 'overlay';
 
 // ---------------------------------------------------------------------------
@@ -684,7 +712,8 @@ export const api = {
     benchmark: (id: string, nStars = 40) => post<Benchmark>(`/api/lens/jobs/${encodeURIComponent(id)}/benchmark`, undefined, { n_stars: nStars }),
     solve: (id: string) => post<unknown>(`/api/lens/jobs/${encodeURIComponent(id)}/solve`),
     skyviewUrl: (id: string, survey = 'DSS2 Red') => buildUrl(`/api/lens/jobs/${encodeURIComponent(id)}/skyview`, { survey }),
-    catalog: (id: string, signal?: AbortSignal) => getRaw<CatalogMatch[]>(`/api/lens/jobs/${encodeURIComponent(id)}/catalog`, undefined, signal),
+    catalog: (id: string, signal?: AbortSignal) => get<CatalogResult>(`/api/lens/jobs/${encodeURIComponent(id)}/catalog`, undefined, signal),
+    jobs: (limit = 50, signal?: AbortSignal) => getRaw<LensJobSummary[]>('/api/lens/jobs', { limit }, signal),
   },
 
   /** Web Push alerts. Subscribe through `src/push.ts` (it needs the service worker); these calls take the endpoint it returns. */
@@ -717,11 +746,31 @@ export const api = {
     subtractJobs: (jobOld: string, jobNew: string, nsigma = 5) => post<SubtractionResult>('/api/transients/subtract-jobs', undefined, { job_old: jobOld, job_new: jobNew, nsigma }),
   },
 
+  /** Spectra: the SDSS spectrum nearest a sky position, with the pipeline's measured lines and redshift. */
+  spectra: {
+    near: (ra: number, dec: number, radiusArcmin = 1, limit = 5, signal?: AbortSignal) =>
+      get<{ ra: number; dec: number; radius_arcmin: number; objects: SpecObject[] }>('/api/spectra/near', { ra, dec, radius_arcmin: radiusArcmin, limit }, signal),
+    at: (ra: number, dec: number, radiusArcmin = 1, signal?: AbortSignal) => get<Spectrum>('/api/spectra/at', { ra, dec, radius_arcmin: radiusArcmin }, signal),
+    spectrum: (plate: number, mjd: number, fiberid: number, run2d: string, survey = 'sdss', signal?: AbortSignal) =>
+      get<Spectrum>(`/api/spectra/spectrum/${plate}/${mjd}/${fiberid}`, { run2d, survey }, signal),
+  },
+
   /** Observing planner: best place and time for a target, with the binding constraint per 15 min and what-if answers. */
   planner: {
     targets: (signal?: AbortSignal) => getRaw<{ targets: PlannerTarget[]; equipment: Record<string, { min_alt: number; label: string }> }>('/api/planner/targets', undefined, signal),
     plan: (p: { lat: number; lon: number; target?: string; ra?: number; dec?: number; kind?: string; equipment: string; date?: string; earliest_local?: string; latest_local?: string; travel_limit_km: number; candidate_limit?: number }) =>
       post<Plan>('/api/planner/plan', p),
+  },
+
+  /** Aurora chance: NOAA SWPC Kp now and forecast versus the Kp this geomagnetic latitude needs. */
+  aurora: (w: Where, at?: string, signal?: AbortSignal) => get<AuroraReport>('/api/aurora', { lat: w.lat, lon: w.lon, at }, signal),
+
+  /** Personal horizon: terrain skyline from a DEM (plus traced points), and when a target really clears it. */
+  horizon: {
+    terrain: (w: Where, signal?: AbortSignal) => get<HorizonProfile>('/api/horizon/terrain', { lat: w.lat, lon: w.lon }, signal),
+    mask: (p: { lat: number; lon: number; points?: { az: number; alt: number }[]; use_terrain?: boolean }) => post<HorizonProfile>('/api/horizon/mask', p),
+    path: (p: { lat: number; lon: number; target?: string; ra?: number; dec?: number; kind?: string; date?: string; points?: { az: number; alt: number }[]; use_terrain?: boolean }) =>
+      post<{ horizon: HorizonProfile; report: HorizonPathReport; night: { sunset: string; sunrise: string } }>('/api/horizon/path', p),
   },
 
   /** Honor points: observations verified against the sky before points are awarded. */
@@ -732,6 +781,55 @@ export const api = {
     ledger: (userId: string, signal?: AbortSignal) => getRaw<Ledger>('/api/honor/ledger', { user_id: userId }, signal),
   },
 };
+
+export interface KpPoint {
+  time: string;
+  kp: number;
+  kind: 'observed' | 'estimated' | 'predicted' | string;
+  g_scale: string | null;
+}
+export interface AuroraReport {
+  lat: number;
+  lon: number;
+  geomagnetic_lat: number;
+  hemisphere: string;
+  look_toward: string;
+  kp_now: number | null;
+  kp_now_time: string | null;
+  g_now: string | null;
+  forecast: KpPoint[];
+  max_kp_next_24h: number | null;
+  max_kp_time: string | null;
+  required_kp: { overhead?: number | null; horizon?: number | null };
+  chance_tonight: string;
+  verdict: string;
+  dark_window_local: Record<string, string>;
+  trace: Trace;
+}
+export interface HorizonProfile {
+  lat: number;
+  lon: number;
+  observer_elevation_m: number;
+  az_step: number;
+  terrain: number[];
+  manual: number[];
+  mask: number[];
+  highest: { az: number; compass: string; alt: number };
+  mean_deg: number;
+  sky_fraction_lost: number;
+  note: string;
+}
+export interface HorizonPathReport {
+  target: string;
+  geometric_rise_local: string | null;
+  geometric_set_local: string | null;
+  crossings: { kind: string; time: string; local: string; az: number; alt: number; mask_alt: number }[];
+  minutes_above_geometric: number;
+  minutes_above_mask: number;
+  minutes_lost_to_skyline: number;
+  sentence: string;
+  path: { time: string; local: string; alt: number; az: number; mask_alt: number; visible: boolean }[];
+}
 
 export interface PlannerTarget {
   id: string;
@@ -870,6 +968,59 @@ export interface SubtractionResult {
   note?: string;
   oid?: string;
   candid?: string;
+}
+
+export interface SpecObject {
+  spec_obj_id: string;
+  plate: number;
+  mjd: number;
+  fiberid: number;
+  class: string;
+  subclass: string;
+  z: number;
+  z_err: number | null;
+  ra: number;
+  dec: number;
+  survey: string;
+  run2d: string;
+  sn_median: number | null;
+  separation_arcsec: number;
+}
+export interface SpecLine {
+  name: string;
+  rest_wavelength: number;
+  observed_wavelength: number;
+  z?: number;
+  area?: number;
+  area_err?: number;
+  sigma_kms?: number;
+  equivalent_width?: number;
+  emission?: boolean;
+  significance?: number;
+}
+export interface Spectrum {
+  plate: number;
+  mjd: number;
+  fiberid: number;
+  ra: number;
+  dec: number;
+  class: string;
+  subclass: string;
+  z: number;
+  z_err: number;
+  sn_median: number | null;
+  exptime_s: number;
+  flux_unit: string;
+  wavelength: number[];
+  flux: number[];
+  model: number[];
+  n_pixels: number;
+  binned_to: number;
+  wavelength_range: [number, number];
+  lines_measured: SpecLine[];
+  lines_expected: SpecLine[];
+  note: string;
+  separation_arcsec?: number;
 }
 
 export interface HonorRank {

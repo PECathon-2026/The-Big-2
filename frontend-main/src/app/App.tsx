@@ -10,7 +10,7 @@ import { Route, Routes, useLocation } from 'react-router';
 import CanvasRoot from '@/scene/CanvasRoot';
 import { useApp } from '@/state/store';
 import { Director, rig } from '@/scene/Director';
-import { isModulePath, Watchtower, Scroll, Lens, Dojo, Honor, Science } from './routes';
+import { isModulePath, Watchtower, Scroll, Lens, Dojo, DojoDashboard, Honor, Science } from './routes';
 import { releaseScroll } from './lenis';
 import IntroRoot from '@/intro/IntroRoot';
 import SkyOverlay from '@/scene/sky/SkyOverlay';
@@ -63,6 +63,7 @@ export default function App() {
             <Route path="/watchtower" element={<Watchtower />} />
             <Route path="/scroll" element={<Scroll />} />
             <Route path="/lens" element={<Lens />} />
+            <Route path="/dojo" element={<DojoDashboard />} />
             <Route path="/dojo/:id" element={<Dojo />} />
             <Route path="/honor" element={<Honor />} />
             <Route path="/science" element={<Science />} />

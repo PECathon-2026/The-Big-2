@@ -81,11 +81,16 @@ def render_luminance(sub: np.ndarray, a: JobArrays, stretch: str) -> np.ndarray:
     s = f(v)
     if a.rgb is None:
         return (s * 255.0 + 0.5).astype(np.uint8)
-    # colour: keep the original chroma, scale each pixel by (stretched / original) luminance; cap the gain so
-    # near-black pixels cannot blow up into saturated colour noise
-    v0 = np.clip((a.sub.astype(np.float64) - lo) / (hi - lo), 1e-3, None)
-    ratio = np.clip(s / v0, 0.0, 4.0)[..., None]
-    out = np.clip(a.rgb.astype(np.float64) / 255.0 * ratio, 0.0, 1.0)
+    # colour: add this frame's luminance change (restored - original, in the same 0-255 units the luminance was
+    # measured in) to every channel of the original RGB, so the sky keeps its colour and gradient and only the
+    # measured change shows. The stretch is then applied as a gain on that luminance, capped so near-black
+    # pixels cannot blow up into colour noise. (Scaling the original RGB by restored/original luminance, the old
+    # way, turned the denoised background grey and ringed every star.)
+    base = np.clip(a.rgb.astype(np.float64) + (sub.astype(np.float64) - a.sub.astype(np.float64))[..., None], 0.0, 255.0)
+    if stretch == "linear":
+        return (base + 0.5).astype(np.uint8)
+    ratio = np.clip(s / np.clip(v, 1e-3, None), 0.0, 4.0)[..., None]
+    out = np.clip(base / 255.0 * ratio, 0.0, 1.0)
     return (out * 255.0 + 0.5).astype(np.uint8)
 
 

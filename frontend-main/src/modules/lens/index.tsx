@@ -9,11 +9,11 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { api, type LensJob, type LensSample } from '@/data/api';
 import { MOCK_PROVENANCE } from '@/data/mocks/lens';
 import { fmtNum } from '@/data/format';
-import { Button, Card, Chip, Divider, InfoPopover, Tag } from '@/ui';
+import { Button, Card, Chip, Divider, InfoPopover, Kanji, Tag } from '@/ui';
 import PageFrame from '../_ui/PageFrame';
 import KatanaSlider from '../_ui/KatanaSlider';
 import { DataState, Num, Reveal, SectionHead } from '../_ui/kit';
-import { Kintsugi, Stages } from './shared';
+import { HonestyCanvas, Kintsugi, Stages } from './shared';
 import { RecentSupernovae } from './Transients';
 import './lens.css';
 
@@ -88,6 +88,9 @@ export default function Lens() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [view, setView] = useState<'restored' | 'heat'>('restored');
+  const [seams, setSeams] = useState<{ seamPx: number; hotFrac: number } | null>(null);
+  const resultRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     let alive = true;
@@ -123,10 +126,16 @@ export default function Lens() {
             /* storage unavailable */
           }
         }
-        if (j.status === 'done' || j.status === 'failed') return;
+        if (j.status === 'done') {
+          // bring the before/after into view once it exists
+          window.setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+          return;
+        }
+        if (j.status === 'failed') return;
       } catch (e) {
         if (!alive) return;
         setErr(e instanceof Error ? e.message : String(e));
+        return; // a 404 means the server forgot the job; polling again will not bring it back
       }
       h = window.setTimeout(tick, POLL_MS);
     };
@@ -142,6 +151,8 @@ export default function Lens() {
     setBusy(true);
     setJob(null);
     setJobId(null); // a failed submission must not leave the previous job looking like it is still running
+    setView('restored');
+    setSeams(null);
     try {
       const created = await api.lens.createJob({ file, sample_id: file ? null : sampleId || null, denoise_strength: denoise, deblur_iterations: deblur, detect_sigma: sigma });
       setJobId(created.job_id);
@@ -262,7 +273,7 @@ export default function Lens() {
       )}
 
       {r && job && (
-        <section className="pg-section" id="result">
+        <section className="pg-section" id="result" ref={resultRef}>
           <SectionHead
             jp="刃"
             eyebrow="First cut"
@@ -274,8 +285,32 @@ export default function Lens() {
           >
             Draw the <em>blade</em>.
           </SectionHead>
+          <div className="ln-view-modes" role="tablist" aria-label="Right side of the katana">
+            <button role="tab" className="pg-filter" aria-selected={view === 'restored'} aria-pressed={view === 'restored'} onClick={() => setView('restored')}>
+              <Kanji>修</Kanji> Restored
+            </button>
+            <button role="tab" className="pg-filter" aria-selected={view === 'heat'} aria-pressed={view === 'heat'} onClick={() => setView('heat')}>
+              <Kanji>熱</Kanji> Heat difference
+            </button>
+            {view === 'heat' && (
+              <span className="ln-heat-legend">
+                no change <i aria-hidden="true" /> 3σ change
+                <InfoPopover
+                  title="What the heat map shows"
+                  trace={{ formula: 'heat = |original − PSF ⊗ restored| / 3σ', notes: ['Proof of honesty: the restored image is blurred again with the measured PSF and compared with the original. Where only noise was removed the residual is dark; bright crimson and gold mark where the restoration changed the data by more than the noise allows. Gold seams trace ~2σ.'] }}
+                  provenance={[{ source: 'spirit-lens pipeline', url: null, fetched_at: job.created_at, stale: false, cached: false, note: r.units_note }]}
+                />
+              </span>
+            )}
+          </div>
           <div className="ln-result">
-            <KatanaSlider width={r.image.width} height={r.image.height} left={<img src={api.lens.imageUrl(job.job_id, 'original', r.image.is_fits ? 'asinh' : 'linear')} alt="Original" />} right={<img src={api.lens.imageUrl(job.job_id, 'restored', r.image.is_fits ? 'asinh' : 'linear')} alt="Restored" />} />
+            <KatanaSlider
+              width={r.image.width}
+              height={r.image.height}
+              left={<img src={api.lens.imageUrl(job.job_id, 'original', r.image.is_fits ? 'asinh' : 'linear')} alt="Original" />}
+              right={view === 'heat' ? <HonestyCanvas src={api.lens.imageUrl(job.job_id, 'residual')} onStats={setSeams} /> : <img src={api.lens.imageUrl(job.job_id, 'restored', r.image.is_fits ? 'asinh' : 'linear')} alt="Restored" />}
+              rightLabel={view === 'heat' ? '熱 Heat difference' : '修 Restored'}
+            />
             <Card plain className="ln-summary">
               <div className="pg-stats">
                 <div className="pg-stat">
@@ -307,6 +342,15 @@ export default function Lens() {
               <p className="pg-quiet">
                 SSIM {fmtNum(r.honesty.ssim, 3)} · PSNR {fmtNum(r.honesty.psnr_db, 1)} dB · χ² {fmtNum(r.honesty.forward_model.chi2_reduced, 2)} · {r.honesty.invented_pixels} invented px. The Dojo shows where and why.
               </p>
+              {seams && view === 'heat' && (
+                <p className="pg-quiet num">
+                  {(seams.hotFrac * 100).toFixed(2)}% of pixels changed by more than ~2σ ({seams.seamPx.toLocaleString('en-US')} seam px).
+                </p>
+              )}
+              <Divider />
+              <Button variant="primary" onClick={() => nav('/dojo')}>
+                All past cuts · 道場
+              </Button>
             </Card>
           </div>
         </section>

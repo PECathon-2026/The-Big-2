@@ -91,3 +91,12 @@
 .sc-count i { font-style: normal; font-family: var(--font-jp); color: var(--gold); font-size: 13px; }
 .sc-count small { font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--washi-3); }
 .sc-count.soon b { color: var(--crimson-bright); }
+
+/* season card + test push (Season.tsx) */
+.sc-season { margin-top: 22px; }
+.sc-season-grid { margin-bottom: 4px; }
+.sc-season-kanji { font-family: var(--font-jp); font-weight: 700; font-size: clamp(36px, 4.6vw, 56px); letter-spacing: .08em; color: var(--kinu); margin: 6px 0 0; line-height: 1.15; text-shadow: 0 2px 18px rgba(201, 154, 58, .3); }
+.sc-season-kanji.ko { font-size: clamp(30px, 3.8vw, 46px); }
+.sc-season-romaji { font-family: var(--font-accent); font-style: italic; font-size: 22px; color: var(--gold-accent); margin: 2px 0 0; }
+.sc-season-meaning { font-size: 15px; color: var(--washi-2); margin: 12px 0 14px; }
+.sc-testpush { margin: 4px 0 14px; }

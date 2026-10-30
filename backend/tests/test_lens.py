@@ -154,3 +154,17 @@ def test_press_jpeg_display_keeps_dust_lanes(client: TestClient):
     im = np.array(Image.open(io.BytesIO(png)))
     black = float((im.max(axis=2) == 0).mean())
     assert black < 0.01, f"{black:.1%} of the display is pure black"
+    # the restored frame must wear the same colour: only the measured luminance change is added to each channel
+    rest = np.array(Image.open(io.BytesIO(client.get(f"/api/lens/jobs/{job['job_id']}/image/restored", params={"stretch": "linear"}).content)))
+    chroma_o = float((im.max(axis=2).astype(int) - im.min(axis=2)).mean())
+    chroma_r = float((rest.max(axis=2).astype(int) - rest.min(axis=2)).mean())
+    assert chroma_r > 0.7 * chroma_o, f"restored lost its colour: chroma {chroma_r:.1f} vs original {chroma_o:.1f}"
+
+
+def test_jobs_list_for_the_dojo(client: TestClient):
+    r = client.post("/api/lens/jobs", data={"sample_id": "synthetic_field", "denoise_strength": 0.5, "deblur_iterations": 0, "detect_sigma": 3.0})
+    jid = r.json()["job_id"]
+    _wait(client, jid, timeout=90)
+    rows = client.get("/api/lens/jobs", params={"limit": 200}).json()
+    row = next(x for x in rows if x["job_id"] == jid)
+    assert row["status"] == "done" and row["stars"] > 0 and row["ssim"] is not None and row["verdict"]

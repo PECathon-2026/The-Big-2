@@ -96,3 +96,25 @@
 .tr-stamps figure { margin: 0; display: flex; flex-direction: column; gap: 4px; align-items: center; }
 .tr-stamps img { width: 128px; height: 128px; image-rendering: pixelated; border-radius: 6px; border: 1px solid var(--card-line); background: var(--sumi); }
 .tr-stamps figcaption { font-family: var(--font-jp); font-size: 12px; color: var(--washi-3); }
+
+/* dojo dashboard */
+.dj-summary { padding: 20px 22px; margin-bottom: 8px; }
+.dj-jobs { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.dj-job { width: 100%; display: flex; flex-direction: column; text-align: left; border-radius: 12px; overflow: hidden; border: 1px solid var(--card-line-soft); background: rgba(232, 217, 181, .03); transition: border-color var(--dur-micro), transform var(--dur-micro) var(--ease-katana); }
+.dj-job:not(:disabled):hover { border-color: var(--card-gold); transform: translateY(-2px); }
+.dj-job:disabled { cursor: default; opacity: .7; }
+.dj-job-thumb { position: relative; display: grid; place-items: center; aspect-ratio: 16 / 9; background: var(--sumi); font-family: var(--font-jp); font-size: 34px; color: var(--washi-3); }
+.dj-job-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.dj-job-seal { position: absolute; top: 10px; right: 10px; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 4px; font-size: 18px; font-weight: 700; color: var(--kinu); background: var(--shu); box-shadow: 0 4px 12px rgba(0, 0, 0, .5); transform: rotate(-6deg); }
+.dj-job-seal.ok { background: var(--gold); color: var(--sumi); }
+.dj-job-body { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px 16px; }
+.dj-job-name { font-family: var(--font-display); font-size: 15px; letter-spacing: .04em; color: var(--kinu); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dj-job-meta { font-size: 12.5px; color: var(--washi-2); }
+.dj-job-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.dj-job-tags .tw-tag { height: 20px; font-size: 10px; }
+
+/* lens: heat difference */
+.ln-view-modes { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.ln-heat-legend { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--washi-2); }
+.ln-heat-legend i { display: inline-block; width: 120px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--sumi), var(--crimson-bright), var(--gold-bright)); box-shadow: inset 0 0 0 1px var(--card-line-soft); }
+.dj-link { color: var(--gold-bright); font-variant-numeric: tabular-nums; text-decoration: underline dotted; text-underline-offset: 3px; }
