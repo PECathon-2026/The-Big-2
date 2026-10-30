@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Query
 
@@ -11,12 +11,24 @@ from .score import NightScore, compute_night_score
 router = APIRouter()
 
 
+def _from_now(fc: dict) -> dict:
+    """Open-Meteo's hourly series starts at local midnight; drop the hours already behind us (keeping the current
+    one) so the raw forecast, like the score, only shows what is still actionable."""
+    times = fc.get("time") or []
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=1)
+    keep = [i for i, t in enumerate(times) if t >= cutoff]
+    if not keep or len(keep) == len(times):
+        return {**fc}
+    n = len(times)
+    return {k: ([v[i] for i in keep] if isinstance(v, list) and len(v) == n else v) for k, v in fc.items()}
+
+
 @router.get("/forecast")
 async def forecast(lat: float = Query(..., ge=-90, le=90), lon: float = Query(..., ge=-180, le=180), days: int = Query(2, ge=1, le=5)):
     """Raw hourly forecast (cloud layers, humidity, visibility, wind, temperature, dew point) plus aerosol optical depth."""
     fc, p1 = await openmeteo.forecast([(lat, lon)], days=days)
     prov = [p1]
-    data = {**fc[0]}
+    data = _from_now(fc[0])
     try:
         air, p2 = await openmeteo.air_quality(lat, lon, days=days)
         prov.append(p2)
