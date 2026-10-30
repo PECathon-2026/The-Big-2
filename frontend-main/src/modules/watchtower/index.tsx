@@ -10,6 +10,7 @@ import { DataState, Num, ProvenanceFooter, Reveal, SectionHead } from '../_ui/ki
 import { usePageData } from '../_ui/usePageData';
 import { Gauge, Timeline, Waterfall } from './charts';
 import { glyphOf } from './glyph';
+import { AuroraSection, HorizonSection, PlannerSection } from './Extras';
 import './watchtower.css';
 
 const SpotsMap = lazy(() => import('./SpotsMap'));
@@ -94,6 +95,8 @@ export default function Watchtower() {
   const [hi, setHi] = useState<string | null>(null);
   const [selSpot, setSelSpot] = useState<string | null>(null);
   const spots = usePageData(place ? 'watchtower/spots' : null, () => api.watchtower.spots(place!, 60, 12), 30 * 60_000);
+  const aurora = usePageData(place ? 'watchtower/aurora' : null, () => api.aurora(place!), 15 * 60_000);
+  const horizon = usePageData(place ? 'watchtower/horizon' : null, () => api.horizon.terrain(place!), 24 * 60 * 60_000);
 
   const n = score.data;
   const v = n ? verdictOf(n.verdict.verdict) : null;
@@ -249,7 +252,11 @@ export default function Watchtower() {
         )}
       </section>
 
-      <ProvenanceFooter lists={[score.provenance, spots.provenance]} computedAt={[score.computedAt, spots.computedAt]} />
+      <PlannerSection />
+      <HorizonSection horizon={horizon} />
+      <AuroraSection aurora={aurora} />
+
+      <ProvenanceFooter lists={[score.provenance, spots.provenance, aurora.provenance, horizon.provenance]} computedAt={[score.computedAt, spots.computedAt, aurora.computedAt, horizon.computedAt]} />
     </PageFrame>
   );
 }
