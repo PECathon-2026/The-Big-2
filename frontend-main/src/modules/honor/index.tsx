@@ -177,7 +177,7 @@ export default function Honor() {
   return (
     <PageFrame
       seal="誉"
-      eyebrow="五 · 誉 Homare · Honor"
+      eyebrow="六 · 誉 Homare · Honor"
       title={
         <>
           Keep the <em>watch</em>.

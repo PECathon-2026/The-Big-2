@@ -181,7 +181,7 @@ export default function Dojo() {
   return (
     <PageFrame
       seal="道"
-      eyebrow="四 · 道場 Dōjō · The Katana cut"
+      eyebrow="五 · 道場 Dōjō · The Katana cut"
       title={
         <>
           Cut between <em>before</em> and after.

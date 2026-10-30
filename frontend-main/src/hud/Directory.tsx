@@ -5,7 +5,7 @@
  */
 import { useMemo } from 'react';
 import { useLocation } from 'react-router';
-import { CHAPTERS, DOJO, SCIENCE } from '@/app/routes';
+import { CHAPTERS, SCIENCE } from '@/app/routes';
 import { compass16, vecToAltAz } from '@/astro/coords';
 import { Director } from '@/scene/Director';
 import { useApp, type SkyObject } from '@/state/store';
@@ -115,23 +115,6 @@ export default function Directory() {
                   </button>
                 </li>
               ))}
-              <li>
-                <button className={`dir-row ${pathname.startsWith(DOJO.path) ? 'active' : ''}`} onClick={(e) => go(DOJO.path, e)}>
-                  <span className="k" lang="ja">
-                    {DOJO.num}
-                  </span>
-                  <span className="t">
-                    <b>{DOJO.name}</b>
-                    <span>
-                      <span className="jp" lang="ja">
-                        {DOJO.jp}
-                      </span>
-                      {DOJO.romaji} · every cut you made
-                    </span>
-                  </span>
-                  <span className="r">刃</span>
-                </button>
-              </li>
               <li>
                 <button className={`dir-row ${pathname === SCIENCE.path ? 'active' : ''}`} onClick={(e) => go(SCIENCE.path, e)}>
                   <span className="k" lang="ja">
