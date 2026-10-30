@@ -10,6 +10,7 @@ from .core.config import settings
 from .alerts.router import router as alerts_router
 from .aurora.router import router as aurora_router
 from .core.http import ProviderError
+from .core.security import BodyTooLarge, GuardMiddleware
 from .honor.router import router as honor_router
 from .horizon.router import router as horizon_router
 from .lens.router import router as lens_router
@@ -58,17 +59,26 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Order matters: the last one added is the outermost. CORS wraps the guard so a 429 / 413 still reaches the page.
+app.add_middleware(GuardMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.origins,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["Retry-After"],
+    max_age=600,
 )
 
 
 @app.exception_handler(ProviderError)
 async def provider_error_handler(_, exc: ProviderError):
     return JSONResponse(status_code=502, content={"error": "provider_unavailable", "source": exc.source, "detail": exc.message})
+
+
+@app.exception_handler(BodyTooLarge)
+async def body_too_large_handler(_, exc: BodyTooLarge):
+    return JSONResponse(status_code=413, content={"error": "too_large", "detail": str(exc)})
 
 
 STARTED_AT = datetime.now(timezone.utc)

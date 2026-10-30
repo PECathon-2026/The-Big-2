@@ -350,7 +350,7 @@ def test_ledger_is_newest_first_across_utc_offsets(client):
 
 # ================================================================================================= ALERTS
 
-ENDPOINTS = [f"https://push.example.test/ep{i}" for i in range(4)]
+ENDPOINTS = [f"https://fcm.googleapis.com/fcm/send/ep{i}" for i in range(4)]
 
 
 def sub_json(ep: str) -> dict:

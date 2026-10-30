@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     data_dir: str = "data"
     user_agent: str = "TsukuyomiWatch/0.1 (PECathon 2026 hackathon project)"
     http_timeout_s: float = 30.0
+    rate_limit: bool = True  # per-client token buckets (app/core/security.py)
+    trust_proxy_headers: bool = True  # key clients by CF-Connecting-IP / X-Forwarded-For when behind a proxy
 
     @property
     def data_path(self) -> Path:

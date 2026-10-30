@@ -467,7 +467,7 @@ def test_aurora_both_paths(client):
 
 
 def test_alerts_lifecycle(client):
-    sub = {"endpoint": "https://push.example.test/contract", "keys": {"p256dh": "BKey", "auth": "auth"}}
+    sub = {"endpoint": "https://fcm.googleapis.com/fcm/send/contract", "keys": {"p256dh": "BKey", "auth": "auth"}}
     ep = sub["endpoint"]
     k = check_plain(hit(client, "GET", "/api/alerts/vapid-public-key"), {"public_key"})
     assert len(k["public_key"]) == 87
@@ -698,7 +698,7 @@ BODY_LATLON = {
     "/api/planner/plan": {"target": "m31"},
     "/api/horizon/mask": {"use_terrain": False},
     "/api/horizon/path": {"target": "m31", "use_terrain": False},
-    "/api/alerts/schedule-event": {"endpoint": "https://push.example.test/latlon", "event_id": "none"},
+    "/api/alerts/schedule-event": {"endpoint": "https://fcm.googleapis.com/fcm/send/latlon", "event_id": "none"},
 }
 
 
@@ -817,9 +817,9 @@ def test_unknown_ids_give_404(client):
     assert r.status_code == 404
     r = client.get(f"/api/transients/{OID}/stamps/{CANDID}/bogus.png")
     assert r.status_code == 404
-    r = client.post("/api/alerts/schedule", json={"endpoint": "https://push.example.test/never", "title": "t", "body": "b", "fire_at": "2030-01-01T00:00:00Z"})
+    r = client.post("/api/alerts/schedule", json={"endpoint": "https://fcm.googleapis.com/fcm/send/never", "title": "t", "body": "b", "fire_at": "2030-01-01T00:00:00Z"})
     assert r.status_code == 404
-    r = client.delete("/api/alerts/scheduled/999999", params={"endpoint": "https://push.example.test/never"})
+    r = client.delete("/api/alerts/scheduled/999999", params={"endpoint": "https://fcm.googleapis.com/fcm/send/never"})
     assert r.status_code == 404
     r = client.post("/api/alerts/subscribe", json={"subscription": {"endpoint": "x"}})
     assert r.status_code == 400

@@ -130,9 +130,12 @@ def test_full_pipeline_on_synthetic_sample(client: TestClient):
 def test_unknown_job_and_bad_upload(client: TestClient):
     assert client.get("/api/lens/jobs/nope").status_code == 404
     r = client.post("/api/lens/jobs", files={"file": ("x.png", b"not an image", "image/png")})
+    assert r.status_code == 415  # refused at the door, before a worker is spent on it
+    # a valid signature with a damaged body still fails inside the job, with a readable reason
+    r = client.post("/api/lens/jobs", files={"file": ("x.png", b"\x89PNG\r\n\x1a\n" + b"garbage" * 20, "image/png")})
     assert r.status_code == 202
     body = _wait(client, r.json()["job_id"])
-    assert body["status"] == "failed" and body["error"]
+    assert body["status"] == "failed" and "cannot decode this image" in body["error"]
 
 
 def test_press_jpeg_display_keeps_dust_lanes(client: TestClient):

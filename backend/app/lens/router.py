@@ -21,7 +21,16 @@ from .models import BenchmarkResult, CatalogResult, JobAccepted, JobInfo, Sample
 from .wcs import AstrometryError, solve_astrometry
 
 router = APIRouter()
-MAX_UPLOAD_BYTES = 120 * 1024 * 1024
+MAX_UPLOAD_BYTES = 60 * 1024 * 1024
+MAX_ACTIVE_JOBS = 6  # two workers; more than a few queued jobs only means long waits for everyone
+# A sample run with the same parameters gives the same answer: hand back the finished (or running) job.
+_sample_jobs: dict[tuple, str] = {}
+# JPEG, PNG, TIFF (both byte orders), FITS. Anything else cannot be decoded by the pipeline.
+_MAGIC = (b"\xff\xd8\xff", b"\x89PNG\r\n\x1a\n", b"II*\x00", b"MM\x00*", b"SIMPLE  =")
+
+
+def _looks_like_image(data: bytes) -> bool:
+    return any(data.startswith(m) for m in _MAGIC)
 _solving: set[str] = set()
 _samples_ready = threading.Event()
 
@@ -51,12 +60,39 @@ async def list_samples():
     return out
 
 
+def _sample_preview(p: Path) -> Path:
+    """An 8-bit thumbnail a browser can show: 16-bit linear frames (the synthetic field) look black as they are,
+    so they get the same asinh display stretch the Dojo uses; colour JPEGs are only scaled down."""
+    out = p.with_name(f"{p.stem}.preview.jpg")
+    if out.exists() and out.stat().st_mtime >= p.stat().st_mtime:
+        return out
+    import numpy as np
+    from PIL import Image
+
+    with Image.open(p) as im:
+        if im.mode in ("RGB", "RGBA", "L") and im.mode != "I;16":
+            thumb = im.convert("RGB")
+        else:
+            a = np.asarray(im, dtype=np.float32)
+            if a.ndim == 3:
+                a = a[..., :3].mean(-1)
+            lo, hi = np.percentile(a, [5.0, 99.8])
+            x = np.clip((a - lo) / max(float(hi - lo), 1e-6), 0.0, 1.0)
+            x = np.arcsinh(12.0 * x) / np.arcsinh(12.0)
+            thumb = Image.fromarray((x * 255).astype(np.uint8)).convert("RGB")
+        thumb.thumbnail((640, 640))
+        thumb.save(out, "JPEG", quality=85)
+    return out
+
+
 @router.get("/samples/{sample_id}")
-async def get_sample(sample_id: str):
+async def get_sample(sample_id: str, preview: bool = False):
     await asyncio.to_thread(_ensure_samples)
     p = samples.sample_path(sample_id)
     if p is None:
         raise HTTPException(404, f"unknown sample {sample_id!r}")
+    if preview:
+        return FileResponse(await asyncio.to_thread(_sample_preview, p), media_type="image/jpeg")
     return FileResponse(p)
 
 
@@ -73,7 +109,15 @@ async def create_job(
     """Upload an image (JPG/PNG/TIFF/FITS) or name a sample; the pipeline runs asynchronously."""
     if file is None and not sample_id:
         raise HTTPException(400, "provide a file or a sample_id")
-    if sample_id:
+    key = None
+    if sample_id and file is None:
+        key = (sample_id, round(denoise_strength, 3), deblur_iterations, round(detect_sigma, 3))
+        prev = jobstore.get_job(_sample_jobs[key]) if key in _sample_jobs else None
+        if prev is not None and prev.status != "failed":
+            return JobAccepted(job_id=prev.id, status=prev.status)
+    if jobstore.active_count() >= MAX_ACTIVE_JOBS:
+        raise HTTPException(503, "The Lens is busy restoring other images. Try again in a minute.")
+    if sample_id and file is None:
         await asyncio.to_thread(_ensure_samples)
         p = samples.sample_path(sample_id)
         if p is None:
@@ -81,16 +125,22 @@ async def create_job(
         data, filename = p.read_bytes(), p.name
     else:
         assert file is not None
-        data = await file.read()
+        if file.size is not None and file.size > MAX_UPLOAD_BYTES:
+            raise HTTPException(413, f"file larger than {MAX_UPLOAD_BYTES // (1024 * 1024)} MB")
+        data = await file.read(MAX_UPLOAD_BYTES + 1)
         filename = Path(file.filename or "upload").name
         if len(data) > MAX_UPLOAD_BYTES:
             raise HTTPException(413, f"file larger than {MAX_UPLOAD_BYTES // (1024 * 1024)} MB")
+        if data and not _looks_like_image(data):
+            raise HTTPException(415, "this file is not a JPG, PNG, TIFF or FITS image")
     if not data:
         raise HTTPException(400, "empty file")
     job = jobstore.submit(data, filename, {
         "denoise_strength": denoise_strength, "deblur_iterations": deblur_iterations, "detect_sigma": detect_sigma,
         "sample_id": sample_id,
     })
+    if key is not None:
+        _sample_jobs[key] = job.id
     return JobAccepted(job_id=job.id, status=job.status)
 
 

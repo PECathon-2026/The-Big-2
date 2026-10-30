@@ -93,7 +93,13 @@ async def events_endpoint(
 
 
 @router.get("/ics")
-async def ics_endpoint(title: str, start: datetime, end: datetime | None = None, description: str = "", location: str = ""):
+async def ics_endpoint(
+    title: str = Query(max_length=200),
+    start: datetime = Query(),
+    end: datetime | None = None,
+    description: str = Query("", max_length=2000),
+    location: str = Query("", max_length=200),
+):
     """Download an .ics calendar file for any event."""
     body = ics.make_ics(title, start, end, description, location)
     return Response(content=body, media_type="text/calendar", headers={"Content-Disposition": 'attachment; filename="tsukuyomi-event.ics"'})

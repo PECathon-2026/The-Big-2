@@ -120,7 +120,7 @@ def _load_pillow(data: bytes, filename: str) -> LoadedImage:
         im = Image.open(io.BytesIO(data))
         im.load()
     except Exception as e:  # noqa: BLE001
-        raise ValueError(f"cannot decode image: {e}") from e
+        raise ValueError("cannot decode this image: the file is damaged or not a JPG, PNG, TIFF or FITS") from e
     fmt = (im.format or "unknown").upper()
     ow, oh = im.size
     mode = im.mode

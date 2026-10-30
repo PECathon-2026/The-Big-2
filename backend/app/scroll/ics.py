@@ -10,7 +10,7 @@ def _fmt(d: datetime) -> str:
 
 
 def _esc(s: str) -> str:
-    return s.replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
+    return s.replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\r\n", "\\n").replace("\r", "\\n").replace("\n", "\\n")
 
 
 def make_ics(title: str, start: datetime, end: datetime | None, description: str = "", location: str = "", alarm_minutes: int = 30) -> str:

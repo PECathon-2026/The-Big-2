@@ -134,6 +134,7 @@ def _computed_events(lat: float, lon: float, start: datetime, end: datetime, zon
     out: list[Event] = []
 
     if "moon" in types:
+        obs = astro.observer(lat, lon)
         d = start
         while d < end:
             info = mo.moon_info(lat, lon, d)
@@ -164,7 +165,11 @@ def _computed_events(lat: float, lon: float, start: datetime, end: datetime, zon
                         start_local=loc(info.set),
                         visible_from_here=True,
                         direction="W",
-                        detail="Dark skies after this for deep-sky objects.",
+                        detail=(
+                            "Dark skies after this for deep-sky objects."
+                            if astro.sun_alt(info.set, obs) < -12
+                            else "The Moon sets in daylight or twilight."
+                        ),
                         alert=f"The Moon sets at {info.set.astimezone(zone).strftime('%H:%M')}",
                         source="computed",
                     )
@@ -200,8 +205,12 @@ def _computed_events(lat: float, lon: float, start: datetime, end: datetime, zon
                         visible_from_here=s.best_hour.rate_per_hour > 0,
                         altitude_max=s.best_hour.radiant_alt,
                         detail=(
-                            f"About {s.best_hour.rate_per_hour:.0f} meteors/hour at best "
-                            f"(ZHR now {s.zhr_now:.0f}, radiant {s.best_hour.radiant_alt:.0f}° up). Peak {s.peak.date()}."
+                            (
+                                f"About {s.best_hour.rate_per_hour:.0f} meteors/hour at best "
+                                if s.best_hour.rate_per_hour >= 1
+                                else "Under 1 meteor/hour from here "
+                            )
+                            + f"(ZHR now {s.zhr_now:.0f}, radiant {s.best_hour.radiant_alt:.0f}° up). Peak {s.peak.date()}."
                         ),
                         alert=f"{s.name}: best around {s.best_hour.time_local}, ~{s.best_hour.rate_per_hour:.0f}/h",
                         source="IMO calendar + computed",

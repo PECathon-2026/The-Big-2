@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -12,34 +13,44 @@ from . import sender, store, vapid, worker
 
 router = APIRouter()
 
+# The server POSTs to every subscription endpoint, so only the browsers' own push services are accepted
+# (otherwise a forged "subscription" turns the alert worker into a request proxy into private networks).
+_PUSH_HOSTS = ("fcm.googleapis.com", "push.services.mozilla.com", "notify.windows.com", "push.apple.com", "push.api.chrome.com")
+
+
+def _is_push_service(endpoint: str) -> bool:
+    u = urlsplit(endpoint)
+    host = (u.hostname or "").lower()
+    return u.scheme == "https" and len(endpoint) <= 1024 and any(host == h or host.endswith("." + h) for h in _PUSH_HOSTS)
+
 
 class SubscribeBody(BaseModel):
     subscription: dict[str, Any] = Field(description="The PushSubscription.toJSON() object from the browser")
 
 
 class ScheduleBody(BaseModel):
-    endpoint: str
-    title: str
-    body: str
+    endpoint: str = Field(max_length=1024)
+    title: str = Field(max_length=200)
+    body: str = Field(max_length=1000)
     fire_at: datetime
-    url: str | None = None
-    event_id: str | None = None
+    url: str | None = Field(None, max_length=500)
+    event_id: str | None = Field(None, max_length=200)
 
 
 class ScheduleEventBody(BaseModel):
-    endpoint: str
+    endpoint: str = Field(max_length=1024)
     lat: float = Field(ge=-90, le=90)
     lon: float = Field(ge=-180, le=180)
-    event_id: str
+    event_id: str = Field(max_length=200)
     lead_minutes: int = Field(15, ge=0, le=24 * 60)
     days: int = Field(7, ge=1, le=30)
 
 
 class TestBody(BaseModel):
-    endpoint: str
+    endpoint: str = Field(max_length=1024)
     delay_seconds: int = Field(0, ge=0, le=3600)
-    title: str = "Tsukuyomi Watch · 月読"
-    body: str = "Push alerts are working. The sky is yours tonight."
+    title: str = Field("Tsukuyomi Watch · 月読", max_length=200)
+    body: str = Field("Push alerts are working. The sky is yours tonight.", max_length=1000)
 
 
 @router.get("/vapid-public-key")
@@ -53,6 +64,8 @@ async def subscribe(body: SubscribeBody, request: Request):
     sub = body.subscription
     if not sub.get("endpoint") or not (sub.get("keys") or {}).get("p256dh"):
         raise HTTPException(400, "subscription must include endpoint and keys.p256dh / keys.auth")
+    if not _is_push_service(str(sub["endpoint"])):
+        raise HTTPException(400, "endpoint must be an https URL of a browser push service")
     row = store.upsert_subscription(sub, request.headers.get("user-agent"))
     return {"subscription_id": row["id"], "endpoint": row["endpoint"], "created_at": row["created_at"]}
 

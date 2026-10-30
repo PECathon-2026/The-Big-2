@@ -36,3 +36,4 @@ graphify-out/cache/
 # test and soak outputs
 backend/scripts/*-result.json
 backend/.hypothesis/
+backend/data/samples/*.preview.jpg

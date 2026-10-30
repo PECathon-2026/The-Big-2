@@ -6,7 +6,7 @@ import io
 from datetime import datetime, timedelta, timezone
 
 import numpy as np
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, HTTPException, Path, Query, Response
 
 from ..core import astro
 from ..core.envelope import Envelope, Provenance
@@ -14,6 +14,9 @@ from ..lens import jobs as lens_jobs
 from . import alerce, subtract
 
 router = APIRouter()
+# ZTF object ids (ZTF20acnyxln) and numeric candids: checked here so junk never becomes an upstream call
+OID = Path(pattern=r"^ZTF\d{2}[a-z]{7}$")
+CANDID = Path(pattern=r"^\d{1,25}$")
 
 
 def _visibility(ra: float, dec: float, lat: float, lon: float) -> dict:
@@ -69,7 +72,7 @@ async def field(job_id: str, limit: int = Query(20, ge=1, le=100)):
 
 
 @router.get("/{oid}")
-async def object_detail(oid: str, lat: float | None = Query(None, ge=-90, le=90), lon: float | None = Query(None, ge=-180, le=180)):
+async def object_detail(oid: str = OID, lat: float | None = Query(None, ge=-90, le=90), lon: float | None = Query(None, ge=-180, le=180)):
     """One object: record, light curve, top classifier probabilities, and whether it is observable tonight from here."""
     o, p0 = await alerce.obj(oid)
     lc, p1 = await alerce.lightcurve(oid)
@@ -81,13 +84,13 @@ async def object_detail(oid: str, lat: float | None = Query(None, ge=-90, le=90)
 
 
 @router.get("/{oid}/lightcurve")
-async def lightcurve(oid: str):
+async def lightcurve(oid: str = OID):
     lc, prov = await alerce.lightcurve(oid)
     return Envelope(data=lc, provenance=[prov])
 
 
 @router.get("/{oid}/stamps/{candid}/{kind}.png")
-async def stamp_png(oid: str, candid: str, kind: str):
+async def stamp_png(oid: str = OID, candid: str = CANDID, kind: str = Path(pattern=r"^[a-z]{1,12}$")):
     """Proxy of the real ZTF alert cutout (science, template or difference) so the UI can show it without CORS trouble."""
     if kind not in ("science", "template", "difference"):
         raise HTTPException(404, "kind must be science, template or difference")
@@ -107,7 +110,7 @@ def _stamp_array(data: bytes) -> np.ndarray:
 
 
 @router.post("/{oid}/subtract")
-async def subtract_stamps(oid: str, candid: str = Query(..., description="A detection's candid from the light curve")):
+async def subtract_stamps(oid: str = OID, candid: str = Query(..., pattern=r"^\d{1,25}$", description="A detection's candid from the light curve")):
     """Run our own subtraction on the real ZTF science and template stamps and compare with ZTF's difference image."""
     sci, p1 = await alerce.stamp(oid, candid, "science", "fits")
     tmpl, p2 = await alerce.stamp(oid, candid, "template", "fits")

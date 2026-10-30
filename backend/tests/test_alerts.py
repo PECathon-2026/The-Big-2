@@ -10,8 +10,8 @@ from app.alerts import sender, store, worker
 from app.core.config import settings
 from app.main import app
 
-SUB = {"endpoint": "https://push.example.test/abc", "keys": {"p256dh": "BKey", "auth": "auth"}}
-SUB2 = {"endpoint": "https://push.example.test/gone", "keys": {"p256dh": "BKey", "auth": "auth"}}
+SUB = {"endpoint": "https://fcm.googleapis.com/fcm/send/abc", "keys": {"p256dh": "BKey", "auth": "auth"}}
+SUB2 = {"endpoint": "https://fcm.googleapis.com/fcm/send/gone", "keys": {"p256dh": "BKey", "auth": "auth"}}
 
 
 @pytest.fixture(autouse=True)

@@ -7,6 +7,7 @@ under a lock and can be read while the job is running. Stage names and order fol
 from __future__ import annotations
 
 import json
+import re
 import threading
 import time
 import uuid
@@ -100,9 +101,12 @@ class Job:
 
 _jobs: dict[str, Job] = {}
 _jobs_lock = threading.Lock()
+_JOB_ID = re.compile(r"[0-9a-f]{12}")
 
 
 def get_job(job_id: str) -> Job | None:
+    if not _JOB_ID.fullmatch(job_id or ""):  # ids are 12 hex chars; anything else must never reach the filesystem
+        return None
     with _jobs_lock:
         j = _jobs.get(job_id)
     if j is not None:
@@ -146,6 +150,12 @@ def _load_from_disk(job_id: str) -> Job | None:
     with _jobs_lock:
         _jobs[job_id] = job
     return job
+
+
+def active_count() -> int:
+    """Jobs still waiting for or holding a worker; the router refuses new uploads past a small cap."""
+    with _jobs_lock:
+        return sum(1 for j in _jobs.values() if j.status in ("queued", "running"))
 
 
 def submit(data: bytes, filename: str, params: dict[str, Any]) -> Job:
