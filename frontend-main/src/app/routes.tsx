@@ -5,6 +5,7 @@ export const Watchtower = lazy(() => import('@/modules/watchtower'));
 export const Scroll = lazy(() => import('@/modules/scroll'));
 export const Lens = lazy(() => import('@/modules/lens'));
 export const Dojo = lazy(() => import('@/modules/dojo'));
+export const DojoDashboard = lazy(() => import('@/modules/dojo/Dashboard'));
 export const Honor = lazy(() => import('@/modules/honor'));
 export const Science = lazy(() => import('@/modules/science'));
 
@@ -25,6 +26,8 @@ export const CHAPTERS: Chapter[] = [
   { num: '四', roman: 'IV', jp: '鏡', romaji: 'Kagami', name: 'Spirit Lens', path: '/lens' },
   { num: '五', roman: 'V', jp: '誉', romaji: 'Homare', name: 'Honor', path: '/honor' },
 ];
+
+export const DOJO = { num: '道', jp: '道場', romaji: 'Dōjō', name: 'Dojo', path: '/dojo' };
 
 export const SCIENCE = { num: '学', jp: '学', romaji: 'Gaku', name: 'Science', path: '/science' };
 
