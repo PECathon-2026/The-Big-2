@@ -99,6 +99,7 @@ Processing is asynchronous: upload creates a job, the job runs through named sta
 
 - `GET /samples` → `[{ id, name, description, kind (synthetic|real), has_wcs }]`; `GET /samples/{id}` → the image file.
 - `POST /jobs` (multipart) fields: `file` (JPG/PNG/TIFF/FITS), `denoise_strength` float 0..1 (default 0.5), `deblur_iterations` int (0 = auto, default 0), `detect_sigma` float (default 3.0), `sample_id` (alternative to `file`). → `202 { job_id, status }`
+- `GET /jobs?limit=50` → the Dojo dashboard: `[{ job_id, status, created_at, filename, width, height, verdict, ssim, psnr_db, chi2_reduced, invented_pixels, stars, galaxies, unknown, psf_fwhm_px, wcs_solved, error }]`, newest first, read from the jobs kept on disk.
 - `GET /jobs/{id}` → `{ job_id, status: queued|running|done|failed, created_at, stages: [{ name, status, started_at, ended_at, detail }], error, result: LensResult | null }`
   Stage names, in order: `load`, `background`, `detect`, `psf`, `denoise`, `deblur`, `honesty`, `classify`, `wcs`.
 - `GET /jobs/{id}/image/{kind}?stretch=asinh|linear` → PNG. `kind` ∈ `original | denoised | restored | residual | psf | noise | overlay`.

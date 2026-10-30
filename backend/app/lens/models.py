@@ -189,3 +189,26 @@ class CatalogResult(BaseModel):
     matches: list[CatalogMatch]
     queried: int
     note: str | None = None
+
+
+class JobSummary(BaseModel):
+    """One row of the Dojo dashboard: enough to pick a past job without loading its detections."""
+
+    job_id: str
+    status: Literal["queued", "running", "done", "failed"]
+    created_at: datetime
+    filename: str
+    sample_id: str | None = None
+    width: int | None = None
+    height: int | None = None
+    verdict: str | None = None
+    ssim: float | None = None
+    psnr_db: float | None = None
+    chi2_reduced: float | None = None
+    invented_pixels: int | None = None
+    stars: int | None = None
+    galaxies: int | None = None
+    unknown: int | None = None
+    psf_fwhm_px: float | None = None
+    wcs_solved: bool = False
+    error: str | None = None

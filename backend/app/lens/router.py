@@ -17,7 +17,7 @@ from . import images
 from . import jobs as jobstore
 from . import samples
 from . import skyview as sv
-from .models import BenchmarkResult, CatalogResult, JobAccepted, JobInfo, SampleInfo
+from .models import BenchmarkResult, CatalogResult, JobAccepted, JobInfo, JobSummary, SampleInfo
 from .wcs import AstrometryError, solve_astrometry
 
 router = APIRouter()
@@ -106,6 +106,12 @@ def _get_done(job_id: str) -> jobstore.Job:
     if job.status != "done" or job.result is None or job.arrays is None:
         raise HTTPException(409, f"job {job_id} is {job.status}; this endpoint needs a finished job")
     return job
+
+
+@router.get("/jobs", response_model=list[JobSummary])
+async def list_jobs(limit: int = Query(50, ge=1, le=200)):
+    """The Dojo dashboard: past restoration jobs, newest first, with their honesty headline numbers."""
+    return await asyncio.to_thread(jobstore.list_jobs, limit)
 
 
 @router.get("/jobs/{job_id}", response_model=JobInfo)

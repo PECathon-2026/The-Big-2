@@ -28,7 +28,7 @@ from .detect import RawDetection
 from .images import JobArrays
 from .io import LoadedImage, load_image
 from .models import (
-    Counts, DeblurInfo, DenoiseInfo, Detection, ImageInfo, JobInfo, LensResult, NoiseInfo, PSFInfo,
+    Counts, DeblurInfo, DenoiseInfo, Detection, ImageInfo, JobInfo, JobSummary, LensResult, NoiseInfo, PSFInfo,
     RestorationInfo, StageInfo, WCSInfo,
 )
 from .wcs import pixel_to_sky, wcs_from_avm, wcs_summary
@@ -146,6 +146,37 @@ def _load_from_disk(job_id: str) -> Job | None:
     with _jobs_lock:
         _jobs[job_id] = job
     return job
+
+
+def list_jobs(limit: int = 50) -> list[JobSummary]:
+    """Newest first, from job.json on disk (every job is persisted there), so the list survives restarts."""
+    root = settings.data_path / "jobs"
+    if not root.exists():
+        return []
+    dirs = sorted((d for d in root.iterdir() if (d / "job.json").exists()), key=lambda d: (d / "job.json").stat().st_mtime, reverse=True)
+    out: list[JobSummary] = []
+    for d in dirs[:limit]:
+        live = _jobs.get(d.name)
+        try:
+            info = live.info() if live is not None else JobInfo.model_validate_json((d / "job.json").read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001 - a half-written or old-format job is skipped, not fatal
+            continue
+        if live is None and info.status in ("running", "queued"):
+            info.status, info.error = "failed", "server restarted before the job finished; submit it again"
+        r = info.result
+        originals = [p.name for p in d.glob("original.*")]
+        out.append(JobSummary(
+            job_id=info.job_id, status=info.status, created_at=info.created_at, error=info.error,
+            filename=r.image.source_filename if r else (originals[0] if originals else "upload"),
+            sample_id=(live.params.get("sample_id") if live is not None else None),
+            width=r.image.width if r else None, height=r.image.height if r else None,
+            verdict=r.honesty.forward_model.verdict if r else None, ssim=r.honesty.ssim if r else None,
+            psnr_db=r.honesty.psnr_db if r else None, chi2_reduced=r.honesty.forward_model.chi2_reduced if r else None,
+            invented_pixels=r.honesty.invented_pixels if r else None,
+            stars=r.counts.stars if r else None, galaxies=r.counts.galaxies if r else None, unknown=r.counts.unknown if r else None,
+            psf_fwhm_px=r.psf.fwhm_px if r else None, wcs_solved=bool(r and r.wcs.solved),
+        ))
+    return out
 
 
 def submit(data: bytes, filename: str, params: dict[str, Any]) -> Job:
