@@ -44,7 +44,7 @@ async def near(ra: float = Query(..., ge=0, le=360), dec: float = Query(..., ge=
 
 
 @router.get("/recent")
-async def recent(class_name: str = Query("SNIa"), min_probability: float = Query(0.5, ge=0, le=1), limit: int = Query(20, ge=1, le=100), lat: float | None = None, lon: float | None = None):
+async def recent(class_name: str = Query("SNIa"), min_probability: float = Query(0.5, ge=0, le=1), limit: int = Query(20, ge=1, le=100), lat: float | None = Query(None, ge=-90, le=90), lon: float | None = Query(None, ge=-180, le=180)):
     """Live feed: the most recently detected objects of a class, with visibility from the observer when lat/lon are given."""
     objs, prov = await alerce.recent(class_name, min_probability, limit)
     if lat is not None and lon is not None:
@@ -69,7 +69,7 @@ async def field(job_id: str, limit: int = Query(20, ge=1, le=100)):
 
 
 @router.get("/{oid}")
-async def object_detail(oid: str, lat: float | None = None, lon: float | None = None):
+async def object_detail(oid: str, lat: float | None = Query(None, ge=-90, le=90), lon: float | None = Query(None, ge=-180, le=180)):
     """One object: record, light curve, top classifier probabilities, and whether it is observable tonight from here."""
     o, p0 = await alerce.obj(oid)
     lc, p1 = await alerce.lightcurve(oid)

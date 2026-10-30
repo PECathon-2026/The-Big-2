@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 
 from ..core.compute import in_thread
@@ -45,6 +45,8 @@ async def passes_endpoint(
     start: datetime | None = None,
 ):
     """Satellite passes from CelesTrak TLEs + SGP4. 'visible' means the observer is dark and the satellite is sunlit."""
+    if sat.upper() not in satellites.SATELLITES and not sat.isdigit():
+        raise HTTPException(400, f"unknown satellite {sat!r}: use one of {', '.join(satellites.SATELLITES)} or a NORAD catalogue number")
     ps, prov = await satellites.passes(lat, lon, days=days, sat=sat, min_alt=min_alt, start=start)
     return Envelope(data=ps, provenance=[prov, Provenance(source="computed", note="SGP4 (sgp4 lib), TEME→ECEF via GMST, cylindrical shadow test")])
 
@@ -63,7 +65,7 @@ async def planets_endpoint(lat: float = Query(..., ge=-90, le=90), lon: float = 
 
 
 @router.get("/calendar", response_model=Envelope[calendar_lunar.LunarCalendar])
-async def calendar_endpoint(lat: float = Query(..., ge=-90, le=90), lon: float = Query(..., ge=-180, le=180), year: int | None = None, month: int | None = Query(None, ge=1, le=12)):
+async def calendar_endpoint(lat: float = Query(..., ge=-90, le=90), lon: float = Query(..., ge=-180, le=180), year: int | None = Query(None, ge=1900, le=2100), month: int | None = Query(None, ge=1, le=12)):
     """The lunisolar month: moon age and name per day, lunar month/day, 24 sekki and 72 kō, all computed."""
     now = datetime.now(timezone.utc)
     return Envelope(data=await in_thread(calendar_lunar.month_calendar, lat, lon, year or now.year, month or now.month), provenance=[COMPUTED])

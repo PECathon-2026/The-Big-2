@@ -19,7 +19,7 @@ router = APIRouter()
 class MaskBody(BaseModel):
     lat: float = Field(ge=-90, le=90)
     lon: float = Field(ge=-180, le=180)
-    points: list[terrain.MaskPoint] = Field(default_factory=list, description="Traced obstructions: azimuth (deg from north) and altitude (deg)")
+    points: list[terrain.MaskPoint] = Field(default_factory=list, max_length=720, description="Traced obstructions: azimuth (deg from north) and altitude (deg); at most one point per half degree")
     use_terrain: bool = True
 
 

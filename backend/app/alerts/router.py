@@ -28,8 +28,8 @@ class ScheduleBody(BaseModel):
 
 class ScheduleEventBody(BaseModel):
     endpoint: str
-    lat: float
-    lon: float
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
     event_id: str
     lead_minutes: int = Field(15, ge=0, le=24 * 60)
     days: int = Field(7, ge=1, le=30)
