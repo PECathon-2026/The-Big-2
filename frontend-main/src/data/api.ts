@@ -63,8 +63,10 @@ export class ApiError extends Error {
   constructor(status: number, url: string, body: unknown) {
     const pe = body as ProviderError | null;
     const detail = body && typeof body === 'object' && 'detail' in body ? (body as { detail: unknown }).detail : undefined;
-    const msg =
-      pe && typeof pe === 'object' && 'error' in pe
+    const friendly = pe && typeof pe === 'object' && ['rate_limited', 'too_large', 'internal_error'].includes(String(pe.error)) && typeof pe.detail === 'string';
+    const msg = friendly
+      ? (pe as ProviderError).detail!
+      : pe && typeof pe === 'object' && 'error' in pe
         ? `${pe.error}${pe.source ? ` (${pe.source})` : ''}${pe.detail ? `: ${pe.detail}` : ''}`
         : typeof detail === 'string'
           ? `HTTP ${status}: ${detail}` // FastAPI validation / HTTPException message
@@ -666,7 +668,7 @@ export const api = {
 
   lens: {
     samples: (signal?: AbortSignal) => getRaw<LensSample[]>('/api/lens/samples', undefined, signal),
-    sampleUrl: (id: string) => buildUrl(`/api/lens/samples/${encodeURIComponent(id)}`),
+    sampleUrl: (id: string, preview = false) => buildUrl(`/api/lens/samples/${encodeURIComponent(id)}`, preview ? { preview: true } : undefined),
     createJob: (p: { file?: File | null; sample_id?: string | null; denoise_strength: number; deblur_iterations: number; detect_sigma: number }) => {
       const fd = new FormData();
       if (p.file) fd.append('file', p.file, p.file.name);

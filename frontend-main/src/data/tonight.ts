@@ -80,7 +80,12 @@ export function loadTonight(place: Place, force = false): Promise<void> {
   const key = placeKey(place);
   const st = useTonight.getState();
   if (!force && st.key === key) return Promise.resolve();
-  useTonight.setState({ key });
+  if (st.key !== key) {
+    // a new place: never show the previous place's numbers while its own load
+    for (const t of retryTimers.values()) window.clearTimeout(t);
+    retryTimers.clear();
+    useTonight.setState({ key, moon: empty(), sun: empty(), planets: empty(), events: empty(), passes: empty(), meteors: empty(), score: empty() });
+  } else useTonight.setState({ key });
   return Promise.all((Object.keys(fetchers) as SliceName[]).map((n) => loadSlice(n, place, key))).then(() => undefined);
 }
 

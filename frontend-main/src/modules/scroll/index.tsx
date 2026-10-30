@@ -178,7 +178,7 @@ export default function Scroll() {
           What is coming, and <em>when</em>.
         </>
       }
-      lede={moon.data ? `Tonight is ${moon.data.name.romaji}, ${moon.data.name.meaning.replace(/\.$/, '').toLowerCase()}. Below: the month in lunar days, then every event your sky will hold this week.` : 'The Moon, the lunar month, and every event your sky will hold this week.'}
+      lede={moon.data ? `Tonight is ${moon.data.name.romaji}, ${moon.data.name.meaning.replace(/\.$/, '').replace(/^./, (c) => c.toLowerCase())}. Below: the month in lunar days, then every event your sky will hold this week.` : 'The Moon, the lunar month, and every event your sky will hold this week.'}
       actions={
         <nav className="sc-toc" aria-label="Sections">
           {['moon', 'calendar', 'events', 'passes', 'meteors', 'planets', 'eclipses', 'launches'].map((a) => (

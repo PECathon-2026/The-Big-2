@@ -1,5 +1,5 @@
 /** /watchtower — 見張り "where and whether" (§9.2). Real data: /api/watchtower/score (shared) + /spots (page). */
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { api, type Spot, type VerdictKind } from '@/data/api';
 import { useTonight } from '@/data/tonight';
 import { fmtNum } from '@/data/format';
@@ -58,7 +58,7 @@ function SpotRow({ s, i, hi, sel, onHi, onSel }: { s: Spot; i: number; hi: boole
           <dl className="pg-kv">
             <dt>Night score</dt>
             <dd>{fmtNum(s.night_score, 1)}</dd>
-            {Object.entries(s.rank_trace).map(([k, val]) => (
+            {Object.entries(s.rank_trace).filter(([k]) => k !== 'night_score').map(([k, val]) => (
               <div key={k} style={{ display: 'contents' }}>
                 <dt>{k.replace(/_/g, ' ')}</dt>
                 <dd>{fmtNum(val, 3)}</dd>
@@ -94,6 +94,11 @@ export default function Watchtower() {
   const [hi, setHi] = useState<string | null>(null);
   const [selSpot, setSelSpot] = useState<string | null>(null);
   const spots = usePageData(place ? 'watchtower/spots' : null, () => api.watchtower.spots(place!, 60, 12), 30 * 60_000);
+  // a selected hour or spot belongs to the place it was picked in
+  useEffect(() => {
+    setSel(null);
+    setSelSpot(null);
+  }, [place?.lat, place?.lon]);
 
   const n = score.data;
   const v = n ? verdictOf(n.verdict.verdict) : null;

@@ -7,6 +7,7 @@ import { skyClock, updateSkyClock } from '@/scene/skyClock';
 import { introTimeline } from '@/astro/skytime';
 import { intro } from '@/scene/intro/introBus';
 import { allDone, preloadForPlace } from './preload';
+import { isModulePath } from '@/app/routes';
 
 const D = Math.PI / 180;
 const SEEN_KEY = 'tw.introSeen';
@@ -39,6 +40,22 @@ export function afterGate(place: Place) {
 export function startIntro() {
   const s = useApp.getState();
   if (s.place) preloadForPlace(s.place);
+  // A deep link or a refresh on a module page: after the gate, open that page instead of playing the intro over it.
+  if (isModulePath(window.location.pathname)) {
+    intro.active = false;
+    skyClock.override = null;
+    // the same "tonight's sky" the intro would have landed on
+    const tl = s.place ? introTimeline(s.place) : null;
+    if (tl) {
+      const off = tl.end.getTime() - Date.now();
+      s.setOffset(Math.abs(off) < 5 * 60_000 ? 0 : off);
+    }
+    updateSkyClock(true);
+    s.setIntroProgress(1);
+    Director.station('sky', { instant: true });
+    s.setPhase('module');
+    return;
+  }
   const place = s.place;
   if (place && !intro.timeline) intro.timeline = introTimeline(place);
   const tl = intro.timeline;

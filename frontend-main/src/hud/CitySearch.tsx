@@ -77,12 +77,16 @@ export default function CitySearch() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && hits[0]) pick(hits[0]);
+            // preventDefault: focus returns to the location chip on close, and the same Enter would click it open again
+            if (e.key === 'Enter' && hits[0]) {
+              e.preventDefault();
+              pick(hits[0]);
+            }
           }}
         />
         <ul className="city-list" aria-live="polite">
-          {hits.map((h) => (
-            <li key={`${h.lat},${h.lon},${h.label}`}>
+          {hits.map((h, i) => (
+            <li key={`${i},${h.lat},${h.lon},${h.label}`}>
               <button className="city-row" onClick={() => pick(h)}>
                 <b>{h.label}</b>
                 <span>{h.detail}</span>

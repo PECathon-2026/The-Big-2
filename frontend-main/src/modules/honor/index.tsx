@@ -275,9 +275,16 @@ export default function Honor() {
                   {busy ? 'Checking the sky…' : `Log tonight's watch · 記帳`}
                 </Button>
                 <p className="pg-quiet hn-why">
-                  {future
-                    ? 'The time compass is in the future. You can only claim what has already happened: turn it back to now.'
-                    : `Claimed for ${fmtTime(skyIso, tz, true)} at ${place?.label ?? 'your place'}${claim ? ` · ${KIND_EN[claim.kind] ?? claim.kind}` : ''}. The server decides.`}
+                  {future ? (
+                    <>
+                      The time compass is in the future. You can only claim what has already happened.{' '}
+                      <Button variant="secondary" onClick={() => useApp.getState().setOffset(0)} style={{ minHeight: 30, marginLeft: 6 }}>
+                        Set the sky to now
+                      </Button>
+                    </>
+                  ) : (
+                    `Claimed for ${fmtTime(skyIso, tz, true)} at ${place?.label ?? 'your place'}${claim ? ` · ${KIND_EN[claim.kind] ?? claim.kind}` : ''}. The server decides.`
+                  )}
                 </p>
                 {result && (
                   <p className={`hn-verdict ${result.accepted ? 'ok' : 'no'}`} role="status">

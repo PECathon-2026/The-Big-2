@@ -15,6 +15,7 @@ import { releaseScroll } from './lenis';
 import IntroRoot from '@/intro/IntroRoot';
 import SkyOverlay from '@/scene/sky/SkyOverlay';
 import HudRoot from '@/hud/HudRoot';
+import { ErrorBoundary, PageCrash } from './ErrorBoundary';
 
 function PhaseSync() {
   const { pathname } = useLocation();
@@ -42,25 +43,36 @@ function PhaseSync() {
 }
 
 export default function App() {
+  const { pathname } = useLocation();
   return (
     <>
-      <CanvasRoot />
+      <ErrorBoundary name="canvas">
+        <CanvasRoot />
+      </ErrorBoundary>
       <PhaseSync />
-      <SkyOverlay />
-      <HudRoot />
-      <Suspense fallback={null}>
-        <Routes>
-          <Route path="/" element={null} />
-          <Route path="/watchtower" element={<Watchtower />} />
-          <Route path="/scroll" element={<Scroll />} />
-          <Route path="/lens" element={<Lens />} />
-          <Route path="/dojo/:id" element={<Dojo />} />
-          <Route path="/honor" element={<Honor />} />
-          <Route path="/science" element={<Science />} />
-          <Route path="*" element={null} />
-        </Routes>
-      </Suspense>
-      <IntroRoot />
+      <ErrorBoundary name="sky-overlay">
+        <SkyOverlay />
+      </ErrorBoundary>
+      <ErrorBoundary name="hud" resetKey={pathname}>
+        <HudRoot />
+      </ErrorBoundary>
+      <ErrorBoundary name="page" resetKey={pathname} fallback={(retry, error) => <PageCrash retry={retry} error={error} />}>
+        <Suspense fallback={null}>
+          <Routes>
+            <Route path="/" element={null} />
+            <Route path="/watchtower" element={<Watchtower />} />
+            <Route path="/scroll" element={<Scroll />} />
+            <Route path="/lens" element={<Lens />} />
+            <Route path="/dojo/:id" element={<Dojo />} />
+            <Route path="/honor" element={<Honor />} />
+            <Route path="/science" element={<Science />} />
+            <Route path="*" element={null} />
+          </Routes>
+        </Suspense>
+      </ErrorBoundary>
+      <ErrorBoundary name="intro">
+        <IntroRoot />
+      </ErrorBoundary>
       <div className="paper-grain" aria-hidden="true" />
     </>
   );

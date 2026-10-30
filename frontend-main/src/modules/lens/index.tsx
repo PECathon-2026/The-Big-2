@@ -141,6 +141,7 @@ export default function Lens() {
     setErr(null);
     setBusy(true);
     setJob(null);
+    setJobId(null); // a failed submission must not leave the previous job looking like it is still running
     try {
       const created = await api.lens.createJob({ file, sample_id: file ? null : sampleId || null, denoise_strength: denoise, deblur_iterations: deblur, detect_sigma: sigma });
       setJobId(created.job_id);
@@ -199,7 +200,7 @@ export default function Lens() {
             <div className="ln-samples" role="radiogroup" aria-label="Sample images">
               {samples.list.map((s) => (
                 <button key={s.id} role="radio" aria-checked={!file && sampleId === s.id} className={`ln-sample ${!file && sampleId === s.id ? 'on' : ''}`} onClick={() => (setFile(null), setSampleId(s.id))}>
-                  <img src={api.lens.sampleUrl(s.id)} alt="" loading="lazy" />
+                  <img src={api.lens.sampleUrl(s.id, true)} alt="" loading="lazy" />
                   <span className="ln-sample-name">{s.name}</span>
                   <span className="ln-sample-meta">
                     {s.kind === 'synthetic' ? <Tag>known truth</Tag> : <Tag>real</Tag>}

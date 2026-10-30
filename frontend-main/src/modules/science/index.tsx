@@ -43,7 +43,7 @@ function Architecture() {
         ['Sky engine', 'd3-celestial catalogue · astronomy-engine', 'positions, phase, sky colour: offline'],
         ['Time compass', 'sky time = now + offset', 'no refetch while you drag'],
         ['Module pages', 'Watchtower · Scroll · Lens · Honor', 'render the API envelopes'],
-        ['Journal', 'localStorage only', 'never leaves the device'],
+        ['Journal', 'anonymous browser id', 'the Honor ledger keeps no name or email'],
       ].map(([h, a, b], i) => (
         <g key={h} transform={`translate(44 ${108 + i * 68})`}>
           <rect width="372" height="56" rx="8" className="sci-inner" />

@@ -24,12 +24,17 @@ export function usePageData<T>(key: string | null, fetcher: () => Promise<Envelo
   const [tick, setTick] = useState(0);
   const fRef = useRef(fetcher);
   fRef.current = fetcher;
+  // data for one key + place never shows under another (a new city must not keep the old city's spots)
+  const ident = useRef<string | null>(null);
 
   useEffect(() => {
     if (!key || !place) return;
     let alive = true;
     let retry = 0;
-    setSt((s) => ({ ...s, status: 'loading' }));
+    const id = `${key}@${place.lat},${place.lon}`;
+    const same = ident.current === id;
+    ident.current = id;
+    setSt((s) => (same ? { ...s, status: 'loading' } : { data: null, provenance: [], computedAt: null, status: 'loading', error: null, stale: false }));
     // a forced reload bypasses the memo by adding the tick to the key
     cached(`${key}#${tick}`, place, () => fRef.current(), ttlMs)
       .then((env) => {

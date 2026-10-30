@@ -50,6 +50,7 @@ export function fmtRelative(iso: string | null | undefined): string {
   if (Number.isNaN(t)) return iso;
   const diff = Math.round((t - Date.now()) / 60000);
   const abs = Math.abs(diff);
+  if (abs < 1) return 'just now';
   const s = abs < 60 ? `${abs} min` : abs < 1440 ? `${(abs / 60).toFixed(1)} h` : `${(abs / 1440).toFixed(1)} d`;
   return diff >= 0 ? `in ${s}` : `${s} ago`;
 }
