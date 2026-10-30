@@ -1,0 +1,14 @@
+{
+  "runs": [
+    {
+      "date": "2026-10-29T22:06:56.608009+00:00",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "files": 217,
+      "usage_status": "unmetered_agent_extraction"
+    }
+  ],
+  "total_input_tokens": 0,
+  "total_output_tokens": 0,
+  "usage_note": "Token counts are unavailable from the agent tool; zero is a placeholder, not measured zero usage. Monetary cost unknown."
+}

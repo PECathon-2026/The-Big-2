@@ -10,6 +10,7 @@ import { moonName } from '@/astro/moonNames';
 import { useTonight } from '@/data/tonight';
 import type { Place } from '@/state/store';
 import { intro, timeAt } from '@/scene/intro/introBus';
+import { loadBackdrop } from '@/scene/intro/backdrop';
 
 export type StepId = 'catalog' | 'chunk' | 'moonTex' | 'fonts' | 'moon' | 'sky' | 'api.moon' | 'api.sun' | 'api.score' | 'api.events';
 
@@ -62,7 +63,8 @@ export function startPreload() {
   loadCatalog()
     .then((c) => mark('catalog', `Reading the star catalogue · ${c.starCount.toLocaleString('en')} stars`))
     .catch(() => mark('catalog', 'Star catalogue unavailable · continuing'));
-  loadIntroChunk()
+  // the optional dusk photo (public/art/dusk-backdrop.*) loads with the intro chunk
+  Promise.all([loadIntroChunk(), loadBackdrop()])
     .then(() => mark('chunk'))
     .catch(() => mark('chunk'));
   fetch('/textures/moon_color_2k.webp')

@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { fbm2, n2 } from '@/scene/noise';
 import { skyClock } from '@/scene/skyClock';
 import { landmarks, tokColor } from './shared';
+import { intro, sceneryOpacity } from '@/scene/intro/introBus';
 
 interface RidgeDef {
   rad: number;
@@ -160,8 +161,11 @@ export default function Horizon() {
     [],
   );
 
+  const group = useRef<THREE.Group>(null);
   let lastV = -1;
   useFrame((state) => {
+    // the intro paints its own lake and hills; the ink ridges take over as that print clears in the dark
+    if (group.current) group.current.visible = !intro.active || sceneryOpacity(intro.progress) < 0.5;
     mistMat.uniforms.uTime.value = state.clock.elapsedTime;
     if (skyClock.version === lastV) return;
     lastV = skyClock.version;
@@ -179,7 +183,7 @@ export default function Horizon() {
   });
 
   return (
-    <group>
+    <group ref={group}>
       <mesh rotation-x={-Math.PI / 2} position-y={-0.6} material={groundMat}>
         <circleGeometry args={[100, 96]} />
       </mesh>
