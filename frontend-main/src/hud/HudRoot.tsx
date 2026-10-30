@@ -1,7 +1,8 @@
 /**
  * The HUD (workstream C, z 30): wordmark + location chip, countdown + directory button, chapter rail,
- * the wadokei time compass, sound toggle, GlowCursor, InfoCard, directory and city-search dialogs,
- * and the ink flood (z 60). Owns selection → dive / InfoCard (NOTES "Selection → dive") and keyboard.
+ * the wadokei time compass, sound toggle, GlowCursor, InfoCard, directory and city-search dialogs.
+ * Page transitions are the yellow panels (intro/loadingScreen.ts, driven by the Director).
+ * Owns selection → dive / InfoCard (NOTES "Selection → dive") and keyboard.
  */
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
@@ -12,7 +13,6 @@ import { Button } from '@/ui';
 import { cue } from '@/audio/engine';
 import ChapterRail from './ChapterRail';
 import Directory from './Directory';
-import InkFlood from './InkFlood';
 import SoundToggle from './SoundToggle';
 import LocationChip from './LocationChip';
 import CitySearch from './CitySearch';
@@ -173,7 +173,6 @@ export default function HudRoot() {
       )}
       <Directory />
       <CitySearch />
-      <InkFlood />
     </>
   );
 }

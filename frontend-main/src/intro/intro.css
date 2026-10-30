@@ -174,7 +174,11 @@
   color: var(--washi);
   transition: opacity 600ms var(--ease-cinematic);
 }
+.tw-loader { animation: tw-loader-in 420ms var(--ease-cinematic) backwards; }
 .tw-loader.out { opacity: 0; pointer-events: none; }
+.tw-loader.leaving .tw-loader-ui { opacity: 0; transition: opacity 500ms var(--ease-cinematic); }
+@keyframes tw-loader-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .tw-loader { animation: none; } }
 .tw-loader canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .tw-loader-ui { position: absolute; left: 50%; bottom: 14vh; transform: translateX(-50%); width: min(520px, calc(100vw - 32px)); text-align: center; }
 .tw-loader-line { display: block; min-height: 24px; font-size: 14px; letter-spacing: .08em; color: var(--washi-2); }

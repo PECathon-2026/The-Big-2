@@ -7,14 +7,14 @@
  * home / chapter 一 is the sky itself, and station('dome') is an alias of station('sky') so nothing can
  * fly the camera back out to DOME_POS.
  *
- * Dives (§7.6) are orchestrated here: flight → ink flood from the click point → navigate(route) →
- * the page mounts under the ink → ink clears centre-out. `back()` reverses it to the exact saved view.
+ * Dives (§7.6) are orchestrated here: flight → PECFEST's yellow panels slide shut → navigate(route) →
+ * the page mounts behind them → they slide open. `back()` reverses it to the exact saved view.
  * The HUD registers the router's navigate with `Director.registerNavigate`.
  */
 import { dirToYawPitch, nearestAngle, type Vec3 } from '@/astro/coords';
 import { app, type Phase, type SkyObject } from '@/state/store';
 import { isModulePath } from '@/app/routes';
-import { inkClose, inkFade, inkOpen } from '@/hud/ink';
+import { closePanels, openPanels } from '@/intro/loadingScreen';
 import { cue } from '@/audio/engine';
 
 export type StationName = 'intro' | 'dome' | 'sky';
@@ -123,7 +123,6 @@ let navigate: (path: string) => void = (p) => {
   window.dispatchEvent(new PopStateEvent('popstate'));
 };
 
-const centre = () => ({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
 const onModulePath = () => isModulePath(window.location.pathname);
 
 export const Director = {
@@ -149,11 +148,11 @@ export const Director = {
 
   /**
    * Dive (§7.6) toward `obj`, then land on `route` (default obj.route).
-   * 0–600 ms the look eases onto the object and the FOV narrows; from 400 ms ink floods out of
-   * `screenPt` until it covers; then navigate, the page mounts under the ink, and the ink clears.
-   * From a module page (chapter → chapter) there is no flight: ink, navigate, ink.
+   * The look eases onto the object and the FOV narrows; from 250 ms the yellow panels slide shut; then
+   * navigate, the page mounts behind them, and they slide open.
+   * From a module page (chapter → chapter) there is no flight: panels, navigate, panels.
    */
-  async diveTo(obj: SkyObject, screenPt: { x: number; y: number } = centre(), route = obj.route): Promise<void> {
+  async diveTo(obj: SkyObject, _screenPt?: { x: number; y: number }, route = obj.route): Promise<void> {
     if (!route || busy) return;
     busy = true;
     const s = app();
@@ -162,21 +161,14 @@ export const Director = {
       if (!fromModule) saved = { cam: { pos: [...rig.tgt.pos], yaw: rig.tgt.yaw, pitch: rig.tgt.pitch, fov: rig.tgt.fov }, phase: 'sky', station: rig.station === 'intro' ? 'intro' : 'sky' };
       s.setTimeFrozen(true);
       const view = viewFor(obj, rig.cur);
-      if (s.reducedMotion) {
-        await inkFade(1, 150);
-        setTarget(view, true);
-        navigate(route);
-        app().setPhase('module');
-        await frames(2);
-        await inkFade(0, 150);
-      } else if (fromModule) {
-        cue('whoosh');
-        await inkClose(screenPt.x, screenPt.y, 520);
+      if (s.reducedMotion || fromModule) {
+        if (!s.reducedMotion) cue('whoosh');
+        await closePanels();
         setTarget(view, true);
         navigate(route);
         app().setPhase('module');
         await frames(3);
-        await inkOpen(560);
+        await openPanels();
       } else {
         cue('whoosh');
         s.setPhase('diving');
@@ -184,15 +176,15 @@ export const Director = {
         rig.ease = 0.012;
         setTarget(view);
         tweenDive(1, 600);
-        await wait(400);
-        await inkClose(screenPt.x, screenPt.y, 700);
+        await wait(250);
+        await closePanels();
         navigate(route);
         app().setPhase('module');
         rig.dive = 0;
         rig.ease = BASE_EASE;
         await frames(3);
         await wait(60);
-        await inkOpen(620);
+        await openPanels();
       }
     } finally {
       rig.ease = BASE_EASE;
@@ -207,8 +199,8 @@ export const Director = {
   },
 
   /**
-   * Reverse a dive: ink closes over the page, the page unmounts, the camera flies back to the exact
-   * saved orientation + FOV while the ink clears. `to: 'home'` (or the legacy 'dome') returns to the sky
+   * Reverse a dive: the panels close over the page, the page unmounts, the camera flies back to the exact
+   * saved orientation + FOV while the panels open. `to: 'home'` (or the legacy 'dome') returns to the sky
    * home view instead (chapter 一: current yaw, pitch 24°, FOV 62).
    * Safe to call after something else already navigated to '/'.
    */
@@ -233,25 +225,16 @@ export const Director = {
     };
     try {
       s.setTimeFrozen(true);
-      if (s.reducedMotion) {
-        if (onPage) await inkFade(1, 150);
-        if (onPage) navigate('/');
-        restore();
-        await frames(2);
-        await inkFade(0, 150);
-      } else {
-        cue('whooshReverse');
-        if (onPage) {
-          const c = centre();
-          await inkClose(c.x, c.y, 460);
-          navigate('/');
-        }
-        rig.ease = 0.02;
-        restore();
-        await frames(2);
-        // release as soon as the ink has cleared; the camera keeps easing home (any input interrupts it)
-        await Promise.all([inkOpen(700), settle(700)]);
+      if (!s.reducedMotion) cue('whooshReverse');
+      if (onPage) {
+        await closePanels();
+        navigate('/');
       }
+      rig.ease = s.reducedMotion ? BASE_EASE : 0.02;
+      restore();
+      await frames(2);
+      // release as soon as the panels are open; the camera keeps easing home (any input interrupts it)
+      await Promise.all([openPanels(), s.reducedMotion ? Promise.resolve() : settle(700)]);
     } finally {
       rig.ease = BASE_EASE;
       app().setTimeFrozen(false);
