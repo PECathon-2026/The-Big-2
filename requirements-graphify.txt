@@ -1,2 +1,0 @@
-# Agent tooling only; keep separate from the website backend environment.
-graphifyy[mcp]==0.9.97

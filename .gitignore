@@ -37,3 +37,20 @@ graphify-out/cache/
 backend/scripts/*-result.json
 backend/.hypothesis/
 backend/data/samples/*.preview.jpg
+
+# working notes, planning, QA captures and agent tooling: kept locally, not part of the repository
+CLAUDE.md
+.claude/
+.graphifyignore
+requirements-graphify.txt
+graphify-out/
+docs/
+presentation/
+night-sky-reference/
+JAPANESE-THEME-UI-GUIDE.md
+frontend-main/AGENT_BRIEF.md
+frontend-main/NOTES.md
+frontend-main/qa/
+frontend-main/README.md
+frontend-basic/README.md
+backend/README.md
