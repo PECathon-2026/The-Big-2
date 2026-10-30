@@ -76,8 +76,8 @@ async def terrain_horizon(lat: float, lon: float) -> tuple[list[float], float, l
         heights += [float(x) if x is not None else 0.0 for x in h]
         if k == 0:
             prov.append(p)
-        else:
-            await asyncio.sleep(0.25)
+        if not p.cached and p.source != "replay":
+            await asyncio.sleep(0.25)  # pause between live calls only; cached chunks must not add a second of latency
     h_obs = heights[0] + 2.0  # eye height
     sampled = []
     idx = 1
