@@ -56,15 +56,33 @@ async def fetch(
     timeout: float | None = None,
     validate: Callable[[Any], bool] | None = None,
 ) -> Fetched:
-    """Fetch with cache. Order: fresh cache → live call (retries) → stale cache → demo replay → ProviderError."""
+    """Fetch with cache. Order: fresh cache → live call (retries) → stale cache → demo replay → ProviderError.
+
+    `validate` receives the decoded payload (parsed JSON, or raw bytes when `binary`) and says whether it is usable.
+    A 200 that fails it is treated exactly like a failed call: not cached, not recorded, retried, then stale cache,
+    replay, ProviderError. The same check guards everything served from the cache or a recording, so a bad file on
+    disk is dropped rather than served.
+    """
     c = cache(cache_name or source)
     key = f"{method} {url} {sorted((params or {}).items())} {sorted((data or {}).items())}"
     mode = settings.effective_replay_mode
+
+    def usable(stored: Any) -> bool:
+        if validate is None:
+            return True
+        try:
+            return bool(validate(_decode(stored, binary)))
+        except Exception:  # noqa: BLE001 - a validator that chokes on the payload has answered the question
+            return False
+
     if mode == "first":  # demo mode: a recording wins over the network, so the demo is fast and deterministic
         rep = replay_get(key)
-        if rep is not None:
+        if rep is not None and usable(rep):
             return Fetched(_decode(rep, binary), Provenance(source="replay", url=url, note=f"recorded response for {source} (replay mode: first)"))
     entry = c.get(key)
+    if entry is not None and not usable(entry.value):
+        c.delete(key)  # a poisoned or corrupted entry must not outlive this request
+        entry = None
     if entry is not None and entry.fresh:
         return Fetched(_decode(entry.value, binary), Provenance(source=source, url=url, fetched_at=entry.fetched_dt, cached=True))
 
@@ -84,8 +102,8 @@ async def fetch(
                 raise ProviderError(source, f"HTTP {r.status_code}")
             r.raise_for_status()
             value = base64.b64encode(r.content).decode("ascii") if binary else r.json()
-            if validate is not None and not validate(value):
-                raise ProviderError(source, "response failed validation (partial or error payload); not cached")
+            if not usable(value):
+                raise ProviderError(source, "HTTP 200 but the payload failed validation (error page, partial or empty reply); not cached")
             c.set(key, value, ttl)
             replay_record(key, value)
             return Fetched(_decode(value, binary), Provenance(source=source, url=url, fetched_at=datetime.now(timezone.utc)))
@@ -101,7 +119,7 @@ async def fetch(
         )
     if mode in ("fallback", "first"):
         rep = replay_get(key)
-        if rep is not None:
+        if rep is not None and usable(rep):
             return Fetched(_decode(rep, binary), Provenance(source="replay", url=url, note=f"recorded response for {source}; upstream failed: {last_err}"))
     raise ProviderError(source, str(last_err))
 

@@ -56,13 +56,22 @@ class TTLCache:
         if p.exists():
             try:
                 raw = json.loads(p.read_text(encoding="utf-8"))
-                e = CacheEntry(raw["value"], raw["fetched_at"], raw["ttl"])
+                fetched_at, ttl = raw["fetched_at"], raw["ttl"]
+                if not isinstance(fetched_at, (int, float)) or not isinstance(ttl, (int, float)):
+                    raise TypeError("cache entry has non-numeric timestamps")
+                e = CacheEntry(raw["value"], float(fetched_at), float(ttl))
                 with self._lock:
                     self._mem[key] = e
                 return e
-            except Exception:
+            except Exception:  # noqa: BLE001 - a malformed file is treated as no entry, and removed
+                p.unlink(missing_ok=True)
                 return None
         return None
+
+    def delete(self, key: str) -> None:
+        with self._lock:
+            self._mem.pop(key, None)
+        self._path(key).unlink(missing_ok=True)
 
     def set(self, key: str, value: Any, ttl: float) -> CacheEntry:
         e = CacheEntry(value, time.time(), ttl)
