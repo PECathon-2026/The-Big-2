@@ -151,3 +151,9 @@ def test_press_jpeg_display_keeps_dust_lanes(client: TestClient):
     im = np.array(Image.open(io.BytesIO(png)))
     black = float((im.max(axis=2) == 0).mean())
     assert black < 0.01, f"{black:.1%} of the display is pure black"
+    # the restored frame must wear the same colour: only the measured luminance change is added to each channel
+    rest = np.array(Image.open(io.BytesIO(client.get(f"/api/lens/jobs/{job['job_id']}/image/restored", params={"stretch": "linear"}).content)))
+    chroma_o = float((im.max(axis=2).astype(int) - im.min(axis=2)).mean())
+    chroma_r = float((rest.max(axis=2).astype(int) - rest.min(axis=2)).mean())
+    assert chroma_r > 0.7 * chroma_o, f"restored lost its colour: chroma {chroma_r:.1f} vs original {chroma_o:.1f}"
+
