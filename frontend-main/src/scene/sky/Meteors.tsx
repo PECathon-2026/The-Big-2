@@ -47,7 +47,8 @@ export default function Meteors() {
     return { lines, streaks };
   }, []);
 
-  let wait = 3;
+  // seconds until the next streak; counts down only while the open sky shows (no backlog at arrival)
+  const clock = useMemo(() => ({ wait: 10 }), []);
   const r = new THREE.Vector3();
   const q = new THREE.Vector3();
 
@@ -55,7 +56,8 @@ export default function Meteors() {
     const dt = Math.min(0.1, dtRaw);
     const s = app();
     const m = skyData.shower;
-    const active = m && !s.reducedMotion && (s.phase === 'sky' || s.phase === 'dome' || (s.phase === 'intro' && s.introProgress > 0.6));
+    // Never during the intro: the petals' landing on the stars is the only motion there.
+    const active = m && !s.reducedMotion && (s.phase === 'sky' || s.phase === 'dome');
     let perHour = 0;
     if (m) {
       eqToWorld(skyClock.eqMatrix.elements, m.eq[0], m.eq[1], m.eq[2], rad, 0, 1);
@@ -64,10 +66,10 @@ export default function Meteors() {
     }
     meteorStats.shownPerHour = perHour;
     const dark = skyClock.palette.starFade;
-    wait -= dt;
-    if (active && perHour > 0 && rad[1] > 0 && dark > 0.3 && wait <= 0) {
+    if (active) clock.wait -= dt;
+    if (active && perHour > 0 && rad[1] > 0 && dark > 0.3 && clock.wait <= 0) {
       // exponential waiting time at the shown rate
-      wait = (-Math.log(1 - Math.random()) * 3600) / perHour;
+      clock.wait = (-Math.log(1 - Math.random()) * 3600) / perHour;
       const k = streaks.findIndex((x) => x.t >= 1);
       if (k >= 0) {
         const st = streaks[k];
@@ -82,7 +84,7 @@ export default function Meteors() {
         q.copy(r).multiplyScalar(Math.cos(st.a0)).addScaledVector(st.p, Math.sin(st.a0));
         if (q.y < 0.05) st.t = 1;
       }
-    } else if (wait < 0) wait = 0.5;
+    } else if (clock.wait < 0) clock.wait = 0.5;
 
     for (let i = 0; i < POOL; i++) {
       const st = streaks[i];

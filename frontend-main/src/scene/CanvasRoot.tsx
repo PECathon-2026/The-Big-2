@@ -53,7 +53,7 @@ function CameraRig() {
   return null;
 }
 
-/** Drag-look and wheel-zoom while inside the sky. A/C may replace with richer controls. */
+/** Drag-look and wheel-zoom (scroll down = forward) while inside the sky. */
 function SkyInput() {
   const gl = useThree((s) => s.gl);
   useEffect(() => {
@@ -73,7 +73,9 @@ function SkyInput() {
     const wheel = (e: WheelEvent) => {
       if (useApp.getState().phase !== 'sky') return;
       e.preventDefault();
-      Director.zoom(e.deltaY);
+      // Scrolling down keeps flying forward as it did through the intro (narrower FOV = deeper into the
+      // stars); scrolling up flies back. A trackpad pinch (ctrlKey) keeps its natural spread-to-zoom-in.
+      Director.zoom(e.ctrlKey ? e.deltaY : -e.deltaY);
     };
     el.addEventListener('pointerdown', down);
     el.addEventListener('pointermove', move);
@@ -118,7 +120,8 @@ export default function CanvasRoot() {
         visibility: phase === 'gate' || phase === 'loading' ? 'hidden' : 'visible',
         // pages mount over the dimmed sky (§9.1)
         filter: dimmed ? 'brightness(.35) blur(6px)' : 'none',
-        transition: 'filter 900ms var(--ease-cinematic)',
+        // dim slowly behind an arriving page; un-dim at once while the panels still cover the return
+        transition: dimmed ? 'filter 900ms var(--ease-cinematic)' : 'none',
       }}
     >
       <Canvas

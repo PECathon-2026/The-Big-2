@@ -5,7 +5,8 @@
  * real star is during the time-lapse), aStarCol. Per frame only uniforms are written.
  *
  * Assignment: visible stars brightest first, one petal each; extra petals join the brightest stars in
- * proportion to their flux. Landing time comes from landForMag(), the same formula the sky's star
+ * proportion to their flux; those extras dissolve while still pink, before the last stretch, so dozens
+ * of them never trail into one bright star as a white streak. Landing time comes from landForMag(), the same formula the sky's star
  * shader uses (INTRO_REVEAL_GLSL), so each star appears exactly as its petal lands and fades.
  * About a third of the petals stay on the trees as blossoms.
  */
@@ -23,7 +24,7 @@ import { buildTrees } from './trees';
 import { LAND_FADE, intro, landForMag, sceneOpacity, sceneryOpacity, smooth, token } from './introBus';
 
 const vs = /* glsl */ `
-  attribute vec3 aBranch; attribute vec4 aSeed; attribute vec4 aTimes; attribute vec3 aStar; attribute vec3 aStarCol; attribute float aPink;
+  attribute vec3 aBranch; attribute vec4 aSeed; attribute vec4 aTimes; attribute vec3 aStar; attribute vec3 aStarCol; attribute float aPink; attribute float aExtra;
   uniform float uP; uniform float uTime; uniform float uPx; uniform float uLandFade; uniform float uNight; uniform float uFade; uniform float uSceneryFade;
   uniform mat4 uEq; uniform vec3 uWind; uniform vec3 uBack; uniform vec3 uSakura; uniform vec3 uBeni;
   varying vec2 vUv; varying vec3 vCol; varying float vGlow; varying float vA;
@@ -88,6 +89,8 @@ const vs = /* glsl */ `
     // Blossoms still on branches leave with the tree; detached petals keep their original handoff.
     float attached = 1.0 - step(det, p);
     vA = (1.0 - smoothstep(land, land + uLandFade, p)) * uFade * mix(1.0, uSceneryFade, attached);
+    // a star's extra petals melt into the dark before they would turn white and stream in behind its own
+    vA *= 1.0 - aExtra * smoothstep(0.3, 0.52, t);
     if (vA < 0.002) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
   }`;
 
@@ -124,6 +127,7 @@ export default function Petals({ targetsKey }: { targetsKey: number }) {
     const aStar = new Float32Array(n * 3);
     const aStarCol = new Float32Array(n * 3);
     const aPink = new Float32Array(n);
+    const aExtra = new Float32Array(n);
 
     // flying petals ↔ stars
     const cat = catalogSync();
@@ -131,8 +135,9 @@ export default function Petals({ targetsKey }: { targetsKey: number }) {
     const stay = Math.floor(n * 0.32);
     const fly = n - stay;
     const assign = new Int32Array(fly).fill(-1);
+    let first = 0;
     if (tg && tg.count) {
-      const first = Math.min(fly, tg.count);
+      first = Math.min(fly, tg.count);
       for (let i = 0; i < first; i++) assign[i] = i;
       // extra petals gather on the brightest stars, by flux
       const top = Math.min(tg.count, 240);
@@ -166,6 +171,7 @@ export default function Petals({ targetsKey }: { targetsKey: number }) {
         continue;
       }
       const si = assign[fi];
+      if (fi >= first) aExtra[i] = 1;
       const ci = tg!.indices[si];
       const ra = cat!.stars[ci * STAR_STRIDE];
       const dec = cat!.stars[ci * STAR_STRIDE + 1];
@@ -190,6 +196,7 @@ export default function Petals({ targetsKey }: { targetsKey: number }) {
     g.setAttribute('aStar', new THREE.InstancedBufferAttribute(aStar, 3));
     g.setAttribute('aStarCol', new THREE.InstancedBufferAttribute(aStarCol, 3));
     g.setAttribute('aPink', new THREE.InstancedBufferAttribute(aPink, 1));
+    g.setAttribute('aExtra', new THREE.InstancedBufferAttribute(aExtra, 1));
     g.instanceCount = n;
     const azr = (az * Math.PI) / 180;
     const mat = new THREE.ShaderMaterial({
