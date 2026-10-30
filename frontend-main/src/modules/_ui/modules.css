@@ -15,6 +15,8 @@
 .pg-scroll { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
 .pg-content { width: min(1180px, 100% - 2 * max(28px, 5vw)); margin: 0 auto; padding: 88px 0 120px; }
 .pg-content.wide { width: min(1360px, 100% - 2 * max(28px, 4vw)); }
+/* the chapter rail sits on the right edge above 720px: wide pages leave it a gutter instead of running under it */
+@media (min-width: 721px) { .pg-content.wide { width: min(1360px, 100% - 2 * max(112px, 7vw)); } }
 
 .pg-head { margin-bottom: 28px; }
 .pg-head-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 26px; }
