@@ -15,6 +15,7 @@ import { DataState, MoonDisc, Num, ProvenanceFooter, Reveal, SectionHead } from 
 import { usePageData } from '../_ui/usePageData';
 import { EmakiCalendar } from './Calendar';
 import { CompassRose, Countdown, RemindMe, Sparkline } from './parts';
+import { SeasonCard, TestPush } from './Season';
 import './scroll.css';
 
 const KIND_LABEL: Record<EventKind, string> = { moon: 'Moon', meteor: 'Meteors', eclipse: 'Eclipses', satellite: 'ISS', launch: 'Launches', planet: 'Planets' };
@@ -150,6 +151,7 @@ export default function Scroll() {
   const calendar = usePageData(place ? `scroll/calendar/${cal.y}-${cal.m}` : null, () => api.scroll.calendar(place!, cal.y, cal.m), 6 * 3600_000);
   const eclipses = usePageData(place ? 'scroll/eclipses' : null, () => api.scroll.eclipses(place!), 6 * 3600_000);
   const launches = usePageData(place ? 'scroll/launches' : null, () => api.scroll.launches(place!, 12), 30 * 60_000);
+  const season = usePageData(place ? 'scroll/season' : null, () => api.scroll.season(), 30 * 60_000);
 
   const [kinds, setKinds] = useState<EventKind[]>(readKinds);
   useEffect(() => {
@@ -231,6 +233,7 @@ export default function Scroll() {
             </p>
           </Reveal>
         )}
+        <SeasonCard season={season} />
       </section>
 
       <section className="pg-section" id="events">
@@ -259,6 +262,7 @@ export default function Scroll() {
         <p className="pg-quiet">
           “Remind me” asks your browser for notification permission, then our server sends a Web Push 15 minutes before the event. It works with this tab closed as long as the browser keeps running.
         </p>
+        <TestPush />
         <DataState status={events.status} error={events.error} stale={events.stale} hasData={!!events.data} what="Reading the week's sky… (meteors, passes, launches and eclipses)" />
         {events.data && (shown.length ? <ul className="sc-ev-list">{shown.map((e, i) => <EventCard key={e.id} e={e} i={i} />)}</ul> : <p className="pg-quiet">No events of this kind in the next 7 days.</p>)}
       </section>
