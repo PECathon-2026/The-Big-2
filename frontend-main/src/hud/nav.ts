@@ -2,7 +2,7 @@
  * Chapter navigation (§8.5): each chapter is a camera station + a page. Chapter 一 is the sky itself (home;
  * there is no dome exterior any more).
  * The station is a dive toward a real object: Watchtower → the torii/horizon, Scroll → the Moon,
- * Lens → M42 (or the brightest DSO above the horizon), Honor → Polaris.
+ * Lens → M42 (or the brightest DSO above the horizon), Dojo → M31, Honor → Polaris.
  */
 import { altAzToVec, R, type Vec3 } from '@/astro/coords';
 import { CHAPTERS, isModulePath } from '@/app/routes';
@@ -23,6 +23,11 @@ export function chapterTarget(path: string): SkyObject {
     case '/lens': {
       const up = ['M42', 'M31', 'M45'].map((id) => o[id]).filter((x): x is SkyObject => !!x && x.world[1] > 0);
       return up[0] ?? o.M42 ?? { kind: 'dso', id: 'M42', name: 'Orion Nebula', world: scale(altAzToVec(30, 120), R) };
+    }
+    case '/dojo': {
+      // the Dojo inspects what the Lens brought back: dive to another deep-sky object than the Lens does
+      const up = ['M31', 'M45', 'M42'].map((id) => o[id]).filter((x): x is SkyObject => !!x && x.world[1] > 0);
+      return up[0] ?? o.M31 ?? { kind: 'dso', id: 'M31', name: 'Andromeda Galaxy', world: scale(altAzToVec(40, 60), R) };
     }
     case '/honor':
       return o.polaris ?? { kind: 'star', id: 'polaris', name: 'Polaris', world: scale(altAzToVec(skyClock.lat, 0), R) };
@@ -55,7 +60,7 @@ export function goHome() {
 /** Index of the active chapter for a pathname (−1 for /science and unknown paths). */
 export function chapterIndex(pathname: string): number {
   if (pathname === '/' || pathname === '') return 0;
-  return CHAPTERS.findIndex((c, i) => i > 0 && (pathname === c.path || pathname.startsWith(c.path + '/') || (c.path === '/lens' && pathname.startsWith('/dojo'))));
+  return CHAPTERS.findIndex((c, i) => i > 0 && (pathname === c.path || pathname.startsWith(c.path + '/')));
 }
 
 export function stepChapter(dir: 1 | -1, pathname: string) {

@@ -13,6 +13,21 @@ import '../lens/lens.css';
 
 const VERDICT_JP: Record<string, string> = { 'noise-like': '誠', structured: '疑' };
 
+/** Restored thumbnail; jobs from an older server build may have no arrays left to render, so fall back to a seal. */
+function Thumb({ job }: { job: LensJobSummary }) {
+  const [broken, setBroken] = useState(false);
+  if (job.status === 'done' && !broken) return <img src={api.lens.imageUrl(job.job_id, 'restored', 'linear')} alt="" loading="lazy" onError={() => setBroken(true)} />;
+  const [k, label] = job.status === 'failed' ? ['否', 'failed'] : job.status === 'done' ? ['無', 'image not kept'] : ['待', job.status];
+  return (
+    <span className="dj-job-empty">
+      <span lang="ja" aria-hidden="true">
+        {k}
+      </span>
+      <small>{label}</small>
+    </span>
+  );
+}
+
 function when(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -38,7 +53,7 @@ export default function DojoDashboard() {
   return (
     <PageFrame
       seal="道"
-      eyebrow="四 · 道場 Dōjō · Every cut you have made"
+      eyebrow="五 · 道場 Dōjō · Every cut you have made"
       title={
         <>
           The <em>Dojo</em>.
@@ -101,13 +116,7 @@ export default function DojoDashboard() {
                   <Reveal as="li" key={j.job_id} i={Math.min(i, 8)}>
                     <button className={`dj-job ${j.status}`} onClick={() => nav(`/dojo/${j.job_id}`)} disabled={j.status !== 'done'} aria-label={`Open job ${j.job_id}, ${j.filename}`}>
                       <span className="dj-job-thumb">
-                        {j.status === 'done' ? (
-                          <img src={api.lens.imageUrl(j.job_id, 'restored', 'linear')} alt="" loading="lazy" />
-                        ) : (
-                          <span lang="ja" aria-hidden="true">
-                            {j.status === 'failed' ? '否' : '待'}
-                          </span>
-                        )}
+                        <Thumb job={j} />
                         {j.verdict && (
                           <span className={`dj-job-seal ${j.verdict === 'noise-like' ? 'ok' : 'warn'}`} lang="ja" title={`Residual: ${j.verdict}`}>
                             {VERDICT_JP[j.verdict] ?? '?'}

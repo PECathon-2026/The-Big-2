@@ -24,10 +24,9 @@ export const CHAPTERS: Chapter[] = [
   { num: '二', roman: 'II', jp: '見張り', romaji: 'Mihari', name: 'Watchtower', path: '/watchtower' },
   { num: '三', roman: 'III', jp: '巻物', romaji: 'Makimono', name: 'Celestial Scroll', path: '/scroll' },
   { num: '四', roman: 'IV', jp: '鏡', romaji: 'Kagami', name: 'Spirit Lens', path: '/lens' },
-  { num: '五', roman: 'V', jp: '誉', romaji: 'Homare', name: 'Honor', path: '/honor' },
+  { num: '五', roman: 'V', jp: '道場', romaji: 'Dōjō', name: 'Dojo', path: '/dojo' },
+  { num: '六', roman: 'VI', jp: '誉', romaji: 'Homare', name: 'Honor', path: '/honor' },
 ];
-
-export const DOJO = { num: '道', jp: '道場', romaji: 'Dōjō', name: 'Dojo', path: '/dojo' };
 
 export const SCIENCE = { num: '学', jp: '学', romaji: 'Gaku', name: 'Science', path: '/science' };
 

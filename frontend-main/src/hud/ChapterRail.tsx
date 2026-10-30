@@ -1,4 +1,4 @@
-/** Chapter rail 一–五 (§8.5), Atelier style: active = gold + long hairline; hover shows the name. */
+/** Chapter rail 一–六 (§8.5), Atelier style: active = gold + long hairline; hover shows the name. */
 import { useLocation } from 'react-router';
 import { CHAPTERS } from '@/app/routes';
 import { chapterIndex, goChapter } from './nav';
@@ -32,7 +32,7 @@ export default function ChapterRail() {
         </button>
       ))}
       <div className="rail-roman" aria-hidden="true">
-        {active >= 0 ? CHAPTERS[active].roman : '学'} / V
+        {active >= 0 ? CHAPTERS[active].roman : '学'} / {CHAPTERS[CHAPTERS.length - 1].roman}
       </div>
     </nav>
   );
